@@ -1,0 +1,8 @@
+[package]
+name = "ufotofu"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+either = "1.10.0"
+trait-variant = "0.1.1"
