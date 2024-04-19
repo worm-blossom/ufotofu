@@ -114,7 +114,7 @@ where
     }
 }
 
-/// A `Consumer` takes a potentially infinite sequence, one item at a time.
+/// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
 /// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
