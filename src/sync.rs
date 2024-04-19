@@ -170,7 +170,7 @@ pub trait BufferedConsumer: Consumer {
     fn flush(&mut self) -> Result<(), Self::Error>;
 }
 
-/// A `Consumer` that is able to take several items with a single function call, in order to
+/// A `Consumer` that is able to consume several items with a single function call, in order to
 /// improve on the efficiency of the `Consumer` trait. Semantically, there must be no
 /// difference between consuming items in bulk or one item at a time.
 ///
