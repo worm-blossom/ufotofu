@@ -211,7 +211,7 @@ where
     /// #### Safety
     ///
     /// The consumer may assume the first `amount` many `consumer_slots` that were most recently
-    /// exposed to contain initialized memory after this call, even if the memory was initially
+    /// exposed to contain initialized memory after this call, even if the memory it exposed was originally
     /// uninitialized. Violating the invariants can cause the consumer to read undefined
     /// memory, which triggers undefined behavior.
     unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error>;
