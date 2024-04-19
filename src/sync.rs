@@ -3,7 +3,7 @@ use core::mem::MaybeUninit;
 
 use either::{Either, Left, Right};
 
-/// A `Producer` emits a potentially infinite sequence, one item at a time.
+/// A `Producer` produces a potentially infinite sequence, one item at a time.
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
 /// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
