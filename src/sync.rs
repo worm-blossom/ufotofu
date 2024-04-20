@@ -105,12 +105,16 @@ where
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        return Ok(self.producer_slots()?.map_left(|slots| {
-            let amount = min(slots.len(), buf.len());
-            MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-            self.did_produce(amount)?;
-            return amount;
-        }));
+        match self.producer_slots()? {
+            Either::Left(slots) => {
+                let amount = min(slots.len(), buf.len());
+                MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
+                self.did_produce(amount)?;
+
+                Ok(Either::Left(amount))
+            }
+            Either::Right(final_value) => Ok(Either::Right(final_value)),
+        }
     }
 }
 
