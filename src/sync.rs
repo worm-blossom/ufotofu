@@ -242,7 +242,8 @@ where
         unsafe {
             self.did_consume(amount)?;
         }
-        return Ok(amount);
+
+        Ok(amount)
     }
 }
 
@@ -274,7 +275,7 @@ where
     C: BulkConsumer<Item = P::Item, Final = P::Final>,
     E: From<P::Error> + From<C::Error>,
 {
-    return bulk_consume_pipe(producer, consumer);
+    bulk_consume_pipe(producer, consumer)
 }
 
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
@@ -307,6 +308,7 @@ where
 ///
 /// If you do not care whether to use `producer.bulk_produce` or `consumer.bulk_consume`,
 /// use `bulk_pipe` instead; this should almost always be the case.
+// TODO: Safety section in doc comment.
 pub unsafe fn bulk_produce_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
 where
     P: BulkProducer,
