@@ -3,120 +3,7 @@ use core::mem::MaybeUninit;
 
 use either::{Either, Left, Right};
 
-/// A `Producer` produces a potentially infinite sequence, one item at a time.
-///
-/// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
-/// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
-///
-/// A producer can also signal an error of type `Self::Error` instead of producing an item.
-pub trait Producer {
-    /// The sequence produced by this producer *starts* with *arbitrarily many* values of this type.
-    type Item;
-    /// The sequence produced by this producer *ends* with *up to one* value of this type.
-    type Final;
-    /// The type of errors the producer can emit instead of doing its job.
-    type Error;
-
-    /// Attempt to produce the next item, which is either a regular repeated item or the final item.
-    /// If the sequence of items has not ended yet, but no item are available at the time of calling,
-    /// the function must block until at least one more item becomes available (or it becomes clear
-    /// that the final value or an error should be yielded).
-    ///
-    /// After this function returns the final item, or after it returns an error, no further
-    /// functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
-    fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
-}
-
-/// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
-pub trait BufferedProducer: Producer {
-    /// Prepare some values for yielding. This function allows the `Producer` to perform side
-    /// effects that it would otherwise have to do just-in-time when `produce` gets called.
-    ///
-    /// After this function returns an error, no further functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
-    fn slurp(&mut self) -> Result<(), Self::Error>;
-}
-
-/// A `Producer` that is able to produce several items with a single function call, in order to
-/// improve on the efficiency of the `Producer` trait. Semantically, there must be no difference
-/// between producing items in bulk or one item at a time.
-///
-/// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait BulkProducer: BufferedProducer
-where
-    Self::Item: Copy,
-{
-    /// Expose a non-empty slice of items to be produced (or the final value, or an error).
-    /// The items in the slice must not have been emitted by `produce` before. If the sequence
-    /// of items has not ended yet, but no item is available at the time of calling, the
-    /// function must block until at least one more item becomes available (or it becomes clear
-    /// that the final value or an error should be yielded).
-    ///
-    /// The producer should expose the largest contiguous slice it can expose efficiently.
-    /// It should not perform copies to increase the size of the slice. Client code must be
-    /// able to make progress even if this function always returns slices of size one.
-    ///
-    /// After this function returns the final item, or after it returns an error, no further
-    /// functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
-    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
-
-    /// Mark `amount` many items as having been produced. Future calls to `produce` and to
-    /// `producer_slots` must act as if `produce` had been called `amount` many times.
-    ///
-    /// After this function returns an error, no further functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must not mark items as produced that had not previously been exposed by `producer_slots`.
-    ///
-    /// Must not be called after any function of this trait returned a final item or an error.
-    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error>;
-
-    /// Produce a non-zero number of items by writing them into a given buffer and returning how
-    /// many items were produced. If the sequence of items has not ended yet, but no item is
-    /// available at the time of calling, the function must block until at least one more item
-    /// becomes available (or it becomes clear that the final value or an error should be yielded).
-    ///
-    /// After this function returns the final item, or after it returns an error, no further
-    /// functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// The default implementation orchestrates `producer_slots` and `did_produce` in a
-    /// straightforward manner. Only provide your own implementation if you can do better
-    /// than that.
-    fn bulk_produce(
-        &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        match self.producer_slots()? {
-            Either::Left(slots) => {
-                let amount = min(slots.len(), buf.len());
-                MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-                self.did_produce(amount)?;
-
-                Ok(Either::Left(amount))
-            }
-            Either::Right(final_value) => Ok(Either::Right(final_value)),
-        }
-    }
-}
+mod consumer;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
@@ -244,6 +131,121 @@ where
         }
 
         Ok(amount)
+    }
+}
+
+/// A `Producer` produces a potentially infinite sequence, one item at a time.
+///
+/// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
+/// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
+/// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
+///
+/// A producer can also signal an error of type `Self::Error` instead of producing an item.
+pub trait Producer {
+    /// The sequence produced by this producer *starts* with *arbitrarily many* values of this type.
+    type Item;
+    /// The sequence produced by this producer *ends* with *up to one* value of this type.
+    type Final;
+    /// The type of errors the producer can emit instead of doing its job.
+    type Error;
+
+    /// Attempt to produce the next item, which is either a regular repeated item or the final item.
+    /// If the sequence of items has not ended yet, but no item are available at the time of calling,
+    /// the function must block until at least one more item becomes available (or it becomes clear
+    /// that the final value or an error should be yielded).
+    ///
+    /// After this function returns the final item, or after it returns an error, no further
+    /// functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned a final item or an error.
+    fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
+}
+
+/// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
+pub trait BufferedProducer: Producer {
+    /// Prepare some values for yielding. This function allows the `Producer` to perform side
+    /// effects that it would otherwise have to do just-in-time when `produce` gets called.
+    ///
+    /// After this function returns an error, no further functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned a final item or an error.
+    fn slurp(&mut self) -> Result<(), Self::Error>;
+}
+
+/// A `Producer` that is able to produce several items with a single function call, in order to
+/// improve on the efficiency of the `Producer` trait. Semantically, there must be no difference
+/// between producing items in bulk or one item at a time.
+///
+/// Note that `Self::Item` must be `Copy` for efficiency reasons.
+pub trait BulkProducer: BufferedProducer
+where
+    Self::Item: Copy,
+{
+    /// Expose a non-empty slice of items to be produced (or the final value, or an error).
+    /// The items in the slice must not have been emitted by `produce` before. If the sequence
+    /// of items has not ended yet, but no item is available at the time of calling, the
+    /// function must block until at least one more item becomes available (or it becomes clear
+    /// that the final value or an error should be yielded).
+    ///
+    /// The producer should expose the largest contiguous slice it can expose efficiently.
+    /// It should not perform copies to increase the size of the slice. Client code must be
+    /// able to make progress even if this function always returns slices of size one.
+    ///
+    /// After this function returns the final item, or after it returns an error, no further
+    /// functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned a final item or an error.
+    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
+
+    /// Mark `amount` many items as having been produced. Future calls to `produce` and to
+    /// `producer_slots` must act as if `produce` had been called `amount` many times.
+    ///
+    /// After this function returns an error, no further functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Callers must not mark items as produced that had not previously been exposed by `producer_slots`.
+    ///
+    /// Must not be called after any function of this trait returned a final item or an error.
+    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error>;
+
+    /// Produce a non-zero number of items by writing them into a given buffer and returning how
+    /// many items were produced. If the sequence of items has not ended yet, but no item is
+    /// available at the time of calling, the function must block until at least one more item
+    /// becomes available (or it becomes clear that the final value or an error should be yielded).
+    ///
+    /// After this function returns the final item, or after it returns an error, no further
+    /// functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned a final item or an error.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// The default implementation orchestrates `producer_slots` and `did_produce` in a
+    /// straightforward manner. Only provide your own implementation if you can do better
+    /// than that.
+    fn bulk_produce(
+        &mut self,
+        buf: &mut [MaybeUninit<Self::Item>],
+    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        match self.producer_slots()? {
+            Either::Left(slots) => {
+                let amount = min(slots.len(), buf.len());
+                MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
+                self.did_produce(amount)?;
+
+                Ok(Either::Left(amount))
+            }
+            Either::Right(final_value) => Ok(Either::Right(final_value)),
+        }
     }
 }
 
