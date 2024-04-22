@@ -5,4 +5,6 @@ edition = "2021"
 
 [dependencies]
 either = "1.10.0"
+slice_n = "0.0.2"
 trait-variant = "0.1.1"
+wrapper = "0.1.1"
