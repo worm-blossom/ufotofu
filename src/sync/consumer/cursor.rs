@@ -1,7 +1,6 @@
 use core::convert::AsRef;
 use core::mem::MaybeUninit;
 
-use slice_n::Slice1;
 use wrapper::Wrapper;
 
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
@@ -42,7 +41,8 @@ impl<'a, T> Consumer for Cursor<'a, T> {
     /// The value emitted once the end of the slice has been reached.
     type Final = ();
     // NOTE: This is just a placeholder error type for now.
-    type Error = String;
+    // We may want to use a dedicated unit struct in future.
+    type Error = ();
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         self.0.consume(item)
@@ -60,7 +60,6 @@ impl<'a, T: Copy> BufferedConsumer for Cursor<'a, T> {
 }
 
 impl<'a, T: Copy> BulkConsumer for Cursor<'a, T> {
-    // TODO: Specify that slice must satisfy `SliceN::from_slice`, maybe?.
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         self.0.consumer_slots()
     }
@@ -97,10 +96,11 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
     /// The value emitted once the end of the slice has been reached.
     type Final = ();
     // NOTE: This is just a placeholder error type for now.
-    type Error = String;
+    // We may want to use a dedicated unit struct in future.
+    type Error = ();
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
-        // The inner cursor already holds an item.
+        // The inner cursor is completely full.
         if self.0.len() == self.1 {
             Ok(())
         } else {
@@ -109,7 +109,7 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
             // Increment the item counter.
             self.1 += 1;
 
-            Err("consumer capacity reached".to_string())
+            Err(())
         }
     }
 
@@ -127,11 +127,9 @@ impl<'a, T: Copy> BufferedConsumer for CursorInner<'a, T> {
 impl<'a, T: Copy> BulkConsumer for CursorInner<'a, T> {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         if self.0.len() == self.1 {
-            Err("no empty consumer slots available".to_string())
+            Err(())
         } else {
-            Ok(unsafe {
-                Slice1::from_slice_unchecked_mut(maybe_uninit_slice_mut(&mut self.0[self.1..]))
-            })
+            Ok(maybe_uninit_slice_mut(&mut self.0[self.1..]))
         }
     }
 

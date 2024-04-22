@@ -33,15 +33,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "slice_n"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6ea026d38d7452c59d77e924c08400e1a5f62cbb9edce708d18ec8216c6ff37"
-dependencies = [
- "maybe-std",
-]
-
-[[package]]
 name = "syn"
 version = "2.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -68,7 +59,6 @@ name = "ufotofu"
 version = "0.1.0"
 dependencies = [
  "either",
- "slice_n",
  "trait-variant",
  "wrapper",
 ]
