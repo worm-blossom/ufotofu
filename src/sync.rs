@@ -4,6 +4,7 @@ use core::mem::MaybeUninit;
 use either::{Either, Left, Right};
 
 mod consumer;
+mod producer;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///

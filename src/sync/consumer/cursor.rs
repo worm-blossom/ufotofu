@@ -3,9 +3,8 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
-
 use crate::maybe_uninit_slice_mut;
+use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Consumes data into a mutable slice.
 pub struct Cursor<'a, T>(CursorInner<'a, T>);
