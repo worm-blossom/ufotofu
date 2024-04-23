@@ -5,15 +5,12 @@ use wrapper::Wrapper;
 
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
-// TODO: Might be good to move Cursor and CursorInner into
-// a common file at some point to deduplicate code.
-
 /// Produces data from a slice.
 pub struct Cursor<'a, T>(CursorInner<'a, T>);
 
 /// Creates a producer which produces the data in the given slice.
 impl<'a, T> Cursor<'a, T> {
-    pub fn new(slice: &'a mut [T]) -> Cursor<'a, T> {
+    pub fn new(slice: &'a [T]) -> Cursor<'a, T> {
         Cursor(CursorInner(slice, 0))
     }
 }

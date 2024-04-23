@@ -327,3 +327,46 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::sync::consumer::Cursor as ConsumerCursor;
+    use crate::sync::producer::Cursor as ProducerCursor;
+
+    #[test]
+    fn pipes_from_producer_to_consumer() {
+        let mut o = ProducerCursor::new(&['u', 'f', 'o']);
+        let mut i = ConsumerCursor::new(&mut []);
+
+        let _: Result<(), ()> = pipe(&mut o, &mut i);
+
+        let m = min(o.as_ref().len(), i.as_ref().len());
+        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    }
+
+    #[test]
+    fn bulk_pipes_from_producer_to_consumer() {
+        let mut o = ProducerCursor::new(&['u', 'f', 'o']);
+        let mut i = ConsumerCursor::new(&mut []);
+
+        let _: Result<(), ()> = bulk_consume_pipe(&mut o, &mut i);
+
+        let m = min(o.as_ref().len(), i.as_ref().len());
+        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    }
+
+    #[test]
+    fn bulk_pipes_from_consumer_to_producer() {
+        let mut o = ProducerCursor::new(&['u', 'f', 'o']);
+        let mut i = ConsumerCursor::new(&mut []);
+
+        unsafe {
+            let _: Result<(), ()> = bulk_produce_pipe(&mut o, &mut i);
+        }
+
+        let m = min(o.as_ref().len(), i.as_ref().len());
+        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    }
+}
