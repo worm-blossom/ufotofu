@@ -32,8 +32,8 @@ impl<'a, T: Clone> Producer for Cursor<'a, T> {
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
     type Final = ();
-    // TODO: Replace with dedicated unit struct.
-    type Error = ();
+    // This implementation of Producer cannot error.
+    type Error = !;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce()
@@ -75,8 +75,8 @@ impl<'a, T: Clone> Producer for CursorInner<'a, T> {
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
     type Final = ();
-    // TODO: Replace with dedicated unit struct.
-    type Error = ();
+    // This implementation of Producer cannot error.
+    type Error = !;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         if self.0.len() == self.1 {

@@ -1,4 +1,5 @@
 #![feature(maybe_uninit_write_slice)]
+#![feature(never_type)]
 
 use core::mem::MaybeUninit;
 
