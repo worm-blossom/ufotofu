@@ -108,7 +108,7 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
             // Increment the item counter.
             self.1 += 1;
 
-            Err(())
+            Ok(())
         }
     }
 
