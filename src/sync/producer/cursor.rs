@@ -97,7 +97,7 @@ impl<'a, T: Clone> Producer for CursorInner<'a, T> {
 
 impl<'a, T: Copy> BufferedProducer for CursorInner<'a, T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
-        // TODO: Should we be doing something else here?
+        // There are no effects to perform so we simply return.
         Ok(())
     }
 }
@@ -105,10 +105,10 @@ impl<'a, T: Copy> BufferedProducer for CursorInner<'a, T> {
 impl<'a, T: Copy> BulkProducer for CursorInner<'a, T> {
     fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
-        if !slice.is_empty() {
-            Ok(Either::Left(slice))
-        } else {
+        if slice.is_empty() {
             Ok(Either::Right(()))
+        } else {
+            Ok(Either::Left(slice))
         }
     }
 
