@@ -37,10 +37,10 @@ impl<'a, T> AsMut<[T]> for Cursor<'a, T> {
 impl<'a, T> Consumer for Cursor<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
-    /// The value emitted once the end of the slice has been reached.
+    /// The value signifying the end of the consumed sequence.
     type Final = ();
-    // NOTE: This is just a placeholder error type for now.
-    // We may want to use a dedicated unit struct in future.
+    /// The value emitted when the consumer is full and a subsequent
+    /// call is made to `consume()` or `consumer_slots()`.
     type Error = ();
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
@@ -92,10 +92,10 @@ impl<'a, T> AsMut<[T]> for CursorInner<'a, T> {
 impl<'a, T> Consumer for CursorInner<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
-    /// The value emitted once the end of the slice has been reached.
+    /// The value signifying the end of the consumed sequence.
     type Final = ();
-    // NOTE: This is just a placeholder error type for now.
-    // We may want to use a dedicated unit struct in future.
+    /// The value emitted when the consumer is full and a subsequent
+    /// call is made to `consume()` or `consumer_slots()`.
     type Error = ();
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
