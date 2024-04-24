@@ -1,5 +1,6 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(never_type)]
+#![feature(allocator_api)]
 
 use core::mem::MaybeUninit;
 
