@@ -101,7 +101,7 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         // The inner cursor is completely full.
         if self.0.len() == self.1 {
-            Ok(())
+            Err(())
         } else {
             // Copy the item to the slice at the given index.
             self.0[self.1] = item;
