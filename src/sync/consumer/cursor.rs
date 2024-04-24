@@ -6,6 +6,15 @@ use wrapper::Wrapper;
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+#[derive(Debug)]
+pub struct CursorError;
+
+impl From<!> for CursorError {
+    fn from(never: !) -> CursorError {
+        match never {}
+    }
+}
+
 /// Consumes data into a mutable slice.
 pub struct Cursor<'a, T>(CursorInner<'a, T>);
 
@@ -41,7 +50,7 @@ impl<'a, T> Consumer for Cursor<'a, T> {
     type Final = ();
     /// The value emitted when the consumer is full and a subsequent
     /// call is made to `consume()` or `consumer_slots()`.
-    type Error = ();
+    type Error = CursorError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         self.0.consume(item)
@@ -96,12 +105,12 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
     type Final = ();
     /// The value emitted when the consumer is full and a subsequent
     /// call is made to `consume()` or `consumer_slots()`.
-    type Error = ();
+    type Error = CursorError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         // The inner cursor is completely full.
         if self.0.len() == self.1 {
-            Err(())
+            Err(CursorError)
         } else {
             // Copy the item to the slice at the given index.
             self.0[self.1] = item;
@@ -126,7 +135,7 @@ impl<'a, T: Copy> BufferedConsumer for CursorInner<'a, T> {
 impl<'a, T: Copy> BulkConsumer for CursorInner<'a, T> {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         if self.0.len() == self.1 {
-            Err(())
+            Err(CursorError)
         } else {
             Ok(maybe_uninit_slice_mut(&mut self.0[self.1..]))
         }

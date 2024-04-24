@@ -311,8 +311,7 @@ where
 ///
 /// If you do not care whether to use `producer.bulk_produce` or `consumer.bulk_consume`,
 /// use `bulk_pipe` instead; this should almost always be the case.
-// TODO: Safety section in doc comment.
-pub unsafe fn bulk_produce_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub fn bulk_produce_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
 where
     P: BulkProducer,
     P::Item: Copy,
@@ -322,7 +321,7 @@ where
     loop {
         let slots = consumer.consumer_slots()?;
         match producer.bulk_produce(slots)? {
-            Left(amount) => consumer.did_consume(amount)?,
+            Left(amount) => unsafe { consumer.did_consume(amount)? },
             Right(f) => return Ok(consumer.close(f)?),
         }
     }
@@ -332,50 +331,54 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::Cursor as ConsumerCursor;
+    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorError};
     use crate::sync::producer::Cursor as ProducerCursor;
 
     #[test]
-    fn pipes_from_producer_to_consumer() {
+    fn pipes_from_producer_to_consumer() -> Result<(), CursorError> {
         let mut buf = [0; 3];
 
         let mut o = ProducerCursor::new(b"ufo");
         let mut i = ConsumerCursor::new(&mut buf);
 
-        let _: Result<(), ()> = pipe(&mut o, &mut i);
+        pipe::<_, _, CursorError>(&mut o, &mut i)?;
 
         let m = min(o.as_ref().len(), i.as_ref().len());
         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
         assert_eq!(&buf, b"ufo");
+
+        Ok(())
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer() {
+    fn bulk_pipes_from_producer_to_consumer() -> Result<(), CursorError> {
         let mut buf = [0; 3];
 
         let mut o = ProducerCursor::new(b"ufo");
         let mut i = ConsumerCursor::new(&mut buf);
 
-        let _: Result<(), ()> = bulk_consume_pipe(&mut o, &mut i);
+        bulk_consume_pipe::<_, _, CursorError>(&mut o, &mut i)?;
 
         let m = min(o.as_ref().len(), i.as_ref().len());
         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
         assert_eq!(&buf, b"ufo");
+
+        Ok(())
     }
 
     #[test]
-    fn bulk_pipes_from_consumer_to_producer() {
+    fn bulk_pipes_from_consumer_to_producer() -> Result<(), CursorError> {
         let mut buf = [0; 3];
 
         let mut o = ProducerCursor::new(b"ufo");
         let mut i = ConsumerCursor::new(&mut buf);
 
-        unsafe {
-            let _: Result<(), ()> = bulk_produce_pipe(&mut o, &mut i);
-        }
+        bulk_produce_pipe::<_, _, CursorError>(&mut o, &mut i)?;
 
         let m = min(o.as_ref().len(), i.as_ref().len());
         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
         assert_eq!(&buf, b"ufo");
+
+        Ok(())
     }
 }
