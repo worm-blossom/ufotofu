@@ -1,6 +1,7 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(never_type)]
 #![feature(allocator_api)]
+#![feature(vec_push_within_capacity)]
 
 use core::mem::MaybeUninit;
 
