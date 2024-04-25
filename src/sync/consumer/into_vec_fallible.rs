@@ -2,15 +2,28 @@ use core::mem::MaybeUninit;
 use core::slice;
 
 use std::alloc::{Allocator, Global};
-use std::collections::TryReserveError;
+use std::collections;
 use std::vec::Vec;
 
+use thiserror::Error;
 use wrapper::Wrapper;
 
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-type IntoVecOutOfMemoryError = TryReserveError;
+#[derive(Debug, Error)]
+pub enum IntoVecError {
+    #[error("An infallible action failed")]
+    Never,
+    #[error(transparent)]
+    TryReserve(#[from] collections::TryReserveError),
+}
+
+impl From<!> for IntoVecError {
+    fn from(_never: !) -> IntoVecError {
+        Self::Never
+    }
+}
 
 /// A fallible implementation of `IntoVec` which returns an error
 /// if there is insufficient memory to (re)allocate the inner
@@ -48,7 +61,7 @@ where
 impl<T> Consumer for IntoVecFallible<T> {
     type Item = T;
     type Final = ();
-    type Error = IntoVecOutOfMemoryError;
+    type Error = IntoVecError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         if let Err(value) = self.v.push_within_capacity(item) {
