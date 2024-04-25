@@ -26,3 +26,10 @@ path = "fuzz_targets/into_vec.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "into_vec_fallible"
+path = "fuzz_targets/into_vec_fallible.rs"
+test = false
+doc = false
+bench = false
