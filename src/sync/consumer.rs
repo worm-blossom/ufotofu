@@ -1,3 +1,3 @@
 mod cursor;
 
-pub use cursor::{Cursor, CursorError};
+pub use cursor::{Cursor, CursorFullError};
