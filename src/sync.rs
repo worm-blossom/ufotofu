@@ -266,28 +266,10 @@ where
     }
 }
 
-/// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer.
-/// Then call `close` on the consumer with the final value emitted by the producer.
-///
-/// You should prefer this function over `bulk_consume_pipe` and `bulk_produce_pipe`;
-/// it selects whichever is more appropriate.
-pub fn bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    bulk_consume_pipe(producer, consumer)
-}
-
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
 /// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
 /// emitted by the producer.
-///
-/// If you do not care whether to use `consumer.bulk_consume` or `producer.bulk_produce`,
-/// use `bulk_pipe` instead; this should almost always be the case.
-pub fn bulk_consume_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub fn bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
 where
     P: BulkProducer,
     P::Item: Copy,
@@ -335,7 +317,7 @@ mod tests {
         let mut o = ProducerCursor::new(b"ufo");
         let mut i = ConsumerCursor::new(&mut buf);
 
-        bulk_consume_pipe::<_, _, CursorFullError>(&mut o, &mut i)?;
+        bulk_pipe::<_, _, CursorFullError>(&mut o, &mut i)?;
 
         let m = min(o.as_ref().len(), i.as_ref().len());
         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);

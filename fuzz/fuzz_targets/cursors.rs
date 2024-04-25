@@ -19,7 +19,8 @@ struct TestData {
     output_end: usize,
 }
 
-// Filter out any data conditions which would cause known errors to occur.
+// Filter out any data conditions which would violate invariants that must be
+// upheld when calling our functions.
 fn data_is_invalid(data: TestData) -> bool {
     if data.input_start > data.input_end {
         return true;
@@ -59,7 +60,7 @@ fn fuzz_pipe(mut data: TestData) {
     assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
 }
 
-fn fuzz_bulk_consume_pipe(mut data: TestData) {
+fn fuzz_bulk_pipe(mut data: TestData) {
     if data_is_invalid(data.clone()) {
         return;
     }
@@ -67,7 +68,7 @@ fn fuzz_bulk_consume_pipe(mut data: TestData) {
     let mut o = ProducerCursor::new(&data.input_buf[data.input_start..data.input_end]);
     let mut i = ConsumerCursor::new(&mut data.output_buf[data.output_start..data.output_end]);
 
-    match sync::bulk_consume_pipe::<_, _, CursorFullError>(&mut o, &mut i) {
+    match sync::bulk_pipe::<_, _, CursorFullError>(&mut o, &mut i) {
         Ok(_) => {
             if &o.as_ref().len() > &i.as_ref().len() {
                 panic!()
@@ -89,5 +90,5 @@ fuzz_target!(|data_origin: (TestData, TestData)| {
     fuzz_pipe(data);
 
     let data = data_origin.1.clone();
-    fuzz_bulk_consume_pipe(data);
+    fuzz_bulk_pipe(data);
 });
