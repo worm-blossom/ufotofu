@@ -37,6 +37,12 @@ where
     v: Vec<T, A>,
 }
 
+impl<T> Default for IntoVecFallible<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> IntoVecFallible<T> {
     pub fn new() -> IntoVecFallible<T> {
         IntoVecFallible { v: Vec::new() }

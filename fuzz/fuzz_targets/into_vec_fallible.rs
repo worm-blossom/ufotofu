@@ -2,8 +2,6 @@
 
 use core::cmp::min;
 
-use std::collections::TryReserveError;
-
 use libfuzzer_sys::fuzz_target;
 use libfuzzer_sys::{arbitrary, arbitrary::Arbitrary};
 

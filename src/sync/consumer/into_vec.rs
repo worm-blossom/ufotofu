@@ -17,6 +17,12 @@ where
     v: Vec<T, A>,
 }
 
+impl<T> Default for IntoVec<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> IntoVec<T> {
     pub fn new() -> IntoVec<T> {
         IntoVec { v: Vec::new() }
