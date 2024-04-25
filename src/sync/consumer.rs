@@ -1,4 +1,4 @@
 mod cursor;
 mod into_vec;
 
-pub use cursor::Cursor;
+pub use cursor::{Cursor, CursorFullError};

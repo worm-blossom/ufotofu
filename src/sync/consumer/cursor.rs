@@ -6,6 +6,15 @@ use wrapper::Wrapper;
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+#[derive(Debug)]
+pub struct CursorFullError;
+
+impl From<!> for CursorFullError {
+    fn from(never: !) -> CursorFullError {
+        match never {}
+    }
+}
+
 /// Consumes data into a mutable slice.
 pub struct Cursor<'a, T>(CursorInner<'a, T>);
 
@@ -37,11 +46,11 @@ impl<'a, T> AsMut<[T]> for Cursor<'a, T> {
 impl<'a, T> Consumer for Cursor<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
-    /// The value emitted once the end of the slice has been reached.
+    /// The value signifying the end of the consumed sequence.
     type Final = ();
-    // NOTE: This is just a placeholder error type for now.
-    // We may want to use a dedicated unit struct in future.
-    type Error = ();
+    /// The value emitted when the consumer is full and a subsequent
+    /// call is made to `consume()` or `consumer_slots()`.
+    type Error = CursorFullError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         self.0.consume(item)
@@ -92,16 +101,16 @@ impl<'a, T> AsMut<[T]> for CursorInner<'a, T> {
 impl<'a, T> Consumer for CursorInner<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
-    /// The value emitted once the end of the slice has been reached.
+    /// The value signifying the end of the consumed sequence.
     type Final = ();
-    // NOTE: This is just a placeholder error type for now.
-    // We may want to use a dedicated unit struct in future.
-    type Error = ();
+    /// The value emitted when the consumer is full and a subsequent
+    /// call is made to `consume()` or `consumer_slots()`.
+    type Error = CursorFullError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         // The inner cursor is completely full.
         if self.0.len() == self.1 {
-            Ok(())
+            Err(CursorFullError)
         } else {
             // Copy the item to the slice at the given index.
             self.0[self.1] = item;
@@ -126,7 +135,7 @@ impl<'a, T: Copy> BufferedConsumer for CursorInner<'a, T> {
 impl<'a, T: Copy> BulkConsumer for CursorInner<'a, T> {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         if self.0.len() == self.1 {
-            Err(())
+            Err(CursorFullError)
         } else {
             Ok(maybe_uninit_slice_mut(&mut self.0[self.1..]))
         }

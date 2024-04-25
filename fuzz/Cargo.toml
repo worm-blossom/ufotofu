@@ -1,0 +1,42 @@
+[package]
+name = "ufotofu-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
+
+[dependencies.ufotofu]
+path = ".."
+
+[[bin]]
+name = "cursors"
+path = "fuzz_targets/cursors.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pipe"
+path = "fuzz_targets/pipe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bulk_consume_pipe"
+path = "fuzz_targets/bulk_consume_pipe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bulk_produce_pipe"
+path = "fuzz_targets/bulk_produce_pipe.rs"
+test = false
+doc = false
+bench = false

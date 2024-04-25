@@ -32,7 +32,7 @@ impl<'a, T: Clone> Producer for Cursor<'a, T> {
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
     type Final = ();
-    // This implementation of Producer cannot error.
+    /// The producer can never error.
     type Error = !;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
@@ -75,7 +75,7 @@ impl<'a, T: Clone> Producer for CursorInner<'a, T> {
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
     type Final = ();
-    // This implementation of Producer cannot error.
+    /// The producer can never error.
     type Error = !;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
