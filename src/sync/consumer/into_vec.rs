@@ -1,5 +1,6 @@
 use core::mem::MaybeUninit;
 use core::slice;
+
 use std::alloc::{Allocator, Global};
 use std::vec::Vec;
 
@@ -40,7 +41,7 @@ where
 impl<T> Consumer for IntoVec<T> {
     type Item = T;
     type Final = ();
-    type Error = ();
+    type Error = !;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         self.v.push(item);
@@ -61,6 +62,7 @@ impl<T: Copy> BufferedConsumer for IntoVec<T> {
 
 impl<T: Copy> BulkConsumer for IntoVec<T> {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+        // Allocate additional capacity to the vector if no empty slots are available.
         if self.v.capacity() == self.v.len() {
             self.v.reserve((self.v.capacity() * 2) + 1);
         }
@@ -69,14 +71,18 @@ impl<T: Copy> BulkConsumer for IntoVec<T> {
         let available_capacity = self.v.capacity() - self.v.len();
 
         unsafe {
+            // Return a mutable slice which represents available (unused) slots.
             Ok(maybe_uninit_slice_mut(slice::from_raw_parts_mut(
+                // The pointer offset.
                 pointer.add(self.v.len()),
+                // The length (number of slots).
                 available_capacity,
             )))
         }
     }
 
     unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+        // Update the length of the vector based on the amount of items consumed.
         self.v.set_len(self.v.len() + amount);
 
         Ok(())
