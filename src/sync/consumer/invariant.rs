@@ -46,7 +46,11 @@ impl<I> Invariant<I> {
     }
 }
 
-impl<I: BulkConsumer<Item = T, Final = F, Error = E>, T: Copy, F, E> Consumer for Invariant<I> {
+impl<I, T, F, E> Consumer for Invariant<I>
+where
+    I: BulkConsumer<Item = T, Final = F, Error = E>,
+    T: Copy,
+{
     type Item = T;
     type Final = F;
     type Error = E;
@@ -54,15 +58,12 @@ impl<I: BulkConsumer<Item = T, Final = F, Error = E>, T: Copy, F, E> Consumer fo
     fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.check_inactive();
 
-        let res = self.inner.consume(item);
-        if res.is_err() {
+        self.inner.consume(item).inspect_err(|_| {
             // Since `consume()` returned an error, we need to ensure
             // that any future call to trait methods will panic.
             self.active = false;
             self.exposed_slots = 0;
-        }
-
-        res
+        })
     }
 
     fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
@@ -73,28 +74,27 @@ impl<I: BulkConsumer<Item = T, Final = F, Error = E>, T: Copy, F, E> Consumer fo
     }
 }
 
-impl<
-        I: BufferedConsumer<Item = T, Final = F, Error = E>
-            + BulkConsumer<Item = T, Final = F, Error = E>,
-        T: Copy,
-        F,
-        E,
-    > BufferedConsumer for Invariant<I>
+impl<I, T, F, E> BufferedConsumer for Invariant<I>
+where
+    I: BufferedConsumer<Item = T, Final = F, Error = E>
+        + BulkConsumer<Item = T, Final = F, Error = E>,
+    T: Copy,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_inactive();
 
-        let res = self.inner.flush();
-        if res.is_err() {
+        self.inner.flush().inspect_err(|_| {
             self.active = false;
             self.exposed_slots = 0;
-        }
-
-        res
+        })
     }
 }
 
-impl<I: BulkConsumer<Item = T, Final = F, Error = E>, T: Copy, F, E> BulkConsumer for Invariant<I> {
+impl<I, T, F, E> BulkConsumer for Invariant<I>
+where
+    I: BulkConsumer<Item = T, Final = F, Error = E>,
+    T: Copy,
+{
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         self.check_inactive();
 
