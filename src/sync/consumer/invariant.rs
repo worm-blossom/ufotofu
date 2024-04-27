@@ -18,11 +18,11 @@ impl<I> Invariant<I> {
             exposed_slots: 0,
         }
     }
-}
 
-impl<I> Wrapper<I> for Invariant<I> {
-    fn into_inner(self) -> I {
-        self.inner
+    fn check_inactive(&self) {
+        if !self.active {
+            panic!("may not call `Consumer` methods after the sequence has ended");
+        }
     }
 }
 
@@ -38,11 +38,9 @@ impl<I> AsMut<I> for Invariant<I> {
     }
 }
 
-impl<I> Invariant<I> {
-    fn check_inactive(&self) {
-        if !self.active {
-            panic!("may not call `Consumer` methods after the sequence has ended");
-        }
+impl<I> Wrapper<I> for Invariant<I> {
+    fn into_inner(self) -> I {
+        self.inner
     }
 }
 
@@ -98,19 +96,15 @@ where
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         self.check_inactive();
 
-        match self.inner.consumer_slots() {
-            Ok(slots) => {
+        self.inner
+            .consumer_slots()
+            .inspect(|slots| {
                 self.exposed_slots = slots.len();
-
-                Ok(slots)
-            }
-            Err(err) => {
+            })
+            .inspect_err(|_| {
                 self.active = false;
                 self.exposed_slots = 0;
-
-                Err(err)
-            }
-        }
+            })
     }
 
     unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
