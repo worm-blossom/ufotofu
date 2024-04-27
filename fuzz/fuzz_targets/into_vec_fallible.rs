@@ -1,8 +1,6 @@
 #![no_main]
 #![feature(never_type)]
 
-use core::cmp::min;
-
 use libfuzzer_sys::fuzz_target;
 
 use ufotofu::sync;
@@ -13,42 +11,18 @@ fn fuzz_pipe(data: Box<[u8]>) {
     let mut o = ProducerCursor::new(&data[..]);
     let mut i = IntoVecFallible::new();
 
-    match sync::pipe::<_, _, IntoVecError>(&mut o, &mut i) {
-        Ok(_) => {
-            if &o.as_ref().len() > &i.as_ref().len() {
-                panic!()
-            }
-        }
-        Err(_) => {
-            if &o.as_ref().len() <= &i.as_ref().len() {
-                panic!()
-            }
-        }
-    }
+    let _ = sync::pipe::<_, _, IntoVecError>(&mut o, &mut i);
 
-    let m = min(o.as_ref().len(), i.as_ref().len());
-    assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    assert_eq!(&i.into_vec(), &data[..]);
 }
 
 fn fuzz_bulk_pipe(data: Box<[u8]>) {
     let mut o = ProducerCursor::new(&data[..]);
     let mut i = IntoVecFallible::new();
 
-    match sync::bulk_pipe::<_, _, IntoVecError>(&mut o, &mut i) {
-        Ok(_) => {
-            if &o.as_ref().len() > &i.as_ref().len() {
-                panic!()
-            }
-        }
-        Err(_) => {
-            if &o.as_ref().len() <= &i.as_ref().len() {
-                panic!()
-            }
-        }
-    }
+    let _ = sync::bulk_pipe::<_, _, IntoVecError>(&mut o, &mut i);
 
-    let m = min(o.as_ref().len(), i.as_ref().len());
-    assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    assert_eq!(&i.into_vec(), &data[..]);
 }
 
 fuzz_target!(|data: (Box<[u8]>, Box<[u8]>)| {
