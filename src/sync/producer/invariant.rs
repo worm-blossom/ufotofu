@@ -100,7 +100,6 @@ where
         self.inner
             .producer_slots()
             .inspect(|either| match either {
-                // TODO: Cannot mutably borrow self...
                 Either::Left(slots) => self.exposed_slots = slots.len(),
                 Either::Right(_) => self.active = false,
             })
