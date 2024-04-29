@@ -94,7 +94,7 @@ where
     I: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.check_inactive();
 
         self.inner

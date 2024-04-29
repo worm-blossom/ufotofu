@@ -47,7 +47,7 @@ impl<'a, T: Copy> BufferedProducer for Cursor<'a, T> {
 }
 
 impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
-    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.0.producer_slots()
     }
 
@@ -100,7 +100,7 @@ impl<'a, T: Copy> BufferedProducer for CursorInner<'a, T> {
 }
 
 impl<'a, T: Copy> BulkProducer for CursorInner<'a, T> {
-    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
             Ok(Either::Right(()))
