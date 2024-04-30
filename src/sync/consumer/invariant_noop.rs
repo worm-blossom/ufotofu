@@ -36,7 +36,6 @@ impl<I> Wrapper<I> for Invariant<I> {
 impl<I, T, F, E> Consumer for Invariant<I>
 where
     I: Consumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -54,7 +53,6 @@ where
 impl<I, T, F, E> BufferedConsumer for Invariant<I>
 where
     I: BufferedConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.inner.flush()
