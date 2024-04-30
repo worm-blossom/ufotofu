@@ -3,27 +3,33 @@ use core::convert::AsRef;
 use either::Either;
 use wrapper::Wrapper;
 
+use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
 /// Produces data from a slice.
-pub struct Cursor<'a, T>(CursorInner<'a, T>);
+pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
 
 /// Creates a producer which produces the data in the given slice.
 impl<'a, T> Cursor<'a, T> {
     pub fn new(slice: &'a [T]) -> Cursor<'a, T> {
-        Cursor(CursorInner(slice, 0))
-    }
-}
+        // Wrap the inner cursor in the invariant type.
+        let invariant = Invariant::new(CursorInner(slice, 0));
 
-impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
-    fn into_inner(self) -> &'a [T] {
-        self.0.into_inner()
+        Cursor(invariant)
     }
 }
 
 impl<'a, T> AsRef<[T]> for Cursor<'a, T> {
     fn as_ref(&self) -> &[T] {
-        self.0.as_ref()
+        let inner = self.0.as_ref();
+        inner.as_ref()
+    }
+}
+
+impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
+    fn into_inner(self) -> &'a [T] {
+        let inner = self.0.into_inner();
+        inner.into_inner()
     }
 }
 
