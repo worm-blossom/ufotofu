@@ -7,6 +7,7 @@ use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
 /// Produces data from a slice.
+#[derive(Debug)]
 pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
 
 /// Creates a producer which produces the data in the given slice.
@@ -62,6 +63,7 @@ impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
     }
 }
 
+#[derive(Debug)]
 pub struct CursorInner<'a, T>(&'a [T], usize);
 
 impl<'a, T> Wrapper<&'a [T]> for CursorInner<'a, T> {

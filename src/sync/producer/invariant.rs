@@ -5,6 +5,7 @@ use wrapper::Wrapper;
 
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
+#[derive(Debug)]
 pub struct Invariant<I> {
     inner: I,
     active: bool,

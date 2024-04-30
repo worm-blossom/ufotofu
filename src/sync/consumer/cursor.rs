@@ -17,6 +17,7 @@ impl From<!> for CursorFullError {
 }
 
 /// Consumes data into a mutable slice.
+#[derive(Debug)]
 pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
 
 /// Creates a consumer which places consumed data into the given slice.
@@ -85,6 +86,7 @@ impl<'a, T: Copy> BulkConsumer for Cursor<'a, T> {
 }
 
 // A tuple of slice and counter (amount of items).
+#[derive(Debug)]
 pub struct CursorInner<'a, T>(&'a mut [T], usize);
 
 impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {

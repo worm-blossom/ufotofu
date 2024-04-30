@@ -6,7 +6,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// A `Consumer` wrapper with additional fields, used to validate that
 /// invariant contracts are upheld.
-#[derive(Clone, Copy)]
+#[derive(Debug)]
 // TODO: Replace `I` with `Con`.
 pub struct Invariant<I> {
     /// An implementer of the `Consumer` traits.
