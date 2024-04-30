@@ -66,14 +66,14 @@ impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
 #[derive(Debug)]
 pub struct CursorInner<'a, T>(&'a [T], usize);
 
-impl<'a, T> Wrapper<&'a [T]> for CursorInner<'a, T> {
-    fn into_inner(self) -> &'a [T] {
+impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {
+    fn as_ref(&self) -> &[T] {
         self.0
     }
 }
 
-impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {
-    fn as_ref(&self) -> &[T] {
+impl<'a, T> Wrapper<&'a [T]> for CursorInner<'a, T> {
+    fn into_inner(self) -> &'a [T] {
         self.0
     }
 }

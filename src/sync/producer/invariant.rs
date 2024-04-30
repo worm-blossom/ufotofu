@@ -78,7 +78,6 @@ where
 impl<I, T, F, E> BufferedProducer for Invariant<I>
 where
     I: BufferedProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         self.check_inactive();
