@@ -1,4 +1,4 @@
-use core::convert::AsRef;
+use core::convert::{AsMut, AsRef};
 use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
