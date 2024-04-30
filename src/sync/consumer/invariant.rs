@@ -7,6 +7,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 /// A `Consumer` wrapper with additional fields, used to validate that
 /// invariant contracts are upheld.
 #[derive(Clone, Copy)]
+// TODO: Replace `I` with `Con`.
 pub struct Invariant<I> {
     /// An implementer of the `Consumer` traits.
     inner: I,
@@ -147,6 +148,9 @@ mod tests {
     // - `consumer_slots()` must not be called after `close()` or error
     // - `did_consume()` must not be called after `close()` or error
     // - `bulk_consume()` must not be called after `close()` or error
+    // - `did_consume(amount)` must not be called with `amount` greater than available slots
+
+    // In each of the following tests, the final function call should panic.
 
     #[test]
     #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
@@ -155,8 +159,6 @@ mod tests {
 
         let mut cursor = Cursor::new(&mut buf);
         let _ = cursor.close(());
-
-        // This call should panic.
         let _ = cursor.consume(7);
     }
 
@@ -167,8 +169,63 @@ mod tests {
 
         let mut cursor = Cursor::new(&mut buf);
         let _ = cursor.close(());
-
-        // This call should panic.
         let _ = cursor.close(());
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_flush_after_close() {
+        let mut buf = [0; 1];
+
+        let mut cursor = Cursor::new(&mut buf);
+        let _ = cursor.close(());
+        let _ = cursor.flush();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_consumer_slots_after_close() {
+        let mut buf = [0; 1];
+
+        let mut cursor = Cursor::new(&mut buf);
+        let _ = cursor.close(());
+        let _ = cursor.consumer_slots();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_did_consume_after_close() {
+        let mut buf = [0; 8];
+
+        let mut cursor = Cursor::new(&mut buf);
+        let _ = cursor.close(());
+
+        unsafe {
+            let _ = cursor.did_consume(7);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_bulk_consume_after_close() {
+        let mut buf = [0; 8];
+
+        let mut cursor = Cursor::new(&mut buf);
+        let _ = cursor.close(());
+        let _ = cursor.bulk_consume(b"ufo");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_did_consume_with_amount_greater_than_available_slots() {
+        let mut buf = [0; 8];
+
+        let mut cursor = Cursor::new(&mut buf);
+
+        unsafe {
+            let _ = cursor.did_consume(21);
+        }
     }
 }
