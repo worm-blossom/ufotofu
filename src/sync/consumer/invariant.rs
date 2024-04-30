@@ -4,13 +4,20 @@ use wrapper::Wrapper;
 
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+/// A `Consumer` wrapper with additional fields, used to validate that
+/// invariant contracts are upheld.
 pub struct Invariant<I> {
+    /// An implementer of the `Consumer` traits.
     inner: I,
+    /// The status of the consumer.
     active: bool,
+    /// The number of available slots exposed by the `consumer_slots` method.
     exposed_slots: usize,
 }
 
 impl<I> Invariant<I> {
+    /// Returns a new `Invariant` instance with `active` set to `true` and
+    /// `exposed_slots` set to `0`.
     pub fn new(inner: I) -> Self {
         Invariant {
             inner,
@@ -19,6 +26,8 @@ impl<I> Invariant<I> {
         }
     }
 
+    /// Checks the state of the `active` field and panics if the value is
+    /// `false`.
     fn check_inactive(&self) {
         if !self.active {
             panic!("may not call `Consumer` methods after the sequence has ended");
@@ -120,5 +129,22 @@ where
 
         // Proceed with the inner call to `did_consume` and return the result.
         self.inner.did_consume(amount)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::sync::consumer::{Cursor, CursorInner};
+
+    #[test]
+    #[should_panic]
+    fn panics_after_second_close() {
+        let mut buf = [0_u8; 7];
+
+        let mut cursor = Cursor::<Invariant<u8>>::new(&mut buf);
+        let _ = cursor.close(());
+        cursor.close(());
     }
 }
