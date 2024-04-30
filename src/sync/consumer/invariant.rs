@@ -136,7 +136,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{Cursor, CursorInner};
+    use crate::sync::consumer::Cursor;
 
     #[test]
     #[should_panic]
