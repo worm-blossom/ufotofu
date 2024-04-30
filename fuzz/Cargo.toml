@@ -21,22 +21,15 @@ doc = false
 bench = false
 
 [[bin]]
-name = "pipe"
-path = "fuzz_targets/pipe.rs"
+name = "into_vec"
+path = "fuzz_targets/into_vec.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "bulk_consume_pipe"
-path = "fuzz_targets/bulk_consume_pipe.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "bulk_produce_pipe"
-path = "fuzz_targets/bulk_produce_pipe.rs"
+name = "into_vec_fallible"
+path = "fuzz_targets/into_vec_fallible.rs"
 test = false
 doc = false
 bench = false

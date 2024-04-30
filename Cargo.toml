@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 either = "1.10.0"
+thiserror = "1.0.59"
 trait-variant = "0.1.1"
 wrapper = "0.1.1"

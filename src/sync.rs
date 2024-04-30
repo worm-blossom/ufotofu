@@ -291,11 +291,11 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError};
+    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec, IntoVecError};
     use crate::sync::producer::Cursor as ProducerCursor;
 
     #[test]
-    fn pipes_from_producer_to_consumer() -> Result<(), CursorFullError> {
+    fn pipes_from_producer_to_consumer_cursor() -> Result<(), CursorFullError> {
         let mut buf = [0; 3];
 
         let mut o = ProducerCursor::new(b"ufo");
@@ -311,7 +311,19 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer() -> Result<(), CursorFullError> {
+    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), IntoVecError> {
+        let mut o = ProducerCursor::new(b"tofu");
+        let mut i = IntoVec::new();
+
+        pipe::<_, _, IntoVecError>(&mut o, &mut i)?;
+
+        assert_eq!(&i.into_vec(), b"tofu");
+
+        Ok(())
+    }
+
+    #[test]
+    fn bulk_pipes_from_producer_to_consumer_cursor() -> Result<(), CursorFullError> {
         let mut buf = [0; 3];
 
         let mut o = ProducerCursor::new(b"ufo");
@@ -322,6 +334,18 @@ mod tests {
         let m = min(o.as_ref().len(), i.as_ref().len());
         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
         assert_eq!(&buf, b"ufo");
+
+        Ok(())
+    }
+
+    #[test]
+    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), IntoVecError> {
+        let mut o = ProducerCursor::new(b"tofu");
+        let mut i = IntoVec::new();
+
+        bulk_pipe::<_, _, IntoVecError>(&mut o, &mut i)?;
+
+        assert_eq!(&i.into_vec(), b"tofu");
 
         Ok(())
     }
