@@ -7,7 +7,7 @@ use ufotofu::sync;
 use ufotofu::sync::consumer::IntoVec;
 use ufotofu::sync::producer::Cursor as ProducerCursor;
 
-fn fuzz_pipe(data: Box<[u8]>) {
+fn fuzz_pipe(data: &[u8]) {
     let mut o = ProducerCursor::new(&data[..]);
     let mut i = IntoVec::new();
 
@@ -16,7 +16,7 @@ fn fuzz_pipe(data: Box<[u8]>) {
     assert_eq!(&i.into_vec(), &data[..]);
 }
 
-fn fuzz_bulk_pipe(data: Box<[u8]>) {
+fn fuzz_bulk_pipe(data: &[u8]) {
     let mut o = ProducerCursor::new(&data[..]);
     let mut i = IntoVec::new();
 
@@ -25,7 +25,7 @@ fn fuzz_bulk_pipe(data: Box<[u8]>) {
     assert_eq!(&i.into_vec(), &data[..]);
 }
 
-fuzz_target!(|data: (Box<[u8]>, Box<[u8]>)| {
-    fuzz_pipe(data.0);
-    fuzz_bulk_pipe(data.1);
+fuzz_target!(|data: &[u8]| {
+    fuzz_pipe(data);
+    fuzz_bulk_pipe(data);
 });
