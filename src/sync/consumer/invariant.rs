@@ -6,6 +6,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// A `Consumer` wrapper with additional fields, used to validate that
 /// invariant contracts are upheld.
+#[derive(Clone, Copy)]
 pub struct Invariant<I> {
     /// An implementer of the `Consumer` traits.
     inner: I,
@@ -138,13 +139,36 @@ mod tests {
 
     use crate::sync::consumer::Cursor;
 
-    #[test]
-    #[should_panic]
-    fn panics_after_second_close() {
-        let mut buf = [0_u8; 7];
+    // Panic conditions:
+    //
+    // - `consume()` must not be called after `close()` or error
+    // - `close()` must not be called after `close()` or error
+    // - `flush()` must not be called after `close()` or error
+    // - `consumer_slots()` must not be called after `close()` or error
+    // - `did_consume()` must not be called after `close()` or error
+    // - `bulk_consume()` must not be called after `close()` or error
 
-        let mut cursor = Cursor::<Invariant<u8>>::new(&mut buf);
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_consume_after_close() {
+        let mut buf = [0; 1];
+
+        let mut cursor = Cursor::new(&mut buf);
         let _ = cursor.close(());
-        cursor.close(());
+
+        // This call should panic.
+        let _ = cursor.consume(7);
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_close_after_close() {
+        let mut buf = [0; 1];
+
+        let mut cursor = Cursor::new(&mut buf);
+        let _ = cursor.close(());
+
+        // This call should panic.
+        let _ = cursor.close(());
     }
 }
