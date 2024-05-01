@@ -1,4 +1,5 @@
 #![feature(maybe_uninit_write_slice)]
+#![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![feature(allocator_api)]
 #![feature(vec_push_within_capacity)]
