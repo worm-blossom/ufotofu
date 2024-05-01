@@ -6,12 +6,12 @@ use wrapper::Wrapper;
 use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
-/// Produces data from a slice.
 #[derive(Debug)]
+/// Produces data from a slice.
 pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
 
-/// Creates a producer which produces the data in the given slice.
 impl<'a, T> Cursor<'a, T> {
+    /// Create a producer which produces the data in the given slice.
     pub fn new(slice: &'a [T]) -> Cursor<'a, T> {
         // Wrap the inner cursor in the invariant type.
         let invariant = Invariant::new(CursorInner(slice, 0));
