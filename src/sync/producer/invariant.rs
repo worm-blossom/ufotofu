@@ -29,7 +29,7 @@ use crate::sync::{BufferedProducer, BulkProducer, Producer};
 ///   an error.
 /// - Must not call `did_produce` with an amount exceeding the number of available slots
 ///   previously exposed by a call to `producer_slots`.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
     inner: P,
     active: bool,

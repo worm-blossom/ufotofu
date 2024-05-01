@@ -4,7 +4,7 @@ use wrapper::Wrapper;
 
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<C> {
     inner: C,
 }

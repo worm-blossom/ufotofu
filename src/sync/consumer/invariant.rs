@@ -29,7 +29,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 ///   an error.
 /// - Must not call `did_consume` for slots that had not been exposed by
 ///   `consumer_slots` before.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
     inner: C,
