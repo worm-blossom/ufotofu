@@ -29,7 +29,7 @@ impl From<!> for IntoVecError {
 /// if there is insufficient memory to (re)allocate the inner
 /// vector or if the allocator reports a failure.
 ///
-/// Collects data and can at any point be converted into a `Vec<T>.
+/// Collects data and can at any point be converted into a `Vec<T>`.
 pub struct IntoVecFallible<T, A = Global>
 where
     A: Allocator,

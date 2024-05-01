@@ -9,7 +9,7 @@ use wrapper::Wrapper;
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-/// Collects data and can at any point be converted into a `Vec<T>.
+/// Collects data and can at any point be converted into a `Vec<T>`.
 pub struct IntoVec<T, A = Global>
 where
     A: Allocator,
