@@ -6,14 +6,14 @@ use wrapper::Wrapper;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
 #[derive(Debug)]
-pub struct Invariant<I> {
-    inner: I,
+pub struct Invariant<P> {
+    inner: P,
     active: bool,
     exposed_slots: usize,
 }
 
-impl<I> Invariant<I> {
-    pub fn new(inner: I) -> Self {
+impl<P> Invariant<P> {
+    pub fn new(inner: P) -> Self {
         Invariant {
             inner,
             active: true,
@@ -28,27 +28,27 @@ impl<I> Invariant<I> {
     }
 }
 
-impl<I> AsRef<I> for Invariant<I> {
-    fn as_ref(&self) -> &I {
+impl<P> AsRef<P> for Invariant<P> {
+    fn as_ref(&self) -> &P {
         &self.inner
     }
 }
 
-impl<I> AsMut<I> for Invariant<I> {
-    fn as_mut(&mut self) -> &mut I {
+impl<P> AsMut<P> for Invariant<P> {
+    fn as_mut(&mut self) -> &mut P {
         &mut self.inner
     }
 }
 
-impl<I> Wrapper<I> for Invariant<I> {
-    fn into_inner(self) -> I {
+impl<P> Wrapper<P> for Invariant<P> {
+    fn into_inner(self) -> P {
         self.inner
     }
 }
 
-impl<I, T, F, E> Producer for Invariant<I>
+impl<P, T, F, E> Producer for Invariant<P>
 where
-    I: Producer<Item = T, Final = F, Error = E>,
+    P: Producer<Item = T, Final = F, Error = E>,
 {
     type Item = T;
     type Final = F;
@@ -75,9 +75,9 @@ where
     }
 }
 
-impl<I, T, F, E> BufferedProducer for Invariant<I>
+impl<P, T, F, E> BufferedProducer for Invariant<P>
 where
-    I: BufferedProducer<Item = T, Final = F, Error = E>,
+    P: BufferedProducer<Item = T, Final = F, Error = E>,
 {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         self.check_inactive();
@@ -89,9 +89,9 @@ where
     }
 }
 
-impl<I, T, F, E> BulkProducer for Invariant<I>
+impl<P, T, F, E> BulkProducer for Invariant<P>
 where
-    I: BulkProducer<Item = T, Final = F, Error = E>,
+    P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {

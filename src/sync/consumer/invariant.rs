@@ -30,20 +30,19 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 /// - Must not call `did_consume` for slots that had not been exposed by
 ///   `consumer_slots` before.
 #[derive(Debug)]
-// TODO: Replace `I` with `Con`.
-pub struct Invariant<I> {
+pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
-    inner: I,
+    inner: C,
     /// The status of the consumer.
     active: bool,
     /// The number of available slots exposed by the `consumer_slots` method.
     exposed_slots: usize,
 }
 
-impl<I> Invariant<I> {
+impl<C> Invariant<C> {
     /// Returns a new `Invariant` instance with `active` set to `true` and
     /// `exposed_slots` set to `0`.
-    pub fn new(inner: I) -> Self {
+    pub fn new(inner: C) -> Self {
         Invariant {
             inner,
             active: true,
@@ -60,27 +59,27 @@ impl<I> Invariant<I> {
     }
 }
 
-impl<I> AsRef<I> for Invariant<I> {
-    fn as_ref(&self) -> &I {
+impl<C> AsRef<C> for Invariant<C> {
+    fn as_ref(&self) -> &C {
         &self.inner
     }
 }
 
-impl<I> AsMut<I> for Invariant<I> {
-    fn as_mut(&mut self) -> &mut I {
+impl<C> AsMut<C> for Invariant<C> {
+    fn as_mut(&mut self) -> &mut C {
         &mut self.inner
     }
 }
 
-impl<I> Wrapper<I> for Invariant<I> {
-    fn into_inner(self) -> I {
+impl<C> Wrapper<C> for Invariant<C> {
+    fn into_inner(self) -> C {
         self.inner
     }
 }
 
-impl<I, T, F, E> Consumer for Invariant<I>
+impl<C, T, F, E> Consumer for Invariant<C>
 where
-    I: Consumer<Item = T, Final = F, Error = E>,
+    C: Consumer<Item = T, Final = F, Error = E>,
 {
     type Item = T;
     type Final = F;
@@ -105,9 +104,9 @@ where
     }
 }
 
-impl<I, T, F, E> BufferedConsumer for Invariant<I>
+impl<C, T, F, E> BufferedConsumer for Invariant<C>
 where
-    I: BufferedConsumer<Item = T, Final = F, Error = E>,
+    C: BufferedConsumer<Item = T, Final = F, Error = E>,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_inactive();
@@ -119,9 +118,9 @@ where
     }
 }
 
-impl<I, T, F, E> BulkConsumer for Invariant<I>
+impl<C, T, F, E> BulkConsumer for Invariant<C>
 where
-    I: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {

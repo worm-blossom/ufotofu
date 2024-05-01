@@ -5,37 +5,37 @@ use wrapper::Wrapper;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Debug)]
-pub struct Invariant<I> {
-    inner: I,
+pub struct Invariant<C> {
+    inner: C,
 }
 
-impl<I> Invariant<I> {
-    pub fn new(inner: I) -> Self {
+impl<C> Invariant<C> {
+    pub fn new(inner: C) -> Self {
         Invariant { inner }
     }
 }
 
-impl<I> AsRef<I> for Invariant<I> {
-    fn as_ref(&self) -> &I {
+impl<C> AsRef<C> for Invariant<C> {
+    fn as_ref(&self) -> &C {
         &self.inner
     }
 }
 
-impl<I> AsMut<I> for Invariant<I> {
-    fn as_mut(&mut self) -> &mut I {
+impl<C> AsMut<C> for Invariant<C> {
+    fn as_mut(&mut self) -> &mut C {
         &mut self.inner
     }
 }
 
-impl<I> Wrapper<I> for Invariant<I> {
-    fn into_inner(self) -> I {
+impl<C> Wrapper<C> for Invariant<C> {
+    fn into_inner(self) -> C {
         self.inner
     }
 }
 
-impl<I, T, F, E> Consumer for Invariant<I>
+impl<C, T, F, E> Consumer for Invariant<C>
 where
-    I: Consumer<Item = T, Final = F, Error = E>,
+    C: Consumer<Item = T, Final = F, Error = E>,
 {
     type Item = T;
     type Final = F;
@@ -50,18 +50,18 @@ where
     }
 }
 
-impl<I, T, F, E> BufferedConsumer for Invariant<I>
+impl<C, T, F, E> BufferedConsumer for Invariant<C>
 where
-    I: BufferedConsumer<Item = T, Final = F, Error = E>,
+    C: BufferedConsumer<Item = T, Final = F, Error = E>,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.inner.flush()
     }
 }
 
-impl<I, T, F, E> BulkConsumer for Invariant<I>
+impl<C, T, F, E> BulkConsumer for Invariant<C>
 where
-    I: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
