@@ -10,6 +10,7 @@ use crate::maybe_uninit_slice_mut;
 use crate::sync::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+/// Collects data and can at any point be converted into a `Vec<T>`.
 #[derive(Debug)]
 pub struct IntoVec<T, A: Allocator = Global>(Invariant<IntoVecInner<T, A>>);
 
@@ -32,10 +33,7 @@ impl<T> IntoVec<T> {
     }
 }
 
-impl<T, A> IntoVec<T, A>
-where
-    A: Allocator,
-{
+impl<T, A: Allocator> IntoVec<T, A> {
     pub fn new_in(alloc: A) -> IntoVec<T, A> {
         let invariant = Invariant::new(IntoVecInner {
             v: Vec::new_in(alloc),
@@ -96,7 +94,6 @@ impl<T: Copy> BulkConsumer for IntoVec<T> {
     }
 }
 
-/// Collects data and can at any point be converted into a `Vec<T>`.
 #[derive(Debug)]
 pub struct IntoVecInner<T, A: Allocator = Global> {
     v: Vec<T, A>,
