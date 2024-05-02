@@ -51,7 +51,7 @@ impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
     }
 }
 
-impl<'a, T: Copy> Consumer for Cursor<'a, T> {
+impl<'a, T> Consumer for Cursor<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
     /// The value signifying the end of the consumed sequence.
@@ -69,7 +69,7 @@ impl<'a, T: Copy> Consumer for Cursor<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedConsumer for Cursor<'a, T> {
+impl<'a, T> BufferedConsumer for Cursor<'a, T> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush()
     }
@@ -135,7 +135,7 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedConsumer for CursorInner<'a, T> {
+impl<'a, T> BufferedConsumer for CursorInner<'a, T> {
     fn flush(&mut self) -> Result<Self::Final, Self::Error> {
         Ok(())
     }
