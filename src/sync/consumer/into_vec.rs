@@ -168,3 +168,94 @@ impl<T: Copy> BulkConsumer for IntoVecInner<T> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_into_vec() {
+        let mut into_vec = IntoVec::new();
+        let _ = into_vec.bulk_consume(b"ufotofu");
+        let _ = into_vec.close(());
+
+        let vec = into_vec.into_vec();
+        assert_eq!(vec.len(), 7);
+    }
+
+    // Panic conditions:
+    //
+    // - `consume()` must not be called after `close()` or error
+    // - `close()` must not be called after `close()` or error
+    // - `flush()` must not be called after `close()` or error
+    // - `consumer_slots()` must not be called after `close()` or error
+    // - `did_consume()` must not be called after `close()` or error
+    // - `bulk_consume()` must not be called after `close()` or error
+    // - `did_consume(amount)` must not be called with `amount` greater than available slots
+
+    // In each of the following tests, the final function call should panic.
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_consume_after_close() {
+        let mut into_vec = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.consume(7);
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_close_after_close() {
+        // Type annotations are required because we never provide a `T`.
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.close(());
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_flush_after_close() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.flush();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_consumer_slots_after_close() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.consumer_slots();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_did_consume_after_close() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+
+        unsafe {
+            let _ = into_vec.did_consume(7);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_bulk_consume_after_close() {
+        let mut into_vec = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.bulk_consume(b"ufo");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_did_consume_with_amount_greater_than_available_slots() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+
+        unsafe {
+            let _ = into_vec.did_consume(21);
+        }
+    }
+}
