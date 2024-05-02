@@ -91,10 +91,6 @@ where
             })
             .inspect_err(|_| {
                 self.active = false;
-                // TODO: Do we need to set `exposed_slots` to 0 for any
-                // methods? The next call will panic due to `active` being
-                // false, so it seems unnecessary.
-                self.exposed_slots = 0;
             })
     }
 }
@@ -108,7 +104,6 @@ where
 
         self.inner.slurp().inspect_err(|_| {
             self.active = false;
-            self.exposed_slots = 0;
         })
     }
 }
@@ -129,7 +124,6 @@ where
             })
             .inspect_err(|_| {
                 self.active = false;
-                self.exposed_slots = 0;
             })
     }
 

@@ -92,7 +92,6 @@ where
             // Since `consume()` returned an error, we need to ensure
             // that any future call to trait methods will panic.
             self.active = false;
-            self.exposed_slots = 0;
         })
     }
 
@@ -113,7 +112,6 @@ where
 
         self.inner.flush().inspect_err(|_| {
             self.active = false;
-            self.exposed_slots = 0;
         })
     }
 }
@@ -133,7 +131,6 @@ where
             })
             .inspect_err(|_| {
                 self.active = false;
-                self.exposed_slots = 0;
             })
     }
 
