@@ -31,12 +31,21 @@ use crate::sync::{BufferedProducer, BulkProducer, Producer};
 ///   previously exposed by a call to `producer_slots`.
 #[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
+    /// An implementer of the `Producer` traits.
     inner: P,
+    /// The status of the producer. `true` while the caller may call trait
+    /// methods, `false` once that becomes disallowed (because a method returned
+    /// an error, or because `close` was called).
     active: bool,
+    /// The maximum `amount` that a caller may supply to `did_produce`.
     exposed_slots: usize,
 }
 
 impl<P> Invariant<P> {
+    /// Return a `Producer` that behaves exactly like the wrapped `Producer`
+    /// `inner`, except that - when running tests - it performs runtime
+    /// validation of API invariants and panics if they are violated by a
+    /// caller.
     pub fn new(inner: P) -> Self {
         Invariant {
             inner,

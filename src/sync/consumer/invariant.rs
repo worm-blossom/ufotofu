@@ -33,15 +33,19 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
     inner: C,
-    /// The status of the consumer.
+    /// The status of the consumer. `true` while the caller may call trait
+    /// methods, `false` once that becomes disallowed (because a method returned
+    /// an error, or because `close` was called).
     active: bool,
-    /// The number of available slots exposed by the `consumer_slots` method.
+    /// The maximum `amount` that a caller may supply to `did_consume`.
     exposed_slots: usize,
 }
 
 impl<C> Invariant<C> {
-    /// Returns a new `Invariant` instance with `active` set to `true` and
-    /// `exposed_slots` set to `0`.
+    /// Return a `Consumer` that behaves exactly like the wrapped `Consumer`
+    /// `inner`, except that - when running tests - it performs runtime
+    /// validation of API invariants and panics if they are violated by a
+    /// caller.
     pub fn new(inner: C) -> Self {
         Invariant {
             inner,

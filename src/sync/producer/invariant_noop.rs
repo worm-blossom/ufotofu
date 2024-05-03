@@ -5,12 +5,38 @@ use wrapper::Wrapper;
 
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
+/// A `Producer` wrapper that panics when callers violate API contracts such
+/// as halting interaction after an error.
+///
+/// This wrapper only performs the checks when testing code (more specifically,
+/// when `#[cfg(test)]` applies). In production builds, the wrapper does
+/// nothing at all and compiles away without any overhead.
+///
+/// All producers implemented in this crate use this wrapper internally already.
+/// We recommend to use this type for all custom producers as well.
+///
+/// #### Invariants
+///
+/// The wrapper enforces the following invariants:
+///
+/// - Must not call any of the following functions after the final item has been returned:
+///   - `produce`
+///   - `slurp`
+///   - `producer_slots`
+///   - `did_produce`
+///   - `bulk_produce`
+/// - Must not call any of the prior functions after any of them had returned
+///   an error.
+/// - Must not call `did_produce` with an amount exceeding the number of available slots
 #[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
+    /// An implementer of the `Producer` traits.
     inner: P,
 }
 
 impl<P> Invariant<P> {
+    /// Return a `Producer` that behaves exactly like the wrapped `Producer`
+    /// `inner`.
     pub fn new(inner: P) -> Self {
         Invariant { inner }
     }
