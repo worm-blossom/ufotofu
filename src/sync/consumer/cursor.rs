@@ -7,7 +7,7 @@ use crate::maybe_uninit_slice_mut;
 use crate::sync::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CursorFullError;
 
 impl From<!> for CursorFullError {
