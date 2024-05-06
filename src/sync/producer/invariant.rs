@@ -149,3 +149,156 @@ where
         self.inner.did_produce(amount)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use core::mem::MaybeUninit;
+
+    use super::*;
+
+    use crate::sync::producer::Cursor;
+
+    #[test]
+    fn accepts_valid_did_produce_amount() {
+        // Create a cursor with data that occupies four slots.
+        let mut cursor = Cursor::new(b"tofu");
+
+        // Copy data from three of the occupied slots and call `did_produce`.
+        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        if let Ok(Either::Left(slots)) = cursor.producer_slots() {
+            MaybeUninit::copy_from_slice(&mut buf[0..3], &slots[0..3]);
+            assert!(cursor.did_produce(3).is_ok());
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_second_did_produce_with_amount_greater_than_available_slots() {
+        // Create a cursor with data that occupies four slots.
+        let mut cursor = Cursor::new(b"tofu");
+
+        // Copy data from three of the occupied slots and call `did_produce`.
+        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        if let Ok(Either::Left(slots)) = cursor.producer_slots() {
+            MaybeUninit::copy_from_slice(&mut buf[0..3], &slots[0..3]);
+            assert!(cursor.did_produce(3).is_ok());
+        }
+
+        // Make a second call to `did_produce` which exceeds the number of available slots.
+        let _ = cursor.did_produce(2);
+    }
+
+    #[test]
+    fn produces_final_value_on_producer_slots_after_complete_production() {
+        // Create a cursor with data that occupies four slots.
+        let mut cursor = Cursor::new(b"tofu");
+
+        // Copy data from two of the occupied slots and call `did_produce`.
+        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        if let Ok(Either::Left(slots)) = cursor.producer_slots() {
+            MaybeUninit::copy_from_slice(&mut buf[0..2], &slots[0..2]);
+            assert!(cursor.did_produce(2).is_ok());
+        }
+
+        // Copy data from two of the occupied slots and call `did_produce`.
+        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        if let Ok(Either::Left(slots)) = cursor.producer_slots() {
+            MaybeUninit::copy_from_slice(&mut buf[0..2], &slots[0..2]);
+            assert!(cursor.did_produce(2).is_ok());
+        }
+
+        // Make a third call to `producer_slots` after all items have been yielded,
+        // ensuring that the final value is returned.
+        assert_eq!(cursor.producer_slots().unwrap(), Either::Right(()));
+    }
+
+    // Panic conditions:
+    //
+    // - `produce()` must not be called after final or error
+    // - `slurp()` must not be called after final or error
+    // - `producer_slots()` must not be called after final or error
+    // - `did_produce()` must not be called after final or error
+    // - `bulk_produce()` must not be called after final or error
+    // - `did_produce(amount)` must not be called with `amount` greater that available slots
+
+    // In each of the following tests, the final function call should panic.
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_produce_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            // Call `produce()` until the final value is emitted.
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.produce();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_slurp_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.slurp();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_producer_slots_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.producer_slots();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_did_produce_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.did_produce(3);
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_bulk_produce_after_final() {
+        let mut cursor = Cursor::new(b"tofu");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        let _ = cursor.bulk_produce(&mut buf);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_did_produce_with_amount_greater_than_available_slots() {
+        let mut cursor = Cursor::new(b"ufo");
+
+        let _ = cursor.did_produce(21);
+    }
+}

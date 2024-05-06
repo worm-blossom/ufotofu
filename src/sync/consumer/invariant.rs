@@ -153,3 +153,149 @@ where
         self.inner.did_consume(amount)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::sync::consumer::{Cursor, CursorFullError, IntoVec};
+
+    #[test]
+    fn accepts_valid_did_consume_amount() {
+        // Create a cursor that exposes four slots.
+        let mut buf = [0; 4];
+        let mut cursor = Cursor::new(&mut buf);
+
+        // Copy data to three of the available slots and call `did_consume`.
+        let data = b"ufo";
+        let slots = cursor.consumer_slots().unwrap();
+        MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
+        unsafe {
+            assert!(cursor.did_consume(3).is_ok());
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_second_did_consume_with_amount_greater_than_available_slots() {
+        // Create a cursor that exposes four slots.
+        let mut buf = [0; 4];
+        let mut cursor = Cursor::new(&mut buf);
+
+        // Copy data to three of the available slots and call `did_consume`.
+        let data = b"ufo";
+        let slots = cursor.consumer_slots().unwrap();
+        MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
+        unsafe {
+            assert!(cursor.did_consume(3).is_ok());
+        }
+
+        // Make a second call to `did_consume` which exceeds the number of available slots.
+        unsafe {
+            let _ = cursor.did_consume(2);
+        }
+    }
+
+    #[test]
+    fn errors_on_consumer_slots_when_none_are_available() {
+        // Create a cursor that exposes four slots.
+        let mut buf = [0; 4];
+        let mut cursor = Cursor::new(&mut buf);
+
+        // Copy data to two of the available slots and call `did_consume`.
+        let data = b"tofu";
+        let slots = cursor.consumer_slots().unwrap();
+        MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
+        unsafe {
+            assert!(cursor.did_consume(2).is_ok());
+        }
+
+        // Copy data to two of the available slots and call `did_consume`.
+        let slots = cursor.consumer_slots().unwrap();
+        MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
+        unsafe {
+            assert!(cursor.did_consume(2).is_ok());
+        }
+
+        // Make a third call to `consumer_slots` after all available slots have been used.
+        assert_eq!(cursor.consumer_slots().unwrap_err(), CursorFullError);
+    }
+
+    // Panic conditions:
+    //
+    // - `consume()` must not be called after `close()` or error
+    // - `close()` must not be called after `close()` or error
+    // - `flush()` must not be called after `close()` or error
+    // - `consumer_slots()` must not be called after `close()` or error
+    // - `did_consume()` must not be called after `close()` or error
+    // - `bulk_consume()` must not be called after `close()` or error
+    // - `did_consume(amount)` must not be called with `amount` greater than available slots
+
+    // In each of the following tests, the final function call should panic.
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_consume_after_close() {
+        let mut into_vec = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.consume(7);
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_close_after_close() {
+        // Type annotations are required because we never provide a `T`.
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.close(());
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_flush_after_close() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.flush();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_consumer_slots_after_close() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.consumer_slots();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_did_consume_after_close() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+        let _ = into_vec.close(());
+
+        unsafe {
+            let _ = into_vec.did_consume(7);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
+    fn panics_on_bulk_consume_after_close() {
+        let mut into_vec = IntoVec::new();
+        let _ = into_vec.close(());
+        let _ = into_vec.bulk_consume(b"ufo");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_did_consume_with_amount_greater_than_available_slots() {
+        let mut into_vec: IntoVec<u8> = IntoVec::new();
+
+        unsafe {
+            let _ = into_vec.did_consume(21);
+        }
+    }
+}
