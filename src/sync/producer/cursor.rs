@@ -3,27 +3,34 @@ use core::convert::AsRef;
 use either::Either;
 use wrapper::Wrapper;
 
+use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
+#[derive(Debug)]
 /// Produces data from a slice.
-pub struct Cursor<'a, T>(CursorInner<'a, T>);
+pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
 
-/// Creates a producer which produces the data in the given slice.
 impl<'a, T> Cursor<'a, T> {
+    /// Create a producer which produces the data in the given slice.
     pub fn new(slice: &'a [T]) -> Cursor<'a, T> {
-        Cursor(CursorInner(slice, 0))
-    }
-}
+        // Wrap the inner cursor in the invariant type.
+        let invariant = Invariant::new(CursorInner(slice, 0));
 
-impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
-    fn into_inner(self) -> &'a [T] {
-        self.0.into_inner()
+        Cursor(invariant)
     }
 }
 
 impl<'a, T> AsRef<[T]> for Cursor<'a, T> {
     fn as_ref(&self) -> &[T] {
-        self.0.as_ref()
+        let inner = self.0.as_ref();
+        inner.as_ref()
+    }
+}
+
+impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
+    fn into_inner(self) -> &'a [T] {
+        let inner = self.0.into_inner();
+        inner.into_inner()
     }
 }
 
@@ -47,7 +54,7 @@ impl<'a, T: Copy> BufferedProducer for Cursor<'a, T> {
 }
 
 impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
-    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.0.producer_slots()
     }
 
@@ -56,16 +63,17 @@ impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
     }
 }
 
+#[derive(Debug)]
 pub struct CursorInner<'a, T>(&'a [T], usize);
 
-impl<'a, T> Wrapper<&'a [T]> for CursorInner<'a, T> {
-    fn into_inner(self) -> &'a [T] {
+impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {
+    fn as_ref(&self) -> &[T] {
         self.0
     }
 }
 
-impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {
-    fn as_ref(&self) -> &[T] {
+impl<'a, T> Wrapper<&'a [T]> for CursorInner<'a, T> {
+    fn into_inner(self) -> &'a [T] {
         self.0
     }
 }
@@ -100,7 +108,7 @@ impl<'a, T: Copy> BufferedProducer for CursorInner<'a, T> {
 }
 
 impl<'a, T: Copy> BulkProducer for CursorInner<'a, T> {
-    fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
             Ok(Either::Right(()))
@@ -113,5 +121,100 @@ impl<'a, T: Copy> BulkProducer for CursorInner<'a, T> {
         self.1 += amount;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use core::mem::MaybeUninit;
+
+    // Panic conditions:
+    //
+    // - `produce()` must not be called after final or error
+    // - `slurp()` must not be called after final or error
+    // - `producer_slots()` must not be called after final or error
+    // - `did_produce()` must not be called after final or error
+    // - `bulk_produce()` must not be called after final or error
+    // - `did_produce(amount)` must not be called with `amount` greater that available slots
+
+    // In each of the following tests, the final function call should panic.
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_produce_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            // Call `produce()` until the final value is emitted.
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.produce();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_slurp_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.slurp();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_producer_slots_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.producer_slots();
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_did_produce_after_final() {
+        let mut cursor = Cursor::new(b"ufo");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let _ = cursor.did_produce(3);
+    }
+
+    #[test]
+    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+    fn panics_on_bulk_produce_after_final() {
+        let mut cursor = Cursor::new(b"tofu");
+        loop {
+            if let Ok(Either::Right(_)) = cursor.produce() {
+                break;
+            }
+        }
+
+        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        let _ = cursor.bulk_produce(&mut buf);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+    )]
+    fn panics_on_did_produce_with_amount_greater_than_available_slots() {
+        let mut cursor = Cursor::new(b"ufo");
+
+        let _ = cursor.did_produce(21);
     }
 }
