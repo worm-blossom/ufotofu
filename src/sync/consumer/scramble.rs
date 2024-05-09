@@ -19,45 +19,20 @@ impl From<FixedQueueError> for ScrambleError {
     }
 }
 
-/*
-#[derive(Debug, Error)]
-pub enum ScrambleError {
-    CursorFull(CursorFullError),
-    FixedQueue(FixedQueueError),
-    Never,
-}
-
-impl fmt::Display for ScrambleError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ScrambleError::FixedQueue(err) => write!(f, "{err}"),
-            ScrambleError::Never => write!(f, "an infallible action failed"),
-            ScrambleError::CursorFull(_) => write!(f, "cursor is full"),
-        }
-    }
-}
-
-impl From<FixedQueueError> for ScrambleError {
-    fn from(err: FixedQueueError) -> ScrambleError {
-        ScrambleError::FixedQueue(err)
-    }
-}
-
 impl From<!> for ScrambleError {
     fn from(never: !) -> ScrambleError {
-        ScrambleError::Never
+        match never {}
     }
 }
-*/
 
-#[derive(Debug, PartialEq, Eq, Arbitrary)]
+#[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
 pub enum ConsumeOperation {
     Consume,
     ConsumerSlots(usize),
     Flush,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ConsumeOperations(Box<[ConsumeOperation]>);
 
 impl ConsumeOperations {

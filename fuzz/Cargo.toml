@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
+wrapper = "0.1.1"
 
 [dependencies.ufotofu]
 path = ".."
@@ -30,6 +31,13 @@ bench = false
 [[bin]]
 name = "into_vec_fallible"
 path = "fuzz_targets/into_vec_fallible.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scramble_consumer"
+path = "fuzz_targets/scramble_consumer.rs"
 test = false
 doc = false
 bench = false
