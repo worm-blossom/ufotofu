@@ -25,6 +25,7 @@ impl From<!> for ScrambleError {
     }
 }
 
+/// Operations which may be called against a consumer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
 pub enum ConsumeOperation {
     Consume,
@@ -32,15 +33,17 @@ pub enum ConsumeOperation {
     Flush,
 }
 
+/// A sequence of heap-allocated consume operations.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ConsumeOperations(Box<[ConsumeOperation]>);
 
 impl ConsumeOperations {
-    /// Checks that the operations contain at least one non-flush operation, and that at most 256 different operations are being allocated.
+    /// Checks that the operations contain at least one non-flush operation
+    /// and that no more than 256 different operations are being allocated.
     pub fn new(operations: Box<[ConsumeOperation]>) -> Option<Self> {
         let mut found_non_flush = false;
-        for op in operations.iter() {
-            if *op != ConsumeOperation::Flush {
+        for operation in operations.iter() {
+            if *operation != ConsumeOperation::Flush {
                 found_non_flush = true;
                 break;
             }
@@ -68,12 +71,19 @@ impl<'a> Arbitrary<'a> for ConsumeOperations {
     }
 }
 
+/// A `Consumer` wrapper that maintains a queue of items, as well as a sequence
+/// of operations and an operation index.
 #[derive(Debug)]
 pub struct Scramble<C, T, F, E> {
+    /// An implementer of the `Consumer` traits.
     inner: C,
+    /// A fixed capacity queue of items.
     queue: Fixed<T>,
+    /// A sequence of consume operations.
     operations: Box<[ConsumeOperation]>,
+    /// An index into the sequence of consume operations.
     operations_index: usize,
+    /// Zero-sized types for final item and error generics.
     fe: PhantomData<(F, E)>,
 }
 
@@ -86,6 +96,10 @@ impl<C, T, F, E> Scramble<C, T, F, E> {
             operations_index: 0,
             fe: PhantomData,
         }
+    }
+
+    fn advance_operations_index(&mut self) {
+        self.operations_index = (self.operations_index + 1) % self.operations.len();
     }
 }
 
@@ -118,20 +132,31 @@ where
     type Error = ScrambleError;
 
     fn consume(&mut self, item: T) -> Result<(), Self::Error> {
-        // Add the item to the queue.
-        self.queue.enqueue(item)?;
-        // While there are still items in the queue, perform an operation.
-        while self.queue.amount() > 0 {
-            self.perform_operation()?;
-        }
+        // Attempt to add an item to the queue.
+        //
+        // The attempt will fail if the queue is full. In that case, perform operations
+        // until the queue is empty.
+        if self.queue.enqueue(item).is_err() {
+            if self.queue.amount() > 0 {
+                self.perform_operation()?;
+            }
 
-        // TODO: Why do we enqueue a second time?
-        self.queue.enqueue(item)?;
+            // Now that the queue has been emptied, enqueue the item.
+            self.queue.enqueue(item)?;
+        }
 
         Ok(())
     }
 
-    fn close(&mut self, _final: Self::Final) -> Result<(), Self::Error> {
+    fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
+        // Perform operations until the queue is empty.
+        while self.queue.amount() > 0 {
+            self.perform_operation()?;
+        }
+
+        // Then close the inner consumer using the final value.
+        self.inner.close(final_val).unwrap();
+
         Ok(())
     }
 }
@@ -143,12 +168,12 @@ where
     E: Debug,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
-        // While there are still items in the queue, perform an operation.
+        // Perform operations until the queue is empty.
         while self.queue.amount() > 0 {
             self.perform_operation()?;
         }
 
-        // Flush the inner consumer.
+        // Then flush the inner consumer.
         let _ = self.inner.flush();
 
         Ok(())
@@ -162,21 +187,20 @@ where
     E: Debug,
 {
     fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        let current = self.queue.amount();
+        let amount = self.queue.amount();
         let capacity = self.queue.capacity();
 
         // If the queue has available capacity, return writeable slots.
-        if current < capacity {
+        if amount < capacity {
             let slots = self.queue.enqueue_slots()?;
             Ok(slots)
         } else {
-            // TODO: I don't think this is correct / intended behaviour.
-            //
-            // If the queue is at capacity, perform operations until empty.
+            // Perform operations until the queue is empty.
             while self.queue.amount() > 0 {
-                self.perform_operation().unwrap();
+                self.perform_operation()?;
             }
 
+            // Return writeable slots.
             self.queue
                 .enqueue_slots()
                 .map_err(|err| ScrambleError(err.to_string()))
@@ -196,36 +220,42 @@ where
     T: Copy,
     E: Debug,
 {
-    fn perform_operation(&mut self) -> Result<(), ScrambleError> {
+    fn perform_operation(&mut self) -> Result<(), FixedQueueError> {
         debug_assert!(self.queue.amount() > 0);
 
         match self.operations[self.operations_index] {
             ConsumeOperation::Consume => {
                 // Remove an item from the queue.
                 let item = self.queue.dequeue()?;
-                // Update the operations index.
-                self.operations_index = (self.operations_index + 1) % self.operations.len();
                 // Feed the item to the inner consumer.
                 self.inner.consume(item).unwrap();
             }
             ConsumeOperation::ConsumerSlots(n) => {
                 // Remove items from the queue in bulk and place them in the inner consumer slots.
-                if let Ok(slots) = self.inner.consumer_slots() {
-                    let slots_len = slots.len();
-                    let slots = &mut slots[..min(slots_len, n)];
-                    let amount = self.queue.bulk_dequeue(slots).unwrap();
-                    unsafe {
-                        self.inner.did_consume(amount).unwrap();
-                    }
-                    self.operations_index = (self.operations_index + 1) % self.operations.len();
+                //
+                // Request writeable slots from the inner consumer.
+                let slots = self.inner.consumer_slots().unwrap();
+
+                // Set an upper bound on the slice of slots by comparing the number of available
+                // inner slots and the number provided by the `ConsumerSlots` operation and taking
+                // the lowest value.
+                let slots_len = slots.len();
+                let available_slots = &mut slots[..min(slots_len, n)];
+
+                // Dequeue items into the inner consumer and report the amount consumed.
+                let amount = self.queue.bulk_dequeue(available_slots).unwrap();
+                unsafe {
+                    self.inner.did_consume(amount).unwrap();
                 }
             }
             ConsumeOperation::Flush => {
-                if self.inner.flush().is_err() {
-                    self.operations_index = (self.operations_index + 1) % self.operations.len();
-                }
+                // Flush the inner consumer.
+                self.inner.flush().unwrap();
             }
         }
+
+        // Update the operations index.
+        self.advance_operations_index();
 
         Ok(())
     }
