@@ -11,8 +11,6 @@ use ufotofu::sync::consumer::{ConsumeOperations, Scramble, ScrambleError};
 use ufotofu::sync::producer::Cursor as ProducerCursor;
 use ufotofu::sync::{self, BufferedConsumer};
 
-//use ufotofu_queues::fixed::FixedQueueError;
-
 fn data_is_invalid(data: TestData) -> bool {
     if data.consumer_buf.len() < data.producer_buf.len() {
         return true;
