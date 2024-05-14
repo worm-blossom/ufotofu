@@ -3,25 +3,25 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 
-use arbitrary::{Arbitrary, Error, Unstructured};
+use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
+use thiserror::Error;
 use ufotofu_queues::fixed::{Fixed, FixedQueueError};
 use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug)]
-pub struct ScrambleError(String);
-
-impl From<FixedQueueError> for ScrambleError {
-    fn from(err: FixedQueueError) -> ScrambleError {
-        ScrambleError(err.to_string())
-    }
+#[derive(Debug, Error)]
+pub enum ScrambleError {
+    #[error("an infallible action failed")]
+    Never,
+    #[error(transparent)]
+    Queue(#[from] FixedQueueError),
 }
 
 impl From<!> for ScrambleError {
-    fn from(never: !) -> ScrambleError {
-        match never {}
+    fn from(_never: !) -> ScrambleError {
+        Self::Never
     }
 }
 
@@ -58,10 +58,10 @@ impl ConsumeOperations {
 }
 
 impl<'a> Arbitrary<'a> for ConsumeOperations {
-    fn arbitrary(u: &mut Unstructured<'a>) -> Result<Self, Error> {
+    fn arbitrary(u: &mut Unstructured<'a>) -> Result<Self, ArbitraryError> {
         match Self::new(Arbitrary::arbitrary(u)?) {
             Some(ops) => Ok(ops),
-            None => Err(Error::IncorrectFormat),
+            None => Err(ArbitraryError::IncorrectFormat),
         }
     }
 
@@ -137,7 +137,7 @@ where
         // The attempt will fail if the queue is full. In that case, perform operations
         // until the queue is empty.
         if self.queue.enqueue(item).is_err() {
-            if self.queue.amount() > 0 {
+            while self.queue.amount() > 0 {
                 self.perform_operation()?;
             }
 
@@ -201,9 +201,9 @@ where
             }
 
             // Return writeable slots.
-            self.queue
-                .enqueue_slots()
-                .map_err(|err| ScrambleError(err.to_string()))
+            let slots = self.queue.enqueue_slots()?;
+
+            Ok(slots)
         }
     }
 
@@ -220,7 +220,7 @@ where
     T: Copy,
     E: Debug,
 {
-    fn perform_operation(&mut self) -> Result<(), FixedQueueError> {
+    fn perform_operation(&mut self) -> Result<(), ScrambleError> {
         debug_assert!(self.queue.amount() > 0);
 
         match self.operations[self.operations_index] {
@@ -243,7 +243,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer and report the amount consumed.
-                let amount = self.queue.bulk_dequeue(available_slots).unwrap();
+                let amount = self.queue.bulk_dequeue(available_slots)?;
                 unsafe {
                     self.inner.did_consume(amount).unwrap();
                 }
