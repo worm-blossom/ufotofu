@@ -1,13 +1,15 @@
 use core::convert::{AsMut, AsRef};
 use core::mem::MaybeUninit;
 
+use thiserror::Error;
 use wrapper::Wrapper;
 
 use crate::maybe_uninit_slice_mut;
 use crate::sync::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Error)]
+#[error("cursor is full")]
 pub struct CursorFullError;
 
 impl From<!> for CursorFullError {
