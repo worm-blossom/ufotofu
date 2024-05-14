@@ -14,7 +14,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Debug, Error)]
 pub enum IntoVecError {
-    #[error("An infallible action failed")]
+    #[error("an infallible action failed")]
     Never,
     #[error(transparent)]
     TryReserve(#[from] collections::TryReserveError),
