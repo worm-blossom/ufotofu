@@ -41,3 +41,10 @@ path = "fuzz_targets/scramble_consumer.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "scramble_producer"
+path = "fuzz_targets/scramble_producer.rs"
+test = false
+doc = false
+bench = false
