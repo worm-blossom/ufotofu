@@ -6,21 +6,16 @@ use core::cmp::min;
 
 use wrapper::Wrapper;
 
-use ufotofu::sync::consumer::Cursor as ConsumerCursor;
-use ufotofu::sync::producer::Cursor as ProducerCursor;
-use ufotofu::sync::producer::{ProduceOperations, Scramble, ScrambleError};
+use ufotofu::sync::consumer::IntoVec;
+use ufotofu::sync::producer::{Cursor, ProduceOperations, Scramble};
 use ufotofu::sync::{self, BufferedConsumer};
 
-fn data_is_invalid(data: TestData) -> bool {
-    if data.consumer_buf.len() < data.producer_buf.len() {
+fn data_is_invalid(data: &TestData) -> bool {
+    if data.outer_capacity < 1 || data.outer_capacity > 2048 {
         return true;
     }
 
-    if data.capacity_a < 1 || data.capacity_a > 2048 {
-        return true;
-    }
-
-    if data.capacity_b < 1 || data.capacity_b > 2048 {
+    if data.inner_capacity < 1 || data.inner_capacity > 2048 {
         return true;
     }
 
@@ -29,42 +24,47 @@ fn data_is_invalid(data: TestData) -> bool {
 
 #[derive(Debug, Clone, Arbitrary)]
 struct TestData {
-    consumer_buf: Box<[u8]>,
-    producer_buf: Box<[u8]>,
-    operations_a: ProduceOperations,
-    operations_b: ProduceOperations,
-    capacity_a: usize,
-    capacity_b: usize,
+    producer_buffer: Box<[u8]>,
+    outer_operations: ProduceOperations,
+    inner_operations: ProduceOperations,
+    outer_capacity: usize,
+    inner_capacity: usize,
 }
 
 fuzz_target!(|data: TestData| {
-    if data_is_invalid(data.clone()) {
+    if data_is_invalid(&data) {
         return;
     }
 
     let TestData {
-        mut producer_buf,
-        mut consumer_buf,
-        operations_a,
-        operations_b,
-        capacity_a,
-        capacity_b,
+        mut producer_buffer,
+        outer_operations,
+        inner_operations,
+        outer_capacity,
+        inner_capacity,
     } = data;
 
-    let cursor = ProducerCursor::new(&mut producer_buf[..]);
+    // Producer.
+    let cursor = Cursor::new(&mut producer_buffer[..]);
 
-    let mut i = ConsumerCursor::new(&mut consumer_buf[..]);
+    // Consumer.
+    let mut i = IntoVec::new();
+
+    // Scrambler wrapping a scrambler with an inner `cursor` producer.
     let mut o = Scramble::new(
-        Scramble::new(cursor, operations_b, capacity_b),
-        operations_a,
-        capacity_a,
+        Scramble::new(cursor, inner_operations, inner_capacity),
+        outer_operations,
+        outer_capacity,
     );
 
-    let _ = sync::bulk_pipe::<_, _, ScrambleError>(&mut o, &mut i);
+    //let _ = sync::bulk_pipe::<_, _, ScrambleError>(&mut o, &mut i);
+    let _ = sync::bulk_pipe(&mut o, &mut i);
     let _ = i.flush();
 
-    // Compare the producer and consumer cursors.
+    // Access the inner producer (`cursor`).
     let o = o.into_inner().into_inner();
+
+    // Compare the contents of the producer and consumer.
     let m = min(o.as_ref().len(), i.as_ref().len());
     assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
 });
