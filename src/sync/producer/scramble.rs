@@ -4,29 +4,11 @@ use core::marker::PhantomData;
 
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
 use either::Either;
-use thiserror::Error;
-use ufotofu_queues::fixed::{Fixed, FixedQueueError};
+use ufotofu_queues::fixed::Fixed;
 use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
-use crate::sync::consumer::CursorFullError;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
-
-#[derive(Debug, Error)]
-pub enum ScrambleError {
-    #[error("an infallible action failed")]
-    Never,
-    #[error(transparent)]
-    Queue(#[from] FixedQueueError),
-    #[error(transparent)]
-    Cursor(#[from] CursorFullError),
-}
-
-impl From<!> for ScrambleError {
-    fn from(_never: !) -> ScrambleError {
-        Self::Never
-    }
-}
 
 /// Operations which may be called against a producer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
@@ -79,16 +61,23 @@ impl<'a> Arbitrary<'a> for ProduceOperations {
 #[derive(Debug)]
 pub struct Scramble<P, T, F, E> {
     /// An implementer of the `Producer` traits.
+    /// The `Producer` that we wrap. All producer operations on the `Scramble`
+    /// will be transformed into semantically equivalent scrambled operations,
+    /// and then forwarded to the `inner` producer.
     inner: P,
-    /// A fixed capacity queue of items.
+    /// A fixed capacity queue of items. We store items here before forwarding
+    /// them to the `inner` producer. Intermediate storage is necessary so that
+    /// we can arbitrarily scramble operations before forwarding.
     queue: Fixed<T>,
     /// A final value which may or may not have been returned from the inner producer.
     final_val: Option<F>,
-    /// A sequence of produce operations.
+    /// The instructions on how to scramble producer operations. We cycle
+    /// through these round-robin.
     operations: Box<[ProduceOperation]>,
-    /// An index into the sequence of produce operations.
+    /// The next operation to call on the `inner` producer once we need to empty
+    /// our item queue.
     operations_index: usize,
-    /// Zero-sized type for final item and error generics.
+    /// Satisfy the type checker, no useful semantics.
     e: PhantomData<E>,
 }
 
@@ -133,31 +122,34 @@ impl<P, T, F, E> Producer for Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
-    E: Debug,
 {
     type Item = T;
     type Final = F;
-    type Error = ScrambleError;
+    type Error = E;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         // If the queue is empty and the final value has been set,
         // return the final value.
-        if self.queue.amount() == 0 && self.final_val.is_some() {
-            let final_val = self.final_val.take().unwrap();
-            return Ok(Either::Right(final_val));
+        if self.queue.amount() == 0 {
+            if let Some(final_val) = self.final_val.take() {
+                return Ok(Either::Right(final_val));
+            }
         }
 
-        // The attempt to dequeue an item will fail if the queue is empty.
-        // In that case, perform operations to fill the queue - returning
-        // the final value if it is produced.
-        while self.queue.amount() == 0 {
+        // Perform operations until the queue is full.
+        while self.queue.amount() < self.queue.capacity() {
             if let Some(final_val) = self.perform_operation()? {
                 return Ok(Either::Right(final_val));
             }
         }
 
         // Now that the queue has been filled, dequeue an item.
-        Ok(Either::Left(self.queue.dequeue()?))
+        let item = self
+            .queue
+            .dequeue()
+            .expect("queue should have been filled by performing operations");
+
+        Ok(Either::Left(item))
     }
 }
 
@@ -165,26 +157,24 @@ impl<P, T, F, E> BufferedProducer for Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
-    E: Debug,
 {
     fn slurp(&mut self) -> Result<(), Self::Error> {
-        // TODO: I'm not convinced this behaviour is correct.
-        if self.queue.amount() == 0 && self.final_val.is_some() {
-            let _ = self.final_val.take().unwrap();
-        }
+        if self.final_val.is_some() {
+            Ok(())
+        } else {
+            // Slurp the inner producer.
+            self.inner.slurp()?;
 
-        // Perform operations until the queue is full.
-        while self.queue.amount() < self.queue.capacity() {
-            if let Some(final_val) = self.perform_operation()? {
-                // Set the final value if returned from an operation.
-                self.final_val = Some(final_val);
+            // Perform operations until the queue is full.
+            while self.queue.amount() < self.queue.capacity() {
+                if let Some(final_val) = self.perform_operation()? {
+                    // Set the final value if returned from an operation.
+                    self.final_val = Some(final_val);
+                }
             }
+
+            Ok(())
         }
-
-        // Then slurp the inner producer.
-        let _ = self.inner.slurp();
-
-        Ok(())
     }
 }
 
@@ -192,30 +182,38 @@ impl<P, T, F, E> BulkProducer for Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
-    E: Debug,
 {
     fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         // Return the final value if the queue is empty and the value
         // was previously returned from an operation.
-        if self.queue.amount() == 0 && self.final_val.is_some() {
-            return Ok(Either::Right(self.final_val.take().unwrap()));
+        if self.queue.amount() == 0 {
+            if let Some(final_val) = self.final_val.take() {
+                return Ok(Either::Right(final_val));
+            }
         }
 
-        // Perform operations while the queue is empty.
-        while self.queue.amount() == 0 {
+        // Perform operations until the queue is full.
+        while self.queue.amount() < self.queue.capacity() {
             if let Some(final_val) = self.perform_operation()? {
                 return Ok(Either::Right(final_val));
             }
         }
 
         // Return readable slots.
-        let slots = self.queue.dequeue_slots()?;
+        let slots = self
+            .queue
+            .dequeue_slots()
+            .expect("queue should contain items after being filled by performing operations");
 
         Ok(Either::Left(slots))
     }
 
     fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.queue.did_dequeue(amount)?;
+        // `did_dequeue` returns a `Result` but does not have an error condition.
+        // Thus, this call is not expected to panic.
+        self.queue
+            .did_dequeue(amount)
+            .expect("updating queue amount should not fail");
 
         Ok(())
     }
@@ -225,21 +223,23 @@ impl<P, T, F, E> Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
-    E: Debug,
 {
-    fn perform_operation(&mut self) -> Result<Option<F>, ScrambleError> {
+    fn perform_operation(&mut self) -> Result<Option<F>, E> {
         debug_assert!(self.queue.amount() < self.queue.capacity());
 
         match self.operations[self.operations_index] {
             // Attempt to produce an item from the inner producer.
-            ProduceOperation::Produce => match self.inner.produce().unwrap() {
+            ProduceOperation::Produce => match self.inner.produce()? {
                 // If an item was produced, add it to the queue.
-                Either::Left(item) => self.queue.enqueue(item)?,
+                Either::Left(item) => self
+                    .queue
+                    .enqueue(item)
+                    .expect("queue should have available capacity for an item"),
                 // If the final value was produced, return it.
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
             // Attempt to expose slots from the inner producer.
-            ProduceOperation::ProducerSlots(n) => match self.inner.producer_slots().unwrap() {
+            ProduceOperation::ProducerSlots(n) => match self.inner.producer_slots()? {
                 Either::Left(slots) => {
                     // Set an upper bound on the slice of slots by comparing the number of available
                     // inner slots and the number provided by the `ProducerSlots` operation and taking
@@ -247,16 +247,21 @@ where
                     let slots_len = slots.len();
                     let available_slots = &slots[..min(slots_len, n)];
 
-                    // Enqueue items into the inner producer and report the amount produced.
-                    let amount = self.queue.bulk_enqueue(available_slots)?;
-                    self.inner.did_produce(amount).unwrap();
+                    // Enqueue items into the inner producer.
+                    let amount = self
+                        .queue
+                        .bulk_enqueue(available_slots)
+                        .expect("queue should contain items for production");
+
+                    // Report the amount of items produced.
+                    self.inner.did_produce(amount)?;
                 }
                 // If the final value was produced, return it.
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
             ProduceOperation::Slurp => {
                 // Slurp the inner producer.
-                self.inner.slurp().unwrap();
+                self.inner.slurp()?;
             }
         }
 
@@ -266,3 +271,7 @@ where
         Ok(None)
     }
 }
+
+// To the interested reader: this implementation writes *at most* `n` items, but does not attempt
+// to write *exactly* `n` items; the actual amount is governed by the number of items currently in
+// the scrambler's queue. We should improve this at some point.
