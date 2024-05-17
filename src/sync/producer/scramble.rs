@@ -209,11 +209,7 @@ where
     }
 
     fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        // `did_dequeue` returns a `Result` but does not have an error condition.
-        // Thus, this call is not expected to panic.
-        self.queue
-            .did_dequeue(amount)
-            .expect("updating queue amount should not fail");
+        self.queue.did_dequeue(amount);
 
         Ok(())
     }
@@ -230,11 +226,12 @@ where
         match self.operations[self.operations_index] {
             // Attempt to produce an item from the inner producer.
             ProduceOperation::Produce => match self.inner.produce()? {
-                // If an item was produced, add it to the queue.
-                Either::Left(item) => self
-                    .queue
-                    .enqueue(item)
-                    .expect("queue should have available capacity for an item"),
+                // If an item was produced, attempt to add it to the queue.
+                Either::Left(item) => {
+                    // Return value should always be `None`, due to the `debug_assert`
+                    // check for available queue capacity, so we ignore the result.
+                    let _ = self.queue.enqueue(item);
+                }
                 // If the final value was produced, return it.
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
@@ -248,10 +245,7 @@ where
                     let available_slots = &slots[..min(slots_len, n)];
 
                     // Enqueue items into the inner producer.
-                    let amount = self
-                        .queue
-                        .bulk_enqueue(available_slots)
-                        .expect("queue should contain items for production");
+                    let amount = self.queue.bulk_enqueue(available_slots);
 
                     // Report the amount of items produced.
                     self.inner.did_produce(amount)?;
