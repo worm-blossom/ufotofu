@@ -291,7 +291,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec, IntoVecError};
+    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec};
     use crate::sync::producer::Cursor as ProducerCursor;
 
     #[test]
@@ -311,11 +311,11 @@ mod tests {
     }
 
     #[test]
-    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), IntoVecError> {
+    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), !> {
         let mut o = ProducerCursor::new(b"tofu");
         let mut i = IntoVec::new();
 
-        pipe::<_, _, IntoVecError>(&mut o, &mut i)?;
+        pipe(&mut o, &mut i)?;
 
         assert_eq!(&i.into_vec(), b"tofu");
 
@@ -339,11 +339,11 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), IntoVecError> {
+    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), !> {
         let mut o = ProducerCursor::new(b"tofu");
         let mut i = IntoVec::new();
 
-        bulk_pipe::<_, _, IntoVecError>(&mut o, &mut i)?;
+        bulk_pipe(&mut o, &mut i)?;
 
         assert_eq!(&i.into_vec(), b"tofu");
 

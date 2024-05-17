@@ -1,4 +1,6 @@
 #![no_main]
+#![feature(never_type)]
+
 use libfuzzer_sys::fuzz_target;
 use libfuzzer_sys::{arbitrary, arbitrary::Arbitrary};
 
@@ -6,7 +8,7 @@ use core::cmp::min;
 
 use wrapper::Wrapper;
 
-use ufotofu::sync::consumer::{ConsumeOperations, IntoVec, Scramble, ScrambleError};
+use ufotofu::sync::consumer::{ConsumeOperations, IntoVec, Scramble};
 use ufotofu::sync::producer::Cursor;
 use ufotofu::sync::{self, BufferedConsumer};
 
@@ -57,7 +59,7 @@ fuzz_target!(|data: TestData| {
         outer_capacity,
     );
 
-    let _ = sync::bulk_pipe::<_, _, ScrambleError>(&mut o, &mut i);
+    let _ = sync::bulk_pipe::<_, _, !>(&mut o, &mut i);
     let _ = i.flush();
 
     // Access the inner consumer (`into_vec`).
