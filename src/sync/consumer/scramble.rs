@@ -124,17 +124,18 @@ where
     fn consume(&mut self, item: T) -> Result<(), Self::Error> {
         // Attempt to add an item to the queue.
         //
-        // The attempt will fail if the queue is full. In that case, perform operations
-        // until the queue is empty.
-        if self.queue.enqueue(item).is_err() {
+        // The item will be returned if the queue is full.
+        // In that case, perform operations until the queue is empty.
+        if self.queue.enqueue(item).is_some() {
             while self.queue.amount() > 0 {
                 self.perform_operation()?;
             }
 
             // Now that the queue has been emptied, enqueue the item.
-            self.queue
-                .enqueue(item)
-                .expect("queue should have been emptied by performing operations");
+            //
+            // Return value should always be `None` in this context so we
+            // ignore it.
+            let _ = self.queue.enqueue(item);
         }
 
         Ok(())
@@ -203,11 +204,7 @@ where
     }
 
     unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        // `did_enqueue` returns a `Result` but does not have an error condition.
-        // Thus, this call is not expected to panic.
-        self.queue
-            .did_enqueue(amount)
-            .expect("updating queue amount should not fail");
+        self.queue.did_enqueue(amount);
 
         Ok(())
     }
@@ -245,10 +242,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer.
-                let amount = self
-                    .queue
-                    .bulk_dequeue(available_slots)
-                    .expect("queue should contain items for consumption");
+                let amount = self.queue.bulk_dequeue(available_slots);
 
                 // Report the amount of items consumed.
                 unsafe {
