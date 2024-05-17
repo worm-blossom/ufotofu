@@ -13,8 +13,8 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 pub struct CursorFullError;
 
 impl From<!> for CursorFullError {
-    fn from(never: !) -> CursorFullError {
-        match never {}
+    fn from(_: !) -> CursorFullError {
+        panic!()
     }
 }
 
