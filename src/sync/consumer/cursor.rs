@@ -8,7 +8,7 @@ use crate::maybe_uninit_slice_mut;
 use crate::sync::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug, PartialEq, Eq, Error)]
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 #[error("cursor is full")]
 pub struct CursorFullError;
 
