@@ -128,17 +128,20 @@ where
     type Error = E;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
-        // If the queue is empty and the final value has been set,
-        // return the final value.
-        if self.queue.amount() == 0 {
-            if let Some(final_val) = self.final_val.take() {
-                return Ok(Either::Right(final_val));
+        // First we aim to fill the queue by performing operations.
+        //
+        // While the final value has not been set and the queue is not full, perform operations.
+        // If the final value is returned from an operation, set the final value.
+        while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
+            if let Some(final_val) = self.perform_operation()? {
+                self.final_val = Some(final_val)
             }
         }
 
-        // Perform operations until the queue is full.
-        while self.queue.amount() < self.queue.capacity() {
-            if let Some(final_val) = self.perform_operation()? {
+        // Return the final value if the queue is empty and the value
+        // was previously returned from an operation.
+        if self.queue.amount() == 0 {
+            if let Some(final_val) = self.final_val.take() {
                 return Ok(Either::Right(final_val));
             }
         }
@@ -166,7 +169,7 @@ where
             self.inner.slurp()?;
 
             // Perform operations until the queue is full.
-            while self.queue.amount() < self.queue.capacity() {
+            while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
                 if let Some(final_val) = self.perform_operation()? {
                     // Set the final value if returned from an operation.
                     self.final_val = Some(final_val);
@@ -184,17 +187,18 @@ where
     T: Copy,
 {
     fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+        // While the final value has not been set and the queue is not full, perform operations.
+        // If the final value is returned from an operation, set the final value.
+        while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
+            if let Some(final_val) = self.perform_operation()? {
+                self.final_val = Some(final_val)
+            }
+        }
+
         // Return the final value if the queue is empty and the value
         // was previously returned from an operation.
         if self.queue.amount() == 0 {
             if let Some(final_val) = self.final_val.take() {
-                return Ok(Either::Right(final_val));
-            }
-        }
-
-        // Perform operations until the queue is full.
-        while self.queue.amount() < self.queue.capacity() {
-            if let Some(final_val) = self.perform_operation()? {
                 return Ok(Either::Right(final_val));
             }
         }
