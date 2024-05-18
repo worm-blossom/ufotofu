@@ -14,7 +14,7 @@ pub struct CursorFullError;
 
 impl From<!> for CursorFullError {
     fn from(_: !) -> CursorFullError {
-        panic!()
+        unreachable!()
     }
 }
 
