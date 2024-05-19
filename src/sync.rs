@@ -13,6 +13,7 @@ pub mod producer;
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
+/// When it does, it must also hand back the item that it was attempting to consume.
 pub trait Consumer {
     /// The sequence consumed by this consumer *starts* with *arbitrarily many* values of this type.
     type Item;
@@ -29,7 +30,7 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait returned an error,
     /// nor after `close` was called.
-    fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error>;
+    fn consume(&mut self, item: Self::Item) -> Result<(), (Self::Error, Self::Item)>;
 
     /// Attempt to consume the final item.
     ///
@@ -39,7 +40,7 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
-    fn close(&mut self, f: Self::Final) -> Result<(), Self::Error>;
+    fn close(&mut self, f: Self::Final) -> Result<(), (Self::Error, Self::Final)>;
 }
 
 /// A `Consumer` that can delay performing side-effects when consuming items.
@@ -250,18 +251,50 @@ where
     }
 }
 
+/// Everything that can go wrong when piping a `Producer` into a `Consumer`.
+pub enum PipeError<Item, Final, ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Produce(ProducerError),
+    /// The `Consumer` emitted an error when consuming an `Item`.
+    /// Yields back the item that was produced but not consumed.
+    Consume(ConsumerError, Item),
+    /// The `Consumer` emitted an error when consuming the final value.
+    /// Yields back the final value.
+    Close(ConsumerError, Final),
+}
+
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
-pub fn pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub fn pipe<P, C>(producer: &mut P, consumer: &mut C) -> Result<(), PipeError<P::Item, P::Final, P::Error, C::Error>>
 where
     P: Producer,
     C: Consumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
 {
     loop {
-        match producer.produce()? {
-            Left(item) => consumer.consume(item)?,
-            Right(f) => return Ok(consumer.close(f)?),
+        match producer.produce() {
+            Err(producer_error) => {
+                return PipeError::Produce(producer_error);
+            }
+            Ok(Left(item)) => {
+                match consumer.consume(item) {
+                    Err((consumer_error, rejected_item)) => {
+                        return PipeError::Consume(consumer_error, rejected_item);
+                    }
+                    Ok(()) => {
+                        // No-op, continues with next loop iteration.
+                    }
+                }
+            }
+            Ok(Right(f)) => {
+                match consumer.close(f) {
+                    Err((consumer_error, rejected_f)) => {
+                        return PipeError::Close(consumer_error, rejected_f);
+                    }
+                    Ok(()) => {
+                        return Ok(());
+                    }
+                }
+            }
         }
     }
 }
@@ -269,12 +302,11 @@ where
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
 /// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
 /// emitted by the producer.
-pub fn bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub fn bulk_pipe<P, C>(producer: &mut P, consumer: &mut C) -> Result<(), Result<(), PipeError<P::Item, P::Final, P::Error, C::Error>>>
 where
     P: BulkProducer,
     P::Item: Copy,
     C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
 {
     loop {
         match producer.producer_slots()? {
