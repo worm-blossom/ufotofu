@@ -69,11 +69,11 @@ impl<T> Consumer for IntoVec<T> {
     type Final = ();
     type Error = !;
 
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+    fn consume(&mut self, item: T) -> Result<(), (Self::Error, Self::Item)> {
         self.0.consume(item)
     }
 
-    fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
+    fn close(&mut self, final_val: Self::Final) -> Result<(), (Self::Error, Self::Final)> {
         self.0.close(final_val)
     }
 }
@@ -122,13 +122,13 @@ impl<T> Consumer for IntoVecInner<T> {
     type Final = ();
     type Error = !;
 
-    fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
+    fn consume(&mut self, item: T) -> Result<Self::Final, (Self::Error, Self::Item)> {
         self.v.push(item);
 
         Ok(())
     }
 
-    fn close(&mut self, _final: Self::Final) -> Result<Self::Final, Self::Error> {
+    fn close(&mut self, _final: Self::Final) -> Result<Self::Final, (Self::Error, Self::Final)> {
         Ok(())
     }
 }

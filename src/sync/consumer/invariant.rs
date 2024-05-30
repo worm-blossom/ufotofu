@@ -89,7 +89,7 @@ where
     type Final = F;
     type Error = E;
 
-    fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+    fn consume(&mut self, item: Self::Item) -> Result<(), (Self::Error, Self::Item)> {
         self.check_inactive();
 
         self.inner.consume(item).inspect_err(|_| {
@@ -99,7 +99,7 @@ where
         })
     }
 
-    fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
+    fn close(&mut self, final_val: Self::Final) -> Result<(), (Self::Error, Self::Final)> {
         self.check_inactive();
         self.active = false;
 

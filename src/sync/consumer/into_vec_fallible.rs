@@ -89,11 +89,11 @@ impl<T> Consumer for IntoVecFallible<T> {
     type Final = ();
     type Error = IntoVecError;
 
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+    fn consume(&mut self, item: T) -> Result<(), (Self::Error, Self::Item)> {
         self.0.consume(item)
     }
 
-    fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
+    fn close(&mut self, final_val: Self::Final) -> Result<(), (Self::Error, Self::Final)> {
         self.0.close(final_val)
     }
 }
@@ -142,18 +142,22 @@ impl<T> Consumer for IntoVecFallibleInner<T> {
     type Final = ();
     type Error = IntoVecError;
 
-    fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
-        if let Err(value) = self.v.push_within_capacity(item) {
-            self.v.try_reserve(1)?;
-            // This cannot fail; the previous line either returned or added
-            // at least 1 free slot.
-            let _ = self.v.push_within_capacity(value);
+    fn consume(&mut self, item: T) -> Result<Self::Final, (Self::Error, Self::Item)> {
+        if let Err(returned_item) = self.v.push_within_capacity(item) {
+            match self.v.try_reserve(1) {
+                Ok(()) => {
+                    // This cannot fail; the previous line either returned an error or added
+                    // at least 1 free slot.
+                    let _ = self.v.push_within_capacity(returned_item);
+                }
+                Err(err) => return Err((IntoVecError::TryReserve(err), returned_item)),
+            }
         }
 
         Ok(())
     }
 
-    fn close(&mut self, _final: Self::Final) -> Result<Self::Final, Self::Error> {
+    fn close(&mut self, _final: Self::Final) -> Result<Self::Final, (Self::Error, Self::Final)> {
         Ok(())
     }
 }

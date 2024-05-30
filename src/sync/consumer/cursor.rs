@@ -60,11 +60,11 @@ impl<'a, T> Consumer for Cursor<'a, T> {
     /// call is made to `consume()` or `consumer_slots()`.
     type Error = CursorFullError;
 
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+    fn consume(&mut self, item: T) -> Result<(), (Self::Error, Self::Item)> {
         self.0.consume(item)
     }
 
-    fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
+    fn close(&mut self, final_val: Self::Final) -> Result<(), (Self::Error, Self::Final)> {
         self.0.close(final_val)
     }
 }
@@ -116,10 +116,10 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
     /// call is made to `consume()` or `consumer_slots()`.
     type Error = CursorFullError;
 
-    fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
+    fn consume(&mut self, item: T) -> Result<(), (Self::Error, Self::Item)> {
         // The inner cursor is completely full.
         if self.0.len() == self.1 {
-            Err(CursorFullError)
+            Err((CursorFullError, item))
         } else {
             // Copy the item to the slice at the given index.
             self.0[self.1] = item;
@@ -130,7 +130,7 @@ impl<'a, T> Consumer for CursorInner<'a, T> {
         }
     }
 
-    fn close(&mut self, _: Self::Final) -> Result<(), Self::Error> {
+    fn close(&mut self, _: Self::Final) -> Result<(), (Self::Error, Self::Final)> {
         Ok(())
     }
 }
