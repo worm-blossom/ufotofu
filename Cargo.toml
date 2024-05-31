@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+arbitrary = { version = "1.0.2", features = ["derive"]}
 either = "1.10.0"
 thiserror = "1.0.59"
 trait-variant = "0.1.1"
+# TODO: Update this with crates.io path once published.
+ufotofu_queues = { path = "../ufotofu_queues" }
 wrapper = "0.1.1"
