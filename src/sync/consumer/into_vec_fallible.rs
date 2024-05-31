@@ -12,19 +12,9 @@ use crate::maybe_uninit_slice_mut;
 use crate::sync::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug, Error)]
-pub enum IntoVecError {
-    #[error("An infallible action failed")]
-    Never,
-    #[error(transparent)]
-    TryReserve(#[from] collections::TryReserveError),
-}
-
-impl From<!> for IntoVecError {
-    fn from(_never: !) -> IntoVecError {
-        Self::Never
-    }
-}
+#[derive(Clone, Debug, Error, Eq, PartialEq)]
+#[error(transparent)]
+pub struct IntoVecError(#[from] collections::TryReserveError);
 
 /// A fallible implementation of `IntoVec` which returns an error
 /// if there is insufficient memory to (re)allocate the inner

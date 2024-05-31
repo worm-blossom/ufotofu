@@ -141,9 +141,11 @@ dependencies = [
 name = "ufotofu"
 version = "0.1.0"
 dependencies = [
+ "arbitrary",
  "either",
  "thiserror",
  "trait-variant",
+ "ufotofu_queues",
  "wrapper",
 ]
 
@@ -153,7 +155,12 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "ufotofu",
+ "wrapper",
 ]
+
+[[package]]
+name = "ufotofu_queues"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

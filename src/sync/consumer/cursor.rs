@@ -1,18 +1,20 @@
 use core::convert::{AsMut, AsRef};
 use core::mem::MaybeUninit;
 
+use thiserror::Error;
 use wrapper::Wrapper;
 
 use crate::maybe_uninit_slice_mut;
 use crate::sync::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+#[error("cursor is full")]
 pub struct CursorFullError;
 
 impl From<!> for CursorFullError {
-    fn from(never: !) -> CursorFullError {
-        match never {}
+    fn from(_: !) -> CursorFullError {
+        unreachable!()
     }
 }
 
