@@ -6,7 +6,7 @@
 
 use core::mem::MaybeUninit;
 
-//pub mod nb;
+pub mod nb;
 pub mod sync;
 
 pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
