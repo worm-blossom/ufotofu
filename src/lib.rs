@@ -6,6 +6,7 @@
 
 use core::mem::MaybeUninit;
 
+pub mod local_nb;
 pub mod nb;
 pub mod sync;
 

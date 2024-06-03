@@ -1,207 +1,3 @@
-/*
-use core::cmp::min;
-use core::future::Future;
-use core::mem::MaybeUninit;
-
-use either::{Either, Left, Right};
-
-#[trait_variant::make(Producer: Send)]
-pub trait LocalProducer {
-    type Item;
-    type Final;
-    type Error;
-
-    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
-}
-
-pub trait LocalBufferedProducer: LocalProducer {
-    async fn slurp(&mut self) -> Result<(), Self::Error>;
-}
-
-pub trait BufferedProducer: Producer {
-    fn slurp(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
-}
-
-pub trait LocalBulkProducer: LocalBufferedProducer
-where
-    Self::Item: Copy,
-{
-    async fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
-
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error>;
-
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        return Ok(self.producer_slots().await?.map_left(|slots| {
-            let amount = min(slots.len(), buf.len());
-            MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-            self.did_produce(amount).await?;
-            return amount;
-        }));
-    }
-}
-
-pub trait BulkProducer: BufferedProducer
-where
-    Self::Item: Copy,
-{
-    fn producer_slots(
-        &self,
-    ) -> impl Future<Output = Result<Either<&[Self::Item], Self::Final>, Self::Error>> + Send;
-
-    fn did_produce(
-        &mut self,
-        amount: usize,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
-
-    fn bulk_produce(
-        &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
-    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> + Send {
-        async {
-            return Ok((self.producer_slots().await?).map_left(|slots| {
-                let amount = min(slots.len(), buf.len());
-                MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-                self.did_produce(amount).await?;
-                return amount;
-            }));
-        }
-    }
-}
-
-#[trait_variant::make(Consumer: Send)]
-pub trait LocalConsumer {
-    type Item;
-    type Final;
-    type Error;
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error>;
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error>;
-}
-
-pub trait LocalBufferedConsumer: LocalConsumer {
-    async fn flush(&mut self) -> Result<(), Self::Error>;
-}
-
-pub trait BufferedConsumer: Consumer {
-    fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
-}
-
-pub trait LocalBulkConsumer: LocalBufferedConsumer
-where
-    Self::Item: Copy,
-{
-    async fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error>;
-
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error>;
-
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        let slots = self.consumer_slots().await?;
-        let amount = min(slots.len(), buf.len());
-        MaybeUninit::copy_from_slice(&mut slots[0..amount], &buf[0..amount]);
-        unsafe {
-            self.did_consume(amount).await?;
-        }
-        return Ok(amount);
-    }
-}
-
-pub trait BulkConsumer: BufferedConsumer
-where
-    Self::Item: Copy,
-{
-    fn consumer_slots(
-        &mut self,
-    ) -> impl Future<Output = Result<&mut [MaybeUninit<Self::Item>], Self::Error>> + Send;
-
-    unsafe fn did_consume(
-        &mut self,
-        amount: usize,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
-
-    fn bulk_consume(
-        &mut self,
-        buf: &[Self::Item],
-    ) -> impl Future<Output = Result<usize, Self::Error>> + Send {
-        return async {
-            let slots = self.consumer_slots().await?;
-            let amount = min(slots.len(), buf.len());
-            MaybeUninit::copy_from_slice(&mut slots[0..amount], &buf[0..amount]);
-            unsafe {
-                self.did_consume(amount).await?;
-            }
-            return Ok(amount);
-        };
-    }
-}
-
-pub async fn pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: Producer,
-    C: Consumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    loop {
-        match producer.produce().await? {
-            Left(item) => consumer.consume(item).await?,
-            Right(f) => return Ok(consumer.close(f).await?),
-        }
-    }
-}
-
-pub async fn bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    return bulk_consume_pipe(producer, consumer).await;
-}
-
-pub async fn bulk_consume_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    loop {
-        match producer.producer_slots().await? {
-            Left(slots) => {
-                let amount = consumer.bulk_consume(slots).await?;
-                producer.did_produce(amount).await?;
-            }
-            Right(f) => return Ok(consumer.close(f).await?),
-        }
-    }
-}
-
-pub async unsafe fn bulk_produce_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    loop {
-        let slots = consumer.consumer_slots().await?;
-        match producer.bulk_produce(slots).await? {
-            Left(amount) => consumer.did_consume(amount).await?,
-            Right(f) => return Ok(consumer.close(f).await?),
-        }
-    }
-}
-
-// Also needs send versions of the pipe functions (and the others should be renamed to local_pipe_foo)?
-fn todo() {
-    42
-}
-*/
-
 use core::cmp::min;
 use core::future::Future;
 use core::mem::MaybeUninit;
@@ -218,7 +14,7 @@ use either::{Either, Left, Right};
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
-pub trait Consumer {
+pub trait LocalConsumer {
     /// The sequence consumed by this consumer *starts* with *arbitrarily many* values of this type.
     type Item;
     /// The sequence consumed by this consumer *ends* with *up to one* value of this type.
@@ -234,8 +30,7 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait returned an error,
     /// nor after `close` was called.
-    fn consume(&mut self, item: Self::Item)
-        -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn consume(&mut self, item: Self::Item) -> impl Future<Output = Result<(), Self::Error>>;
 
     /// Attempt to consume the final item.
     ///
@@ -245,14 +40,14 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
-    fn close(&mut self, f: Self::Final) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn close(&mut self, f: Self::Final) -> impl Future<Output = Result<(), Self::Error>>;
 }
 
 /// A `Consumer` that can delay performing side-effects when consuming items.
 ///
 /// It must not delay performing side-effects when being closed. In other words,
 /// calling `close` should internally trigger flushing.
-pub trait BufferedConsumer: Consumer {
+pub trait LocalBufferedConsumer: LocalConsumer {
     /// Perform any side-effects that were delayed for previously consumed items.
     ///
     /// This function allows the client code to force execution of the (potentially expensive)
@@ -265,7 +60,7 @@ pub trait BufferedConsumer: Consumer {
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
-    fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>>;
 }
 
 /// A `Consumer` that is able to consume several items with a single function call, in order to
@@ -273,9 +68,9 @@ pub trait BufferedConsumer: Consumer {
 /// difference between consuming items in bulk or one item at a time.
 ///
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait BulkConsumer: BufferedConsumer
+pub trait LocalBulkConsumer: LocalBufferedConsumer
 where
-    Self::Item: Copy + Send + Sync,
+    Self::Item: Copy,
 {
     /// Expose a non-empty slice of memory for the client code to fill with items that should
     /// be consumed.
@@ -292,7 +87,7 @@ where
     /// nor after `close` was called.
     fn consumer_slots(
         &mut self,
-    ) -> impl Future<Output = Result<&mut [MaybeUninit<Self::Item>], Self::Error>> + Send;
+    ) -> impl Future<Output = Result<&mut [MaybeUninit<Self::Item>], Self::Error>>;
 
     /// Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
     /// it has most recently exposed. The semantics must be equivalent to those of `consume`
@@ -317,9 +112,8 @@ where
     unsafe fn did_consume(
         &mut self,
         amount: usize,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<(), Self::Error>>;
 
-    /*
     /// Consume a non-zero number of items by reading them from a given buffer and returning how
     /// many items were consumed.
     ///
@@ -338,8 +132,7 @@ where
     fn bulk_consume(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<usize, Self::Error>> + Send {
-        unimplemented!();
+    ) -> impl Future<Output = Result<usize, Self::Error>> {
         async {
             let slots = self.consumer_slots().await?;
             let amount = min(slots.len(), buf.len());
@@ -351,7 +144,6 @@ where
             Ok(amount)
         }
     }
-    */
 }
 
 /// A `Producer` produces a potentially infinite sequence, one item at a time.
@@ -361,7 +153,7 @@ where
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A producer can also signal an error of type `Self::Error` instead of producing an item.
-pub trait Producer {
+pub trait LocalProducer {
     /// The sequence produced by this producer *starts* with *arbitrarily many* values of this type.
     type Item;
     /// The sequence produced by this producer *ends* with *up to one* value of this type.
@@ -382,11 +174,11 @@ pub trait Producer {
     /// Must not be called after any function of this trait has returned a final item or an error.
     fn produce(
         &mut self,
-    ) -> impl Future<Output = Result<Either<Self::Item, Self::Final>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Either<Self::Item, Self::Final>, Self::Error>>;
 }
 
 /// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
-pub trait BufferedProducer: Producer {
+pub trait LocalBufferedProducer: LocalProducer {
     /// Prepare some values for yielding. This function allows the `Producer` to perform side
     /// effects that it would otherwise have to do just-in-time when `produce` gets called.
     ///
@@ -395,7 +187,7 @@ pub trait BufferedProducer: Producer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
-    fn slurp(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn slurp(&mut self) -> impl Future<Output = Result<(), Self::Error>>;
 }
 
 /// A `Producer` that is able to produce several items with a single function call, in order to
@@ -403,7 +195,7 @@ pub trait BufferedProducer: Producer {
 /// between producing items in bulk or one item at a time.
 ///
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait BulkProducer: BufferedProducer
+pub trait LocalBulkProducer: LocalBufferedProducer
 where
     Self::Item: Copy,
 {
@@ -425,7 +217,7 @@ where
     /// Must not be called after any function of this trait has returned a final item or an error.
     fn producer_slots(
         &mut self,
-    ) -> impl Future<Output = Result<Either<&[Self::Item], Self::Final>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Either<&[Self::Item], Self::Final>, Self::Error>>;
 
     /// Mark `amount` many items as having been produced. Future calls to `produce` and to
     /// `producer_slots` must act as if `produce` had been called `amount` many times.
@@ -437,12 +229,8 @@ where
     /// Callers must not mark items as produced that had not previously been exposed by `producer_slots`.
     ///
     /// Must not be called after any function of this trait returned a final item or an error.
-    fn did_produce(
-        &mut self,
-        amount: usize,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn did_produce(&mut self, amount: usize) -> impl Future<Output = Result<(), Self::Error>>;
 
-    /*
     /// Produce a non-zero number of items by writing them into a given buffer and returning how
     /// many items were produced. If the sequence of items has not ended yet, but no item is
     /// available at the time of calling, the function must block until at least one more item
@@ -463,7 +251,7 @@ where
     fn bulk_produce(
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
-    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> + Send {
+    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {
         async {
             match self.producer_slots().await? {
                 Either::Left(slots) => {
@@ -477,15 +265,14 @@ where
             }
         }
     }
-    */
 }
 
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
-pub async fn pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub async fn local_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
 where
-    P: Producer,
-    C: Consumer<Item = P::Item, Final = P::Final>,
+    P: LocalProducer,
+    C: LocalConsumer<Item = P::Item, Final = P::Final>,
     E: From<P::Error> + From<C::Error>,
 {
     loop {
@@ -496,7 +283,26 @@ where
     }
 }
 
-// TODO: bulk_pipe()
+/// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
+/// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
+/// emitted by the producer.
+pub async fn local_bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+where
+    P: LocalBulkProducer,
+    P::Item: Copy,
+    C: LocalBulkConsumer<Item = P::Item, Final = P::Final>,
+    E: From<P::Error> + From<C::Error>,
+{
+    loop {
+        match producer.producer_slots().await? {
+            Left(slots) => {
+                let amount = consumer.bulk_consume(slots).await?;
+                producer.did_produce(amount).await?;
+            }
+            Right(f) => return Ok(consumer.close(f).await?),
+        }
+    }
+}
 
 /*
 #[cfg(test)]
