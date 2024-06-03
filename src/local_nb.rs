@@ -2,7 +2,8 @@ use core::cmp::min;
 use core::future::Future;
 use core::mem::MaybeUninit;
 
-use either::{Either, Left, Right};
+use either::Either;
+use thiserror::Error;
 
 // pub mod consumer;
 // pub mod producer;
@@ -267,39 +268,100 @@ where
     }
 }
 
+/// Everything that can go wrong when piping a `Producer` into a `Consumer`.
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+pub enum PipeError<ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Produce(ProducerError),
+    /// The `Consumer` emitted an error when consuming an `Item`.
+    Consume(ConsumerError),
+    /// The `Consumer` emitted an error when consuming the final value.
+    Close(ConsumerError),
+}
+
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
-pub async fn local_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub async fn local_pipe<P, C>(
+    producer: &mut P,
+    consumer: &mut C,
+) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: LocalProducer,
     C: LocalConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
 {
     loop {
-        match producer.produce().await? {
-            Left(item) => consumer.consume(item).await?,
-            Right(f) => return Ok(consumer.close(f).await?),
+        match producer.produce().await {
+            Ok(Either::Left(item)) => {
+                match consumer.consume(item).await {
+                    Ok(()) => {
+                        // No-op, continues with next loop iteration.
+                    }
+                    Err(consumer_error) => {
+                        return Err(PipeError::Consume(consumer_error));
+                    }
+                }
+            }
+            Ok(Either::Right(final_value)) => match consumer.close(final_value).await {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(consumer_error) => {
+                    return Err(PipeError::Close(consumer_error));
+                }
+            },
+            Err(producer_error) => {
+                return Err(PipeError::Produce(producer_error));
+            }
         }
     }
+}
+
+/// Everything that can go wrong when bulk piping a `Producer` into a `Consumer`.
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+pub enum BulkPipeError<ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Produce(ProducerError),
+    /// The `Consumer` emitted an error when consuming `Item`s.
+    Consume(ConsumerError),
+    /// The `Consumer` emitted an error when consuming the final value.
+    Close(ConsumerError),
 }
 
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
 /// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
 /// emitted by the producer.
-pub async fn local_bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub async fn local_bulk_pipe<P, C>(
+    producer: &mut P,
+    consumer: &mut C,
+) -> Result<(), BulkPipeError<P::Error, C::Error>>
 where
     P: LocalBulkProducer,
     P::Item: Copy,
     C: LocalBulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
 {
     loop {
-        match producer.producer_slots().await? {
-            Left(slots) => {
-                let amount = consumer.bulk_consume(slots).await?;
-                producer.did_produce(amount).await?;
+        match producer.producer_slots().await {
+            Ok(Either::Left(slots)) => {
+                let amount = match consumer.bulk_consume(slots).await {
+                    Ok(amount) => amount,
+                    Err(consumer_error) => return Err(BulkPipeError::Consume(consumer_error)),
+                };
+                match producer.did_produce(amount).await {
+                    Ok(()) => {
+                        // No-op, continues with next loop iteration.
+                    }
+                    Err(producer_error) => return Err(BulkPipeError::Produce(producer_error)),
+                };
             }
-            Right(f) => return Ok(consumer.close(f).await?),
+            Ok(Either::Right(final_value)) => {
+                match consumer.close(final_value).await {
+                    Ok(()) => return Ok(()),
+                    Err(consumer_error) => return Err(BulkPipeError::Close(consumer_error)),
+                };
+            }
+            Err(producer_error) => {
+                return Err(BulkPipeError::Produce(producer_error));
+            }
         }
     }
 }
