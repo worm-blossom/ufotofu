@@ -285,7 +285,7 @@ pub enum PipeError<ProducerError, ConsumerError> {
 
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
-pub async fn local_pipe<P, C>(
+pub async fn pipe<P, C>(
     producer: &mut P,
     consumer: &mut C,
 ) -> Result<(), PipeError<P::Error, C::Error>>
@@ -334,7 +334,7 @@ pub enum BulkPipeError<ProducerError, ConsumerError> {
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
 /// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
 /// emitted by the producer.
-pub async fn local_bulk_pipe<P, C>(
+pub async fn bulk_pipe<P, C>(
     producer: &mut P,
     consumer: &mut C,
 ) -> Result<(), BulkPipeError<P::Error, C::Error>>
@@ -385,7 +385,7 @@ mod tests {
             let mut o = ProducerCursor::new(b"ufo");
             let mut i = ConsumerCursor::new(&mut buf);
 
-            local_pipe(&mut o, &mut i).await?;
+            pipe(&mut o, &mut i).await?;
 
             let m = min(o.as_ref().len(), i.as_ref().len());
             assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
@@ -401,7 +401,7 @@ mod tests {
             let mut o = ProducerCursor::new(b"tofu");
             let mut i = IntoVec::new();
 
-            local_pipe(&mut o, &mut i).await?;
+            pipe(&mut o, &mut i).await?;
 
             assert_eq!(&i.into_vec(), b"tofu");
 
@@ -418,7 +418,7 @@ mod tests {
             let mut o = ProducerCursor::new(b"ufo");
             let mut i = ConsumerCursor::new(&mut buf);
 
-            local_bulk_pipe(&mut o, &mut i).await?;
+            bulk_pipe(&mut o, &mut i).await?;
 
             let m = min(o.as_ref().len(), i.as_ref().len());
             assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
@@ -434,7 +434,7 @@ mod tests {
             let mut o = ProducerCursor::new(b"tofu");
             let mut i = IntoVec::new();
 
-            local_bulk_pipe(&mut o, &mut i).await?;
+            bulk_pipe(&mut o, &mut i).await?;
 
             assert_eq!(&i.into_vec(), b"tofu");
 
