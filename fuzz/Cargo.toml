@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
+smol = "2.0.0"
 wrapper = "0.1.1"
 
 [dependencies.ufotofu]
@@ -16,35 +17,70 @@ path = ".."
 
 [[bin]]
 name = "cursors"
-path = "fuzz_targets/cursors.rs"
+path = "fuzz_targets/sync/cursors.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "into_vec"
-path = "fuzz_targets/into_vec.rs"
+path = "fuzz_targets/sync/into_vec.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "into_vec_fallible"
-path = "fuzz_targets/into_vec_fallible.rs"
+path = "fuzz_targets/sync/into_vec_fallible.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "scramble_consumer"
-path = "fuzz_targets/scramble_consumer.rs"
+path = "fuzz_targets/sync/scramble_consumer.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "scramble_producer"
-path = "fuzz_targets/scramble_producer.rs"
+path = "fuzz_targets/sync/scramble_producer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "local_nb_cursors"
+path = "fuzz_targets/local_nb/cursors.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "local_nb_into_vec"
+path = "fuzz_targets/local_nb/into_vec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "local_nb_into_vec_fallible"
+path = "fuzz_targets/local_nb/into_vec_fallible.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "local_nb_scramble_consumer"
+path = "fuzz_targets/local_nb/scramble_consumer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "local_nb_scramble_producer"
+path = "fuzz_targets/local_nb/scramble_producer.rs"
 test = false
 doc = false
 bench = false
