@@ -5,8 +5,8 @@ use core::mem::MaybeUninit;
 use either::Either;
 use thiserror::Error;
 
-// pub mod consumer;
-// pub mod producer;
+pub mod consumer;
+pub mod producer;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
@@ -86,9 +86,11 @@ where
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
-    fn consumer_slots(
-        &mut self,
-    ) -> impl Future<Output = Result<&mut [MaybeUninit<Self::Item>], Self::Error>>;
+    fn consumer_slots<'a>(
+        &'a mut self,
+    ) -> impl Future<Output = Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>>
+    where
+        Self::Item: 'a;
 
     /// Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
     /// it has most recently exposed. The semantics must be equivalent to those of `consume`
@@ -216,9 +218,11 @@ where
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
-    fn producer_slots(
-        &mut self,
-    ) -> impl Future<Output = Result<Either<&[Self::Item], Self::Final>, Self::Error>>;
+    fn producer_slots<'a>(
+        &'a mut self,
+    ) -> impl Future<Output = Result<Either<&'a [Self::Item], Self::Final>, Self::Error>>
+    where
+        Self::Item: 'a;
 
     /// Mark `amount` many items as having been produced. Future calls to `produce` and to
     /// `producer_slots` must act as if `produce` had been called `amount` many times.
@@ -366,68 +370,75 @@ where
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec};
-    use crate::sync::producer::Cursor as ProducerCursor;
+    use crate::local_nb::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec};
+    use crate::local_nb::producer::Cursor as ProducerCursor;
 
     #[test]
-    fn pipes_from_producer_to_consumer_cursor() -> Result<(), CursorFullError> {
-        let mut buf = [0; 3];
+    fn pipes_from_producer_to_consumer_cursor() -> Result<(), PipeError<!, CursorFullError>> {
+        smol::block_on(async {
+            let mut buf = [0; 3];
 
-        let mut o = ProducerCursor::new(b"ufo");
-        let mut i = ConsumerCursor::new(&mut buf);
+            let mut o = ProducerCursor::new(b"ufo");
+            let mut i = ConsumerCursor::new(&mut buf);
 
-        pipe::<_, _, CursorFullError>(&mut o, &mut i)?;
+            local_pipe(&mut o, &mut i).await?;
 
-        let m = min(o.as_ref().len(), i.as_ref().len());
-        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-        assert_eq!(&buf, b"ufo");
+            let m = min(o.as_ref().len(), i.as_ref().len());
+            assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+            assert_eq!(&buf, b"ufo");
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[test]
-    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), !> {
-        let mut o = ProducerCursor::new(b"tofu");
-        let mut i = IntoVec::new();
+    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
+        smol::block_on(async {
+            let mut o = ProducerCursor::new(b"tofu");
+            let mut i = IntoVec::new();
 
-        pipe(&mut o, &mut i)?;
+            local_pipe(&mut o, &mut i).await?;
 
-        assert_eq!(&i.into_vec(), b"tofu");
+            assert_eq!(&i.into_vec(), b"tofu");
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_cursor() -> Result<(), CursorFullError> {
-        let mut buf = [0; 3];
+    fn bulk_pipes_from_producer_to_consumer_cursor() -> Result<(), BulkPipeError<!, CursorFullError>>
+    {
+        smol::block_on(async {
+            let mut buf = [0; 3];
 
-        let mut o = ProducerCursor::new(b"ufo");
-        let mut i = ConsumerCursor::new(&mut buf);
+            let mut o = ProducerCursor::new(b"ufo");
+            let mut i = ConsumerCursor::new(&mut buf);
 
-        bulk_pipe::<_, _, CursorFullError>(&mut o, &mut i)?;
+            local_bulk_pipe(&mut o, &mut i).await?;
 
-        let m = min(o.as_ref().len(), i.as_ref().len());
-        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-        assert_eq!(&buf, b"ufo");
+            let m = min(o.as_ref().len(), i.as_ref().len());
+            assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+            assert_eq!(&buf, b"ufo");
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), !> {
-        let mut o = ProducerCursor::new(b"tofu");
-        let mut i = IntoVec::new();
+    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
+        smol::block_on(async {
+            let mut o = ProducerCursor::new(b"tofu");
+            let mut i = IntoVec::new();
 
-        bulk_pipe(&mut o, &mut i)?;
+            local_bulk_pipe(&mut o, &mut i).await?;
 
-        assert_eq!(&i.into_vec(), b"tofu");
+            assert_eq!(&i.into_vec(), b"tofu");
 
-        Ok(())
+            Ok(())
+        })
     }
 }
-*/
