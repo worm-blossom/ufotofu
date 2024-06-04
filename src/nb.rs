@@ -1,215 +1,9 @@
-/*
 use core::cmp::min;
 use core::future::Future;
 use core::mem::MaybeUninit;
 
-use either::{Either, Left, Right};
-
-#[trait_variant::make(Producer: Send)]
-pub trait LocalProducer {
-    type Item;
-    type Final;
-    type Error;
-
-    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
-}
-
-pub trait LocalBufferedProducer: LocalProducer {
-    async fn slurp(&mut self) -> Result<(), Self::Error>;
-}
-
-pub trait BufferedProducer: Producer {
-    fn slurp(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
-}
-
-pub trait LocalBulkProducer: LocalBufferedProducer
-where
-    Self::Item: Copy,
-{
-    async fn producer_slots(&self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
-
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error>;
-
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        return Ok(self.producer_slots().await?.map_left(|slots| {
-            let amount = min(slots.len(), buf.len());
-            MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-            self.did_produce(amount).await?;
-            return amount;
-        }));
-    }
-}
-
-pub trait BulkProducer: BufferedProducer
-where
-    Self::Item: Copy,
-{
-    fn producer_slots(
-        &self,
-    ) -> impl Future<Output = Result<Either<&[Self::Item], Self::Final>, Self::Error>> + Send;
-
-    fn did_produce(
-        &mut self,
-        amount: usize,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
-
-    fn bulk_produce(
-        &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
-    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> + Send {
-        async {
-            return Ok((self.producer_slots().await?).map_left(|slots| {
-                let amount = min(slots.len(), buf.len());
-                MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-                self.did_produce(amount).await?;
-                return amount;
-            }));
-        }
-    }
-}
-
-#[trait_variant::make(Consumer: Send)]
-pub trait LocalConsumer {
-    type Item;
-    type Final;
-    type Error;
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error>;
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error>;
-}
-
-pub trait LocalBufferedConsumer: LocalConsumer {
-    async fn flush(&mut self) -> Result<(), Self::Error>;
-}
-
-pub trait BufferedConsumer: Consumer {
-    fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
-}
-
-pub trait LocalBulkConsumer: LocalBufferedConsumer
-where
-    Self::Item: Copy,
-{
-    async fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error>;
-
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error>;
-
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        let slots = self.consumer_slots().await?;
-        let amount = min(slots.len(), buf.len());
-        MaybeUninit::copy_from_slice(&mut slots[0..amount], &buf[0..amount]);
-        unsafe {
-            self.did_consume(amount).await?;
-        }
-        return Ok(amount);
-    }
-}
-
-pub trait BulkConsumer: BufferedConsumer
-where
-    Self::Item: Copy,
-{
-    fn consumer_slots(
-        &mut self,
-    ) -> impl Future<Output = Result<&mut [MaybeUninit<Self::Item>], Self::Error>> + Send;
-
-    unsafe fn did_consume(
-        &mut self,
-        amount: usize,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
-
-    fn bulk_consume(
-        &mut self,
-        buf: &[Self::Item],
-    ) -> impl Future<Output = Result<usize, Self::Error>> + Send {
-        return async {
-            let slots = self.consumer_slots().await?;
-            let amount = min(slots.len(), buf.len());
-            MaybeUninit::copy_from_slice(&mut slots[0..amount], &buf[0..amount]);
-            unsafe {
-                self.did_consume(amount).await?;
-            }
-            return Ok(amount);
-        };
-    }
-}
-
-pub async fn pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: Producer,
-    C: Consumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    loop {
-        match producer.produce().await? {
-            Left(item) => consumer.consume(item).await?,
-            Right(f) => return Ok(consumer.close(f).await?),
-        }
-    }
-}
-
-pub async fn bulk_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    return bulk_consume_pipe(producer, consumer).await;
-}
-
-pub async fn bulk_consume_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    loop {
-        match producer.producer_slots().await? {
-            Left(slots) => {
-                let amount = consumer.bulk_consume(slots).await?;
-                producer.did_produce(amount).await?;
-            }
-            Right(f) => return Ok(consumer.close(f).await?),
-        }
-    }
-}
-
-pub async unsafe fn bulk_produce_pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
-where
-    P: BulkProducer,
-    P::Item: Copy,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
-{
-    loop {
-        let slots = consumer.consumer_slots().await?;
-        match producer.bulk_produce(slots).await? {
-            Left(amount) => consumer.did_consume(amount).await?,
-            Right(f) => return Ok(consumer.close(f).await?),
-        }
-    }
-}
-
-// Also needs send versions of the pipe functions (and the others should be renamed to local_pipe_foo)?
-fn todo() {
-    42
-}
-*/
-
-use core::cmp::min;
-use core::future::Future;
-use core::mem::MaybeUninit;
-
-use either::{Either, Left, Right};
-
-// pub mod consumer;
-// pub mod producer;
+use either::Either;
+use thiserror::Error;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
@@ -275,7 +69,8 @@ pub trait BufferedConsumer: Consumer {
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
 pub trait BulkConsumer: BufferedConsumer
 where
-    Self::Item: Copy + Send + Sync,
+    Self: Send,
+    Self::Item: Copy + Sync,
 {
     /// Expose a non-empty slice of memory for the client code to fill with items that should
     /// be consumed.
@@ -319,7 +114,6 @@ where
         amount: usize,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
-    /*
     /// Consume a non-zero number of items by reading them from a given buffer and returning how
     /// many items were consumed.
     ///
@@ -339,7 +133,6 @@ where
         &mut self,
         buf: &[Self::Item],
     ) -> impl Future<Output = Result<usize, Self::Error>> + Send {
-        unimplemented!();
         async {
             let slots = self.consumer_slots().await?;
             let amount = min(slots.len(), buf.len());
@@ -351,7 +144,6 @@ where
             Ok(amount)
         }
     }
-    */
 }
 
 /// A `Producer` produces a potentially infinite sequence, one item at a time.
@@ -405,7 +197,10 @@ pub trait BufferedProducer: Producer {
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
 pub trait BulkProducer: BufferedProducer
 where
-    Self::Item: Copy,
+    Self: Send,
+    Self::Item: Copy + Sync + Send,
+    Self::Final: Send,
+    Self::Error: Send,
 {
     /// Expose a non-empty slice of items to be produced (or the final value, or an error).
     /// The items in the slice must not have been emitted by `produce` before. If the sequence
@@ -442,7 +237,6 @@ where
         amount: usize,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
-    /*
     /// Produce a non-zero number of items by writing them into a given buffer and returning how
     /// many items were produced. If the sequence of items has not ended yet, but no item is
     /// available at the time of calling, the function must block until at least one more item
@@ -477,89 +271,104 @@ where
             }
         }
     }
-    */
+}
+
+/// /// Everything that can go wrong when piping a `Producer` into a `Consumer`.
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+pub enum PipeError<ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Produce(ProducerError),
+    /// The `Consumer` emitted an error when consuming an `Item`.
+    Consume(ConsumerError),
+    /// The `Consumer` emitted an error when consuming the final value.
+    Close(ConsumerError),
 }
 
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
-pub async fn pipe<P, C, E>(producer: &mut P, consumer: &mut C) -> Result<(), E>
+pub async fn pipe<P, C>(
+    producer: &mut P,
+    consumer: &mut C,
+) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: Producer,
     C: Consumer<Item = P::Item, Final = P::Final>,
-    E: From<P::Error> + From<C::Error>,
 {
     loop {
-        match producer.produce().await? {
-            Left(item) => consumer.consume(item).await?,
-            Right(f) => return Ok(consumer.close(f).await?),
+        match producer.produce().await {
+            Ok(Either::Left(item)) => {
+                match consumer.consume(item).await {
+                    Ok(()) => {
+                        // No-op, continues with next loop iteration.
+                    }
+                    Err(consumer_error) => {
+                        return Err(PipeError::Consume(consumer_error));
+                    }
+                }
+            }
+            Ok(Either::Right(final_value)) => match consumer.close(final_value).await {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(consumer_error) => {
+                    return Err(PipeError::Close(consumer_error));
+                }
+            },
+            Err(producer_error) => {
+                return Err(PipeError::Produce(producer_error));
+            }
         }
     }
 }
 
-// TODO: bulk_pipe()
+/// Everything that can go wrong when bulk piping a `Producer` into a `Consumer`.
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+pub enum BulkPipeError<ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Produce(ProducerError),
+    /// The `Consumer` emitted an error when consuming `Item`s.
+    Consume(ConsumerError),
+    /// The `Consumer` emitted an error when consuming the final value.
+    Close(ConsumerError),
+}
 
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec};
-    use crate::sync::producer::Cursor as ProducerCursor;
-
-    #[test]
-    fn pipes_from_producer_to_consumer_cursor() -> Result<(), CursorFullError> {
-        let mut buf = [0; 3];
-
-        let mut o = ProducerCursor::new(b"ufo");
-        let mut i = ConsumerCursor::new(&mut buf);
-
-        pipe::<_, _, CursorFullError>(&mut o, &mut i)?;
-
-        let m = min(o.as_ref().len(), i.as_ref().len());
-        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-        assert_eq!(&buf, b"ufo");
-
-        Ok(())
-    }
-
-    #[test]
-    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), !> {
-        let mut o = ProducerCursor::new(b"tofu");
-        let mut i = IntoVec::new();
-
-        pipe(&mut o, &mut i)?;
-
-        assert_eq!(&i.into_vec(), b"tofu");
-
-        Ok(())
-    }
-
-    #[test]
-    fn bulk_pipes_from_producer_to_consumer_cursor() -> Result<(), CursorFullError> {
-        let mut buf = [0; 3];
-
-        let mut o = ProducerCursor::new(b"ufo");
-        let mut i = ConsumerCursor::new(&mut buf);
-
-        bulk_pipe::<_, _, CursorFullError>(&mut o, &mut i)?;
-
-        let m = min(o.as_ref().len(), i.as_ref().len());
-        assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-        assert_eq!(&buf, b"ufo");
-
-        Ok(())
-    }
-
-    #[test]
-    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), !> {
-        let mut o = ProducerCursor::new(b"tofu");
-        let mut i = IntoVec::new();
-
-        bulk_pipe(&mut o, &mut i)?;
-
-        assert_eq!(&i.into_vec(), b"tofu");
-
-        Ok(())
+/// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
+/// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
+/// emitted by the producer.
+pub async fn bulk_pipe<P, C>(
+    producer: &mut P,
+    consumer: &mut C,
+) -> Result<(), BulkPipeError<P::Error, C::Error>>
+where
+    P: BulkProducer,
+    P::Item: Copy + Sync + Send,
+    P::Error: Send,
+    P::Final: Send,
+    C: BulkConsumer<Item = P::Item, Final = P::Final>,
+{
+    loop {
+        match producer.producer_slots().await {
+            Ok(Either::Left(slots)) => {
+                let amount = match consumer.bulk_consume(slots).await {
+                    Ok(amount) => amount,
+                    Err(consumer_error) => return Err(BulkPipeError::Consume(consumer_error)),
+                };
+                match producer.did_produce(amount).await {
+                    Ok(()) => {
+                        // No-op, continues with next loop iteration.
+                    }
+                    Err(producer_error) => return Err(BulkPipeError::Produce(producer_error)),
+                };
+            }
+            Ok(Either::Right(final_value)) => {
+                match consumer.close(final_value).await {
+                    Ok(()) => return Ok(()),
+                    Err(consumer_error) => return Err(BulkPipeError::Close(consumer_error)),
+                };
+            }
+            Err(producer_error) => {
+                return Err(BulkPipeError::Produce(producer_error));
+            }
+        }
     }
 }
-*/
