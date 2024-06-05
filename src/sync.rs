@@ -255,11 +255,9 @@ where
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 pub enum PipeError<ProducerError, ConsumerError> {
     /// The `Producer` emitted an error.
-    Produce(ProducerError),
+    Producer(ProducerError),
     /// The `Consumer` emitted an error when consuming an `Item`.
-    Consume(ConsumerError),
-    /// The `Consumer` emitted an error when consuming the final value.
-    Close(ConsumerError),
+    Consumer(ConsumerError),
 }
 
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
@@ -277,7 +275,7 @@ where
                         // No-op, continues with next loop iteration.
                     }
                     Err(consumer_error) => {
-                        return Err(PipeError::Consume(consumer_error));
+                        return Err(PipeError::Consumer(consumer_error));
                     }
                 }
             }
@@ -286,11 +284,11 @@ where
                     return Ok(());
                 }
                 Err(consumer_error) => {
-                    return Err(PipeError::Close(consumer_error));
+                    return Err(PipeError::Consumer(consumer_error));
                 }
             },
             Err(producer_error) => {
-                return Err(PipeError::Produce(producer_error));
+                return Err(PipeError::Producer(producer_error));
             }
         }
     }
@@ -300,11 +298,9 @@ where
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 pub enum BulkPipeError<ProducerError, ConsumerError> {
     /// The `Producer` emitted an error.
-    Produce(ProducerError),
+    Producer(ProducerError),
     /// The `Consumer` emitted an error when consuming `Item`s.
-    Consume(ConsumerError),
-    /// The `Consumer` emitted an error when consuming the final value.
-    Close(ConsumerError),
+    Consumer(ConsumerError),
 }
 
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
@@ -324,23 +320,23 @@ where
             Ok(Either::Left(slots)) => {
                 let amount = match consumer.bulk_consume(slots) {
                     Ok(amount) => amount,
-                    Err(consumer_error) => return Err(BulkPipeError::Consume(consumer_error)),
+                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
                 };
                 match producer.did_produce(amount) {
                     Ok(()) => {
                         // No-op, continues with next loop iteration.
                     }
-                    Err(producer_error) => return Err(BulkPipeError::Produce(producer_error)),
+                    Err(producer_error) => return Err(BulkPipeError::Producer(producer_error)),
                 };
             }
             Ok(Either::Right(final_value)) => {
                 match consumer.close(final_value) {
                     Ok(()) => return Ok(()),
-                    Err(consumer_error) => return Err(BulkPipeError::Close(consumer_error)),
+                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
                 };
             }
             Err(producer_error) => {
-                return Err(BulkPipeError::Produce(producer_error));
+                return Err(BulkPipeError::Producer(producer_error));
             }
         }
     }
