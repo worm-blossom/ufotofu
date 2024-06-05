@@ -12,12 +12,6 @@ use crate::maybe_uninit_slice_mut;
 #[error("cursor is full")]
 pub struct CursorFullError;
 
-impl From<!> for CursorFullError {
-    fn from(_: !) -> CursorFullError {
-        unreachable!()
-    }
-}
-
 /// Consumes data into a mutable slice.
 #[derive(Debug)]
 pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
