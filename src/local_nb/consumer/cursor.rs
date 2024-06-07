@@ -3,9 +3,9 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
+use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
 use crate::sync::consumer::{Cursor as SyncCursor, CursorFullError};
-use crate::sync_to_local_nb::SyncToLocalNbConsumer;
 
 /// Consumes data into a mutable slice.
 #[derive(Debug)]

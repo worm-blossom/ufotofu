@@ -3,9 +3,9 @@ use core::convert::AsRef;
 use either::Either;
 use wrapper::Wrapper;
 
+use crate::local_nb::sync_to_local_nb::SyncToLocalNbProducer;
 use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
 use crate::sync::producer::Cursor as SyncCursor;
-use crate::sync_to_local_nb::SyncToLocalNbProducer;
 
 #[derive(Debug)]
 /// Produces data from a slice.

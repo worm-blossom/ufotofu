@@ -5,9 +5,9 @@ use std::vec::Vec;
 
 use wrapper::Wrapper;
 
+use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
 use crate::sync::consumer::IntoVec as SyncIntoVec;
-use crate::sync_to_local_nb::SyncToLocalNbConsumer;
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
 #[derive(Debug)]

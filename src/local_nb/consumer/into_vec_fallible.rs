@@ -5,9 +5,9 @@ use std::vec::Vec;
 
 use wrapper::Wrapper;
 
+use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
 use crate::sync::consumer::{IntoVecError, IntoVecFallible as SyncIntoVecFallible};
-use crate::sync_to_local_nb::SyncToLocalNbConsumer;
 
 /// A fallible implementation of `IntoVec` which returns an error
 /// if there is insufficient memory to (re)allocate the inner
