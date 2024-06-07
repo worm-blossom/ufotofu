@@ -1,18 +1,17 @@
 use core::mem::MaybeUninit;
-use core::slice;
 
 use std::alloc::{Allocator, Global};
 use std::vec::Vec;
 
 use wrapper::Wrapper;
 
-use crate::local_nb::consumer::Invariant;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
-use crate::maybe_uninit_slice_mut;
+use crate::sync::consumer::IntoVec as SyncIntoVec;
+use crate::sync_to_local_nb::SyncToLocalNbConsumer;
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
 #[derive(Debug)]
-pub struct IntoVec<T, A: Allocator = Global>(Invariant<IntoVecInner<T, A>>);
+pub struct IntoVec<T, A: Allocator = Global>(SyncToLocalNbConsumer<SyncIntoVec<T, A>>);
 
 impl<T> Default for IntoVec<T> {
     fn default() -> Self {
@@ -22,9 +21,9 @@ impl<T> Default for IntoVec<T> {
 
 impl<T> IntoVec<T> {
     pub fn new() -> IntoVec<T> {
-        let invariant = Invariant::new(IntoVecInner { v: Vec::new() });
+        let into_vec = SyncIntoVec::new();
 
-        IntoVec(invariant)
+        IntoVec(SyncToLocalNbConsumer(into_vec))
     }
 
     pub fn into_vec(self) -> Vec<T> {
@@ -35,11 +34,9 @@ impl<T> IntoVec<T> {
 
 impl<T, A: Allocator> IntoVec<T, A> {
     pub fn new_in(alloc: A) -> IntoVec<T, A> {
-        let invariant = Invariant::new(IntoVecInner {
-            v: Vec::new_in(alloc),
-        });
+        let into_vec = SyncIntoVec::new_in(alloc);
 
-        IntoVec(invariant)
+        IntoVec(SyncToLocalNbConsumer(into_vec))
     }
 }
 
@@ -69,7 +66,7 @@ impl<T> LocalConsumer for IntoVec<T> {
     type Final = ();
     type Error = !;
 
-    async fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.0.consume(item).await
     }
 
@@ -96,85 +93,6 @@ impl<T: Copy> LocalBulkConsumer for IntoVec<T> {
 
     async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.0.did_consume(amount).await
-    }
-}
-
-#[derive(Debug)]
-pub struct IntoVecInner<T, A: Allocator = Global> {
-    v: Vec<T, A>,
-}
-
-impl<T> AsRef<Vec<T>> for IntoVecInner<T> {
-    fn as_ref(&self) -> &Vec<T> {
-        &self.v
-    }
-}
-
-impl<T> AsMut<Vec<T>> for IntoVecInner<T> {
-    fn as_mut(&mut self) -> &mut Vec<T> {
-        &mut self.v
-    }
-}
-
-impl<T> Wrapper<Vec<T>> for IntoVecInner<T> {
-    fn into_inner(self) -> Vec<T> {
-        self.v
-    }
-}
-
-impl<T> LocalConsumer for IntoVecInner<T> {
-    type Item = T;
-    type Final = ();
-    type Error = !;
-
-    async fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
-        self.v.push(item);
-
-        Ok(())
-    }
-
-    async fn close(&mut self, _final: Self::Final) -> Result<Self::Final, Self::Error> {
-        Ok(())
-    }
-}
-
-impl<T> LocalBufferedConsumer for IntoVecInner<T> {
-    async fn flush(&mut self) -> Result<Self::Final, Self::Error> {
-        Ok(())
-    }
-}
-
-impl<T: Copy> LocalBulkConsumer for IntoVecInner<T> {
-    async fn consumer_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        T: 'a,
-    {
-        // Allocate additional capacity to the vector if no empty slots are available.
-        if self.v.capacity() == self.v.len() {
-            self.v.reserve((self.v.capacity() * 2) + 1);
-        }
-
-        let pointer = self.v.as_mut_ptr();
-        let available_capacity = self.v.capacity() - self.v.len();
-
-        unsafe {
-            // Return a mutable slice which represents available (unused) slots.
-            Ok(maybe_uninit_slice_mut(slice::from_raw_parts_mut(
-                // The pointer offset.
-                pointer.add(self.v.len()),
-                // The length (number of slots).
-                available_capacity,
-            )))
-        }
-    }
-
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        // Update the length of the vector based on the amount of items consumed.
-        self.v.set_len(self.v.len() + amount);
-
-        Ok(())
     }
 }
 

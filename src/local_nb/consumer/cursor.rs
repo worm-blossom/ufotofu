@@ -1,28 +1,22 @@
 use core::convert::{AsMut, AsRef};
 use core::mem::MaybeUninit;
 
-use thiserror::Error;
 use wrapper::Wrapper;
 
-use crate::local_nb::consumer::Invariant;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
-use crate::maybe_uninit_slice_mut;
-
-#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
-#[error("cursor is full")]
-pub struct CursorFullError;
+use crate::sync::consumer::{Cursor as SyncCursor, CursorFullError};
+use crate::sync_to_local_nb::SyncToLocalNbConsumer;
 
 /// Consumes data into a mutable slice.
 #[derive(Debug)]
-pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
+pub struct Cursor<'a, T>(SyncToLocalNbConsumer<SyncCursor<'a, T>>);
 
 /// Creates a consumer which places consumed data into the given slice.
 impl<'a, T> Cursor<'a, T> {
     pub fn new(slice: &mut [T]) -> Cursor<'_, T> {
-        // Wrap the inner cursor in the invariant type.
-        let invariant = Invariant::new(CursorInner(slice, 0));
+        let cursor = SyncCursor::new(slice);
 
-        Cursor(invariant)
+        Cursor(SyncToLocalNbConsumer(cursor))
     }
 }
 
@@ -56,7 +50,7 @@ impl<'a, T> LocalConsumer for Cursor<'a, T> {
     /// call is made to `consume()` or `consumer_slots()`.
     type Error = CursorFullError;
 
-    async fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.0.consume(item).await
     }
 
@@ -83,83 +77,6 @@ impl<'a, T: Copy> LocalBulkConsumer for Cursor<'a, T> {
 
     async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.0.did_consume(amount).await
-    }
-}
-
-// A tuple of slice and counter (amount of items).
-#[derive(Debug)]
-pub struct CursorInner<'a, T>(&'a mut [T], usize);
-
-impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {
-    fn as_ref(&self) -> &[T] {
-        self.0
-    }
-}
-
-impl<'a, T> AsMut<[T]> for CursorInner<'a, T> {
-    fn as_mut(&mut self) -> &mut [T] {
-        self.0
-    }
-}
-
-impl<'a, T> Wrapper<&'a mut [T]> for CursorInner<'a, T> {
-    fn into_inner(self) -> &'a mut [T] {
-        self.0
-    }
-}
-
-impl<'a, T> LocalConsumer for CursorInner<'a, T> {
-    /// The type of the items to be consumed.
-    type Item = T;
-    /// The value signifying the end of the consumed sequence.
-    type Final = ();
-    /// The value emitted when the consumer is full and a subsequent
-    /// call is made to `consume()` or `consumer_slots()`.
-    type Error = CursorFullError;
-
-    async fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
-        // The inner cursor is completely full.
-        if self.0.len() == self.1 {
-            Err(CursorFullError)
-        } else {
-            // Copy the item to the slice at the given index.
-            self.0[self.1] = item;
-            // Increment the item counter.
-            self.1 += 1;
-
-            Ok(())
-        }
-    }
-
-    async fn close(&mut self, _: Self::Final) -> Result<(), Self::Error> {
-        Ok(())
-    }
-}
-
-impl<'a, T> LocalBufferedConsumer for CursorInner<'a, T> {
-    async fn flush(&mut self) -> Result<Self::Final, Self::Error> {
-        Ok(())
-    }
-}
-
-impl<'a, T: Copy> LocalBulkConsumer for CursorInner<'a, T> {
-    async fn consumer_slots<'b>(
-        &'b mut self,
-    ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        T: 'b,
-    {
-        if self.0.len() == self.1 {
-            Err(CursorFullError)
-        } else {
-            Ok(maybe_uninit_slice_mut(&mut self.0[self.1..]))
-        }
-    }
-
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.1 += amount;
-
-        Ok(())
     }
 }
 

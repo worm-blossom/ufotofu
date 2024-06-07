@@ -9,6 +9,7 @@ use core::mem::MaybeUninit;
 pub mod local_nb;
 pub mod nb;
 pub mod sync;
+pub mod sync_to_local_nb;
 
 pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
     let ptr = s.as_mut_ptr().cast::<MaybeUninit<T>>();

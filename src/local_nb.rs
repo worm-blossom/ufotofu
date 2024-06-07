@@ -353,8 +353,9 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec};
+    use crate::local_nb::consumer::{Cursor as ConsumerCursor, IntoVec};
     use crate::local_nb::producer::Cursor as ProducerCursor;
+    use crate::sync::consumer::CursorFullError;
 
     #[test]
     fn pipes_from_producer_to_consumer_cursor() -> Result<(), PipeError<!, CursorFullError>> {

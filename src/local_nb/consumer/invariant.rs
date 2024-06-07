@@ -164,7 +164,8 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{Cursor, CursorFullError, IntoVec};
+    use crate::local_nb::consumer::{Cursor, IntoVec};
+    use crate::sync::consumer::CursorFullError;
 
     #[test]
     fn accepts_valid_did_consume_amount() {
