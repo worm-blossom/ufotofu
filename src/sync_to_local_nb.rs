@@ -11,6 +11,7 @@ use crate::sync::{
     BufferedConsumer, BufferedProducer, BulkConsumer, BulkProducer, Consumer, Producer,
 };
 
+/// A `Consumer` wrapper that provides a non-blocking interface to the underlying API.
 #[derive(Debug)]
 pub struct SyncToLocalNbConsumer<C>(pub C);
 
@@ -74,6 +75,7 @@ where
     }
 }
 
+/// A `Producer` wrapper that provides a non-blocking interface to the underlying API.
 #[derive(Debug)]
 pub struct SyncToLocalNbProducer<P>(pub P);
 
