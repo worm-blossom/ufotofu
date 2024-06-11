@@ -151,6 +151,23 @@ where
     }
 }
 
+/// Consume all of the given items into the given consumer.
+pub async fn consume_all<Item: Copy, C: LocalBulkConsumer<Item = Item>>(
+    items: &[Item],
+    consumer: &mut C,
+) -> Result<(), C::Error> {
+    let items_len = items.len();
+    let mut amount_consumed = 0;
+
+    // Call `bulk_consume()` until all items have been consumed.
+    while amount_consumed < items_len {
+        let amount = consumer.bulk_consume(&items[amount_consumed..]).await?;
+        amount_consumed += amount;
+    }
+
+    Ok(())
+}
+
 /// A `Producer` produces a potentially infinite sequence, one item at a time.
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
@@ -272,6 +289,21 @@ where
             }
         }
     }
+}
+
+/// Fill the given buffer with items from the given producer.
+pub async fn produce_all<Item: Copy, P: LocalBulkProducer<Item = Item>>(
+    buf: &mut [MaybeUninit<Item>],
+    producer: &mut P,
+) -> Result<usize, P::Error> {
+    let mut amount_produced: usize = 0;
+
+    // Call `bulk_produce()` until all items have been produced.
+    while let Either::Left(amount) = producer.bulk_produce(buf).await? {
+        amount_produced += amount;
+    }
+
+    Ok(amount_produced)
 }
 
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
