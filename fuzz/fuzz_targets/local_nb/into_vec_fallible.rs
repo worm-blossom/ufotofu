@@ -5,11 +5,11 @@ use libfuzzer_sys::fuzz_target;
 
 use ufotofu::local_nb;
 use ufotofu::local_nb::consumer::IntoVecFallible;
-use ufotofu::local_nb::producer::Cursor as ProducerCursor;
+use ufotofu::local_nb::producer::SliceProducer;
 
 fn fuzz_pipe(data: &[u8]) {
     smol::block_on(async {
-        let mut o = ProducerCursor::new(&data[..]);
+        let mut o = SliceProducer::new(&data[..]);
         let mut i = IntoVecFallible::new();
 
         let _ = local_nb::pipe(&mut o, &mut i).await;
@@ -20,7 +20,7 @@ fn fuzz_pipe(data: &[u8]) {
 
 fn fuzz_bulk_pipe(data: &[u8]) {
     smol::block_on(async {
-        let mut o = ProducerCursor::new(&data[..]);
+        let mut o = SliceProducer::new(&data[..]);
         let mut i = IntoVecFallible::new();
 
         let _ = local_nb::bulk_pipe(&mut o, &mut i).await;

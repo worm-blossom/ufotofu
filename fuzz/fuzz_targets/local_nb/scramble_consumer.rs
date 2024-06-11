@@ -9,7 +9,7 @@ use core::cmp::min;
 use wrapper::Wrapper;
 
 use ufotofu::local_nb::consumer::{ConsumeOperations, IntoVec, Scramble};
-use ufotofu::local_nb::producer::Cursor;
+use ufotofu::local_nb::producer::SliceProducer;
 use ufotofu::local_nb::{self, LocalBufferedConsumer};
 
 fn data_is_invalid(data: &TestData) -> bool {
@@ -51,7 +51,7 @@ fuzz_target!(|data: TestData| {
         let into_vec = IntoVec::new();
 
         // Producer.
-        let mut o = Cursor::new(&producer_buffer[..]);
+        let mut o = SliceProducer::new(&producer_buffer[..]);
 
         // Scrambler wrapping a scrambler with an inner `into_vec` consumer.
         let mut i = Scramble::new(

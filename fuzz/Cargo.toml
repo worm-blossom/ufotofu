@@ -16,8 +16,8 @@ wrapper = "0.1.1"
 path = ".."
 
 [[bin]]
-name = "cursors"
-path = "fuzz_targets/sync/cursors.rs"
+name = "slices"
+path = "fuzz_targets/sync/slices.rs"
 test = false
 doc = false
 bench = false
@@ -51,8 +51,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "local_nb_cursors"
-path = "fuzz_targets/local_nb/cursors.rs"
+name = "local_nb_slices"
+path = "fuzz_targets/local_nb/slices.rs"
 test = false
 doc = false
 bench = false

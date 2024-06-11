@@ -5,36 +5,36 @@ use wrapper::Wrapper;
 
 use crate::local_nb::sync_to_local_nb::SyncToLocalNbProducer;
 use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
-use crate::sync::producer::Cursor as SyncCursor;
+use crate::sync::producer::SliceProducer as SyncSliceProducer;
 
 #[derive(Debug)]
 /// Produces data from a slice.
-pub struct Cursor<'a, T>(SyncToLocalNbProducer<SyncCursor<'a, T>>);
+pub struct SliceProducer<'a, T>(SyncToLocalNbProducer<SyncSliceProducer<'a, T>>);
 
-impl<'a, T> Cursor<'a, T> {
+impl<'a, T> SliceProducer<'a, T> {
     /// Create a producer which produces the data in the given slice.
-    pub fn new(slice: &'a [T]) -> Cursor<'a, T> {
-        let cursor = SyncCursor::new(slice);
+    pub fn new(slice: &'a [T]) -> SliceProducer<'a, T> {
+        let slice_producer = SyncSliceProducer::new(slice);
 
-        Cursor(SyncToLocalNbProducer(cursor))
+        SliceProducer(SyncToLocalNbProducer(slice_producer))
     }
 }
 
-impl<'a, T> AsRef<[T]> for Cursor<'a, T> {
+impl<'a, T> AsRef<[T]> for SliceProducer<'a, T> {
     fn as_ref(&self) -> &[T] {
         let inner = self.0.as_ref();
         inner.as_ref()
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceProducer<'a, T> {
     fn into_inner(self) -> &'a [T] {
         let inner = self.0.into_inner();
         inner.into_inner()
     }
 }
 
-impl<'a, T: Clone> LocalProducer for Cursor<'a, T> {
+impl<'a, T: Clone> LocalProducer for SliceProducer<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -47,13 +47,13 @@ impl<'a, T: Clone> LocalProducer for Cursor<'a, T> {
     }
 }
 
-impl<'a, T: Copy> LocalBufferedProducer for Cursor<'a, T> {
+impl<'a, T: Copy> LocalBufferedProducer for SliceProducer<'a, T> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp().await
     }
 }
 
-impl<'a, T: Copy> LocalBulkProducer for Cursor<'a, T> {
+impl<'a, T: Copy> LocalBulkProducer for SliceProducer<'a, T> {
     async fn producer_slots<'b>(
         &'b mut self,
     ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>
@@ -89,15 +89,15 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_produce_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
                 // Call `produce()` until the final value is emitted.
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.produce().await;
+            let _ = slice_producer.produce().await;
         })
     }
 
@@ -105,14 +105,14 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_slurp_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.slurp().await;
+            let _ = slice_producer.slurp().await;
         })
     }
 
@@ -120,14 +120,14 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_producer_slots_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.producer_slots().await;
+            let _ = slice_producer.producer_slots().await;
         })
     }
 
@@ -135,14 +135,14 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_did_produce_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.did_produce(3).await;
+            let _ = slice_producer.did_produce(3).await;
         })
     }
 
@@ -150,15 +150,15 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_bulk_produce_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"tofu");
+            let mut slice_producer = SliceProducer::new(b"tofu");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            let _ = cursor.bulk_produce(&mut buf).await;
+            let _ = slice_producer.bulk_produce(&mut buf).await;
         })
     }
 
@@ -168,9 +168,9 @@ mod tests {
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
 
-            let _ = cursor.did_produce(21).await;
+            let _ = slice_producer.did_produce(21).await;
         })
     }
 }
