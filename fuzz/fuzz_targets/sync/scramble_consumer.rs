@@ -8,8 +8,8 @@ use core::cmp::min;
 
 use wrapper::Wrapper;
 
-use ufotofu::sync::consumer::IntoVec;
-use ufotofu::sync::producer::{Cursor, ProduceOperations, Scramble};
+use ufotofu::sync::consumer::{ConsumeOperations, IntoVec, Scramble};
+use ufotofu::sync::producer::Cursor;
 use ufotofu::sync::{self, BufferedConsumer};
 
 fn data_is_invalid(data: &TestData) -> bool {
@@ -27,8 +27,8 @@ fn data_is_invalid(data: &TestData) -> bool {
 #[derive(Debug, Clone, Arbitrary)]
 struct TestData {
     producer_buffer: Box<[u8]>,
-    outer_operations: ProduceOperations,
-    inner_operations: ProduceOperations,
+    outer_operations: ConsumeOperations,
+    inner_operations: ConsumeOperations,
     outer_capacity: usize,
     inner_capacity: usize,
 }
@@ -39,33 +39,33 @@ fuzz_target!(|data: TestData| {
     }
 
     let TestData {
-        mut producer_buffer,
+        producer_buffer,
         outer_operations,
         inner_operations,
         outer_capacity,
         inner_capacity,
     } = data;
 
-    // Producer.
-    let cursor = Cursor::new(&mut producer_buffer[..]);
-
     // Consumer.
-    let mut i = IntoVec::new();
+    let into_vec = IntoVec::new();
 
-    // Scrambler wrapping a scrambler with an inner `cursor` producer.
-    let mut o = Scramble::new(
-        Scramble::new(cursor, inner_operations, inner_capacity),
+    // Producer.
+    let mut o = Cursor::new(&producer_buffer[..]);
+
+    // Scrambler wrapping a scrambler with an inner `into_vec` consumer.
+    let mut i = Scramble::new(
+        Scramble::new(into_vec, inner_operations, inner_capacity),
         outer_operations,
         outer_capacity,
     );
 
-    let _ = sync::bulk_pipe::<_, _, !>(&mut o, &mut i);
+    let _ = sync::bulk_pipe(&mut o, &mut i);
     let _ = i.flush();
 
-    // Access the inner producer (`cursor`).
-    let o = o.into_inner().into_inner();
+    // Access the inner consumer (`into_vec`).
+    let i = i.into_inner().into_inner();
 
-    // Compare the contents of the producer and consumer.
+    // Compare the contents of the consumer and producer.
     let m = min(o.as_ref().len(), i.as_ref().len());
     assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
 });

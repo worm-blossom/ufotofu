@@ -6,7 +6,7 @@ use libfuzzer_sys::fuzz_target;
 use libfuzzer_sys::{arbitrary, arbitrary::Arbitrary};
 
 use ufotofu::sync;
-use ufotofu::sync::consumer::{Cursor as ConsumerCursor, CursorFullError};
+use ufotofu::sync::consumer::Cursor as ConsumerCursor;
 use ufotofu::sync::producer::Cursor as ProducerCursor;
 
 #[derive(Debug, Clone, Arbitrary)]
@@ -43,7 +43,7 @@ fn fuzz_pipe(mut data: TestData) {
     let mut o = ProducerCursor::new(&data.input_buf[data.input_start..data.input_end]);
     let mut i = ConsumerCursor::new(&mut data.output_buf[data.output_start..data.output_end]);
 
-    match sync::pipe::<_, _, CursorFullError>(&mut o, &mut i) {
+    match sync::pipe(&mut o, &mut i) {
         Ok(_) => {
             if &o.as_ref().len() > &i.as_ref().len() {
                 panic!()
@@ -68,7 +68,7 @@ fn fuzz_bulk_pipe(mut data: TestData) {
     let mut o = ProducerCursor::new(&data.input_buf[data.input_start..data.input_end]);
     let mut i = ConsumerCursor::new(&mut data.output_buf[data.output_start..data.output_end]);
 
-    match sync::bulk_pipe::<_, _, CursorFullError>(&mut o, &mut i) {
+    match sync::bulk_pipe(&mut o, &mut i) {
         Ok(_) => {
             if &o.as_ref().len() > &i.as_ref().len() {
                 panic!()

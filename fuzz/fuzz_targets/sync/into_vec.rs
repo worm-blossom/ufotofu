@@ -4,23 +4,23 @@
 use libfuzzer_sys::fuzz_target;
 
 use ufotofu::sync;
-use ufotofu::sync::consumer::{IntoVecError, IntoVecFallible};
+use ufotofu::sync::consumer::IntoVec;
 use ufotofu::sync::producer::Cursor as ProducerCursor;
 
 fn fuzz_pipe(data: &[u8]) {
     let mut o = ProducerCursor::new(&data[..]);
-    let mut i = IntoVecFallible::new();
+    let mut i = IntoVec::new();
 
-    let _ = sync::pipe::<_, _, IntoVecError>(&mut o, &mut i);
+    let _ = sync::pipe(&mut o, &mut i);
 
     assert_eq!(&i.into_vec(), &data[..]);
 }
 
 fn fuzz_bulk_pipe(data: &[u8]) {
     let mut o = ProducerCursor::new(&data[..]);
-    let mut i = IntoVecFallible::new();
+    let mut i = IntoVec::new();
 
-    let _ = sync::bulk_pipe::<_, _, IntoVecError>(&mut o, &mut i);
+    let _ = sync::bulk_pipe(&mut o, &mut i);
 
     assert_eq!(&i.into_vec(), &data[..]);
 }
