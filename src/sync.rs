@@ -136,6 +136,23 @@ where
     }
 }
 
+/// Consume all of the given items into the given consumer.
+pub fn consume_all<Item: Copy, C: BulkConsumer<Item = Item>>(
+    items: &[Item],
+    consumer: &mut C,
+) -> Result<(), C::Error> {
+    let items_len = items.len();
+    let mut amount_consumed = 0;
+
+    // Call `bulk_consume()` until all items have been consumed.
+    while amount_consumed < items_len {
+        let amount = consumer.bulk_consume(&items[amount_consumed..])?;
+        amount_consumed += amount;
+    }
+
+    Ok(())
+}
+
 /// A `Producer` produces a potentially infinite sequence, one item at a time.
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
@@ -249,6 +266,21 @@ where
             Either::Right(final_value) => Ok(Either::Right(final_value)),
         }
     }
+}
+
+/// Fill the given buffer with items from the given producer.
+pub fn produce_all<Item: Copy, P: BulkProducer<Item = Item>>(
+    buf: &mut [MaybeUninit<Item>],
+    producer: &mut P,
+) -> Result<usize, P::Error> {
+    let mut amount_produced: usize = 0;
+
+    // Call `bulk_produce()` until all items have been produced.
+    while let Either::Left(amount) = producer.bulk_produce(buf)? {
+        amount_produced += amount;
+    }
+
+    Ok(amount_produced)
 }
 
 /// Everything that can go wrong when piping a `Producer` into a `Consumer`.
