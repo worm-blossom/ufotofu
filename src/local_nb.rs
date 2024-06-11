@@ -354,17 +354,18 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{Cursor as ConsumerCursor, IntoVec};
-    use crate::local_nb::producer::Cursor as ProducerCursor;
-    use crate::sync::consumer::CursorFullError;
+    use crate::local_nb::consumer::{IntoVec, SliceConsumer};
+    use crate::local_nb::producer::SliceProducer;
+    use crate::sync::consumer::SliceConsumerFullError;
 
     #[test]
-    fn pipes_from_producer_to_consumer_cursor() -> Result<(), PipeError<!, CursorFullError>> {
+    fn pipes_from_slice_producer_to_slice_consumer(
+    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
-            let mut o = ProducerCursor::new(b"ufo");
-            let mut i = ConsumerCursor::new(&mut buf);
+            let mut o = SliceProducer::new(b"ufo");
+            let mut i = SliceConsumer::new(&mut buf);
 
             pipe(&mut o, &mut i).await?;
 
@@ -377,9 +378,9 @@ mod tests {
     }
 
     #[test]
-    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
+    fn pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
         smol::block_on(async {
-            let mut o = ProducerCursor::new(b"tofu");
+            let mut o = SliceProducer::new(b"tofu");
             let mut i = IntoVec::new();
 
             pipe(&mut o, &mut i).await?;
@@ -391,13 +392,13 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_cursor() -> Result<(), BulkPipeError<!, CursorFullError>>
-    {
+    fn bulk_pipes_from_slice_producer_to_slice_consumer(
+    ) -> Result<(), BulkPipeError<!, SliceConsumerFullError>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
-            let mut o = ProducerCursor::new(b"ufo");
-            let mut i = ConsumerCursor::new(&mut buf);
+            let mut o = SliceProducer::new(b"ufo");
+            let mut i = SliceConsumer::new(&mut buf);
 
             bulk_pipe(&mut o, &mut i).await?;
 
@@ -410,9 +411,9 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
+    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
         smol::block_on(async {
-            let mut o = ProducerCursor::new(b"tofu");
+            let mut o = SliceProducer::new(b"tofu");
             let mut i = IntoVec::new();
 
             bulk_pipe(&mut o, &mut i).await?;

@@ -9,7 +9,7 @@ use core::cmp::min;
 use wrapper::Wrapper;
 
 use ufotofu::sync::consumer::IntoVec;
-use ufotofu::sync::producer::{Cursor, ProduceOperations, Scramble};
+use ufotofu::sync::producer::{ProduceOperations, Scramble, SliceProducer};
 use ufotofu::sync::{self, BufferedConsumer};
 
 fn data_is_invalid(data: &TestData) -> bool {
@@ -47,14 +47,14 @@ fuzz_target!(|data: TestData| {
     } = data;
 
     // Producer.
-    let cursor = Cursor::new(&mut producer_buffer[..]);
+    let slice_producer = SliceProducer::new(&mut producer_buffer[..]);
 
     // Consumer.
     let mut i = IntoVec::new();
 
-    // Scrambler wrapping a scrambler with an inner `cursor` producer.
+    // Scrambler wrapping a scrambler with an inner `slice_producer`.
     let mut o = Scramble::new(
-        Scramble::new(cursor, inner_operations, inner_capacity),
+        Scramble::new(slice_producer, inner_operations, inner_capacity),
         outer_operations,
         outer_capacity,
     );
@@ -62,7 +62,7 @@ fuzz_target!(|data: TestData| {
     let _ = sync::bulk_pipe(&mut o, &mut i);
     let _ = i.flush();
 
-    // Access the inner producer (`cursor`).
+    // Access the inner producer (`slice_producer`).
     let o = o.into_inner().into_inner();
 
     // Compare the contents of the producer and consumer.

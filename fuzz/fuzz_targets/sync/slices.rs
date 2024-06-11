@@ -6,8 +6,8 @@ use libfuzzer_sys::fuzz_target;
 use libfuzzer_sys::{arbitrary, arbitrary::Arbitrary};
 
 use ufotofu::sync;
-use ufotofu::sync::consumer::Cursor as ConsumerCursor;
-use ufotofu::sync::producer::Cursor as ProducerCursor;
+use ufotofu::sync::consumer::SliceConsumer;
+use ufotofu::sync::producer::SliceProducer;
 
 #[derive(Debug, Clone, Arbitrary)]
 struct TestData {
@@ -40,8 +40,8 @@ fn fuzz_pipe(mut data: TestData) {
         return;
     }
 
-    let mut o = ProducerCursor::new(&data.input_buf[data.input_start..data.input_end]);
-    let mut i = ConsumerCursor::new(&mut data.output_buf[data.output_start..data.output_end]);
+    let mut o = SliceProducer::new(&data.input_buf[data.input_start..data.input_end]);
+    let mut i = SliceConsumer::new(&mut data.output_buf[data.output_start..data.output_end]);
 
     match sync::pipe(&mut o, &mut i) {
         Ok(_) => {
@@ -65,8 +65,8 @@ fn fuzz_bulk_pipe(mut data: TestData) {
         return;
     }
 
-    let mut o = ProducerCursor::new(&data.input_buf[data.input_start..data.input_end]);
-    let mut i = ConsumerCursor::new(&mut data.output_buf[data.output_start..data.output_end]);
+    let mut o = SliceProducer::new(&data.input_buf[data.input_start..data.input_end]);
+    let mut i = SliceConsumer::new(&mut data.output_buf[data.output_start..data.output_end]);
 
     match sync::bulk_pipe(&mut o, &mut i) {
         Ok(_) => {

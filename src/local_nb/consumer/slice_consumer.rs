@@ -5,50 +5,50 @@ use wrapper::Wrapper;
 
 use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
-use crate::sync::consumer::{Cursor as SyncCursor, CursorFullError};
+use crate::sync::consumer::{SliceConsumer as SyncSliceConsumer, SliceConsumerFullError};
 
 /// Consumes data into a mutable slice.
 #[derive(Debug)]
-pub struct Cursor<'a, T>(SyncToLocalNbConsumer<SyncCursor<'a, T>>);
+pub struct SliceConsumer<'a, T>(SyncToLocalNbConsumer<SyncSliceConsumer<'a, T>>);
 
 /// Creates a consumer which places consumed data into the given slice.
-impl<'a, T> Cursor<'a, T> {
-    pub fn new(slice: &mut [T]) -> Cursor<'_, T> {
-        let cursor = SyncCursor::new(slice);
+impl<'a, T> SliceConsumer<'a, T> {
+    pub fn new(slice: &mut [T]) -> SliceConsumer<'_, T> {
+        let slice_consumer = SyncSliceConsumer::new(slice);
 
-        Cursor(SyncToLocalNbConsumer(cursor))
+        SliceConsumer(SyncToLocalNbConsumer(slice_consumer))
     }
 }
 
-impl<'a, T> AsRef<[T]> for Cursor<'a, T> {
+impl<'a, T> AsRef<[T]> for SliceConsumer<'a, T> {
     fn as_ref(&self) -> &[T] {
         let inner = self.0.as_ref();
         inner.as_ref()
     }
 }
 
-impl<'a, T> AsMut<[T]> for Cursor<'a, T> {
+impl<'a, T> AsMut<[T]> for SliceConsumer<'a, T> {
     fn as_mut(&mut self) -> &mut [T] {
         let inner = self.0.as_mut();
         inner.as_mut()
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceConsumer<'a, T> {
     fn into_inner(self) -> &'a [T] {
         let inner = self.0.into_inner();
         inner.into_inner()
     }
 }
 
-impl<'a, T> LocalConsumer for Cursor<'a, T> {
+impl<'a, T> LocalConsumer for SliceConsumer<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
     /// The value signifying the end of the consumed sequence.
     type Final = ();
     /// The value emitted when the consumer is full and a subsequent
     /// call is made to `consume()` or `consumer_slots()`.
-    type Error = CursorFullError;
+    type Error = SliceConsumerFullError;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.0.consume(item).await
@@ -59,13 +59,13 @@ impl<'a, T> LocalConsumer for Cursor<'a, T> {
     }
 }
 
-impl<'a, T> LocalBufferedConsumer for Cursor<'a, T> {
+impl<'a, T> LocalBufferedConsumer for SliceConsumer<'a, T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<'a, T: Copy> LocalBulkConsumer for Cursor<'a, T> {
+impl<'a, T: Copy> LocalBulkConsumer for SliceConsumer<'a, T> {
     async fn consumer_slots<'b>(
         &'b mut self,
     ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
@@ -102,9 +102,9 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 1];
 
-            let mut cursor = Cursor::new(&mut buf);
-            let _ = cursor.close(()).await;
-            let _ = cursor.consume(7).await;
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
+            let _ = slice_consumer.close(()).await;
+            let _ = slice_consumer.consume(7).await;
         })
     }
 
@@ -114,9 +114,9 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 1];
 
-            let mut cursor = Cursor::new(&mut buf);
-            let _ = cursor.close(()).await;
-            let _ = cursor.close(()).await;
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
+            let _ = slice_consumer.close(()).await;
+            let _ = slice_consumer.close(()).await;
         })
     }
 
@@ -126,9 +126,9 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 1];
 
-            let mut cursor = Cursor::new(&mut buf);
-            let _ = cursor.close(()).await;
-            let _ = cursor.flush().await;
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
+            let _ = slice_consumer.close(()).await;
+            let _ = slice_consumer.flush().await;
         })
     }
 
@@ -138,9 +138,9 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 1];
 
-            let mut cursor = Cursor::new(&mut buf);
-            let _ = cursor.close(()).await;
-            let _ = cursor.consumer_slots().await;
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
+            let _ = slice_consumer.close(()).await;
+            let _ = slice_consumer.consumer_slots().await;
         })
     }
 
@@ -150,11 +150,11 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 8];
 
-            let mut cursor = Cursor::new(&mut buf);
-            let _ = cursor.close(()).await;
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
+            let _ = slice_consumer.close(()).await;
 
             unsafe {
-                let _ = cursor.did_consume(7).await;
+                let _ = slice_consumer.did_consume(7).await;
             }
         })
     }
@@ -165,9 +165,9 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 8];
 
-            let mut cursor = Cursor::new(&mut buf);
-            let _ = cursor.close(()).await;
-            let _ = cursor.bulk_consume(b"ufo").await;
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
+            let _ = slice_consumer.close(()).await;
+            let _ = slice_consumer.bulk_consume(b"ufo").await;
         })
     }
 
@@ -179,10 +179,10 @@ mod tests {
         smol::block_on(async {
             let mut buf = [0; 8];
 
-            let mut cursor = Cursor::new(&mut buf);
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
 
             unsafe {
-                let _ = cursor.did_consume(21).await;
+                let _ = slice_consumer.did_consume(21).await;
             }
         })
     }

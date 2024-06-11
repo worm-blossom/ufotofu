@@ -164,22 +164,22 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{Cursor, IntoVec};
-    use crate::sync::consumer::CursorFullError;
+    use crate::local_nb::consumer::{IntoVec, SliceConsumer};
+    use crate::sync::consumer::SliceConsumerFullError;
 
     #[test]
     fn accepts_valid_did_consume_amount() {
         smol::block_on(async {
-            // Create a cursor that exposes four slots.
+            // Create a slice consumer that exposes four slots.
             let mut buf = [0; 4];
-            let mut cursor = Cursor::new(&mut buf);
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
 
             // Copy data to three of the available slots and call `did_consume`.
             let data = b"ufo";
-            let slots = cursor.consumer_slots().await.unwrap();
+            let slots = slice_consumer.consumer_slots().await.unwrap();
             MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
             unsafe {
-                assert!(cursor.did_consume(3).await.is_ok());
+                assert!(slice_consumer.did_consume(3).await.is_ok());
             }
         })
     }
@@ -190,21 +190,21 @@ mod tests {
     )]
     fn panics_on_second_did_consume_with_amount_greater_than_available_slots() {
         smol::block_on(async {
-            // Create a cursor that exposes four slots.
+            // Create a slice consumer that exposes four slots.
             let mut buf = [0; 4];
-            let mut cursor = Cursor::new(&mut buf);
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
 
             // Copy data to three of the available slots and call `did_consume`.
             let data = b"ufo";
-            let slots = cursor.consumer_slots().await.unwrap();
+            let slots = slice_consumer.consumer_slots().await.unwrap();
             MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
             unsafe {
-                assert!(cursor.did_consume(3).await.is_ok());
+                assert!(slice_consumer.did_consume(3).await.is_ok());
             }
 
             // Make a second call to `did_consume` which exceeds the number of available slots.
             unsafe {
-                let _ = cursor.did_consume(2).await;
+                let _ = slice_consumer.did_consume(2).await;
             }
         })
     }
@@ -212,27 +212,30 @@ mod tests {
     #[test]
     fn errors_on_consumer_slots_when_none_are_available() {
         smol::block_on(async {
-            // Create a cursor that exposes four slots.
+            // Create a slice consumer that exposes four slots.
             let mut buf = [0; 4];
-            let mut cursor = Cursor::new(&mut buf);
+            let mut slice_consumer = SliceConsumer::new(&mut buf);
 
             // Copy data to two of the available slots and call `did_consume`.
             let data = b"tofu";
-            let slots = cursor.consumer_slots().await.unwrap();
+            let slots = slice_consumer.consumer_slots().await.unwrap();
             MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
             unsafe {
-                assert!(cursor.did_consume(2).await.is_ok());
+                assert!(slice_consumer.did_consume(2).await.is_ok());
             }
 
             // Copy data to two of the available slots and call `did_consume`.
-            let slots = cursor.consumer_slots().await.unwrap();
+            let slots = slice_consumer.consumer_slots().await.unwrap();
             MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
             unsafe {
-                assert!(cursor.did_consume(2).await.is_ok());
+                assert!(slice_consumer.did_consume(2).await.is_ok());
             }
 
             // Make a third call to `consumer_slots` after all available slots have been used.
-            assert_eq!(cursor.consumer_slots().await.unwrap_err(), CursorFullError);
+            assert_eq!(
+                slice_consumer.consumer_slots().await.unwrap_err(),
+                SliceConsumerFullError
+            );
         })
     }
 

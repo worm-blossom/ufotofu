@@ -5,10 +5,10 @@ use libfuzzer_sys::fuzz_target;
 
 use ufotofu::sync;
 use ufotofu::sync::consumer::IntoVec;
-use ufotofu::sync::producer::Cursor as ProducerCursor;
+use ufotofu::sync::producer::SliceProducer;
 
 fn fuzz_pipe(data: &[u8]) {
-    let mut o = ProducerCursor::new(&data[..]);
+    let mut o = SliceProducer::new(&data[..]);
     let mut i = IntoVec::new();
 
     let _ = sync::pipe(&mut o, &mut i);
@@ -17,7 +17,7 @@ fn fuzz_pipe(data: &[u8]) {
 }
 
 fn fuzz_bulk_pipe(data: &[u8]) {
-    let mut o = ProducerCursor::new(&data[..]);
+    let mut o = SliceProducer::new(&data[..]);
     let mut i = IntoVec::new();
 
     let _ = sync::bulk_pipe(&mut o, &mut i);
