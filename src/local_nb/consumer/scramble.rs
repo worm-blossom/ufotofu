@@ -3,6 +3,11 @@ use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
+
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
 use ufotofu_queues::fixed::Fixed;
 use ufotofu_queues::Queue;
