@@ -2,6 +2,11 @@ use core::cmp::min;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
+
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
 use either::Either;
 use ufotofu_queues::fixed::Fixed;
