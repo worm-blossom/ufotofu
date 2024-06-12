@@ -403,19 +403,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "thiserror"
-version = "1.0.59"
+name = "thiserror-core"
+version = "1.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0126ad08bff79f29fc3ae6a55cc72352056dfff61e3ff8bb7129476d44b23aa"
+checksum = "c001ee18b7e5e3f62cbf58c7fe220119e68d902bb7443179c0c8aef30090e999"
 dependencies = [
- "thiserror-impl",
+ "thiserror-core-impl",
 ]
 
 [[package]]
-name = "thiserror-impl"
-version = "1.0.59"
+name = "thiserror-core-impl"
+version = "1.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1cd413b5d558b4c5bf3680e324a6fa5014e7b7c067a51e69dbdf47eb7148b66"
+checksum = "e4c60d69f36615a077cc7663b9cb8e42275722d23e58a7fa3d2c7f2915d09d04"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -456,7 +456,7 @@ dependencies = [
  "arbitrary",
  "either",
  "smol",
- "thiserror",
+ "thiserror-core",
  "trait-variant",
  "ufotofu_queues",
  "wrapper",
