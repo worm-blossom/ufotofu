@@ -10,10 +10,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
 smol = "2.0.0"
+ufotofu = { path = "..", features = ["dev"] }
 wrapper = "0.1.1"
-
-[dependencies.ufotofu]
-path = ".."
 
 [[bin]]
 name = "slices"

@@ -1,10 +1,14 @@
 mod invariant;
 mod invariant_noop;
-mod scramble;
 mod slice_producer;
 
-pub use scramble::{ProduceOperations, Scramble};
+#[cfg(feature = "dev")]
+mod scramble;
+
 pub use slice_producer::SliceProducer;
+
+#[cfg(feature = "dev")]
+pub use scramble::{ProduceOperations, Scramble};
 
 // During testing we use a wrapper which panics on invariant transgressions.
 // The no-op version of the wrapper is used for production code compilation.

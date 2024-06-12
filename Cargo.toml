@@ -15,6 +15,9 @@ std = []
 # but may be enabled without depending on all of std.
 alloc = []
 
+# Provide implementations for scramblers which are used for fuzz testing.
+dev = []
+
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"]}
 either = "1.10.0"

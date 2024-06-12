@@ -1,7 +1,11 @@
 mod invariant;
 mod invariant_noop;
-mod scramble;
 mod slice_producer;
 
-pub use scramble::{ProduceOperations, Scramble};
+#[cfg(feature = "dev")]
+mod scramble;
+
 pub use slice_producer::SliceProducer;
+
+#[cfg(feature = "dev")]
+pub use scramble::{ProduceOperations, Scramble};
