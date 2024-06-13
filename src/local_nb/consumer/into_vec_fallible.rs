@@ -17,11 +17,7 @@ use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
 use crate::sync::consumer::{IntoVecError, IntoVecFallible as SyncIntoVecFallible};
 
-/// A fallible implementation of `IntoVec` which returns an error
-/// if there is insufficient memory to (re)allocate the inner
-/// vector or if the allocator reports a failure.
-///
-/// Collects data and can at any point be converted into a `Vec<T>`.
+/// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 #[derive(Debug)]
 pub struct IntoVecFallible<T, A: Allocator = Global>(
     SyncToLocalNbConsumer<SyncIntoVecFallible<T, A>>,

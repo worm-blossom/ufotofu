@@ -61,9 +61,19 @@ extern crate alloc;
 
 use core::mem::MaybeUninit;
 
-/// [`Future`](core::future::Future)-based, non-blocking APIs for *single-threaded* executors.
+/// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *single-threaded* executors.
+/// 
+/// For an introduction and high-level overview, see the [toplevel documentation](crate).
+/// 
+/// Core functionality:
+/// 
+/// - Traits for producing sequences: [`LocalProducer`](local_nb::LocalProducer), [`LocalBufferedProducer`](local_nb::LocalBufferedProducer), and [`LocalBulkProducer`](local_nb::LocalBulkProducer).
+/// - Traits for consuming sequences: [`LocalConsumer`](local_nb::LocalConsumer), [`LocalBufferedConsumer`](local_nb::LocalBufferedConsumer), and [`LocalBulkConsumer`](local_nb::LocalBulkConsumer).
+/// - Piping data: [`pipe`](local_nb::pipe) and [`bulk_pipe`](local_nb::bulk_pipe).
+/// 
+/// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](local_nb::producer) and [`consumer`](local_nb::consumer) modules respectively.
 pub mod local_nb;
-/// [`Future`](core::future::Future)-based, non-blocking APIs for *multi-threaded* executors.
+/// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *multi-threaded* executors.
 pub mod nb;
 /// Synchronous, blocking versions of the ufotofu APIs.
 /// 
