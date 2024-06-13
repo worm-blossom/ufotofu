@@ -37,3 +37,10 @@ pub use slice_consumer::SliceConsumer;
 
 #[cfg(any(feature = "dev", doc))]
 pub use scramble::{ConsumeOperations, Scramble};
+
+// During testing we use a wrapper which panics on invariant transgressions.
+// The no-op version of the wrapper is used for production code compilation.
+#[cfg(test)]
+pub use invariant::Invariant;
+#[cfg(not(test))]
+pub use invariant_noop::Invariant;
