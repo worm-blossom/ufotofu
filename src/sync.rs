@@ -269,18 +269,29 @@ where
 }
 
 /// Fill the given buffer with items from the given producer.
-pub fn produce_all<Item: Copy, P: BulkProducer<Item = Item>>(
-    buf: &mut [MaybeUninit<Item>],
+pub fn fill_all<'a, Item: Copy, P: BulkProducer<Item = Item>>(
+    buf: &'a mut [MaybeUninit<Item>],
     producer: &mut P,
-) -> Result<usize, P::Error> {
-    let mut amount_produced: usize = 0;
+) -> Result<(&'a [Item], &'a [MaybeUninit<Item>]), P::Error> {
+    let mut amount_produced = 0;
 
     // Call `bulk_produce()` until all items have been produced.
     while let Either::Left(amount) = producer.bulk_produce(buf)? {
         amount_produced += amount;
     }
 
-    Ok(amount_produced)
+    // The call to `slice_assume_init_ref` will panic if the number of items
+    // produced exceeds the capacity of the given buffer, so we index
+    // by the lowest of the two values.
+    let min_amount = min(buf.len(), amount_produced);
+
+    // Return all slots that were filled with items.
+    let buf_init: &[Item] = unsafe { MaybeUninit::slice_assume_init_ref(&buf[..min_amount]) };
+
+    // Return all remaining slots.
+    let buf_maybe_uninit = &buf[min_amount..];
+
+    Ok((buf_init, buf_maybe_uninit))
 }
 
 /// Everything that can go wrong when piping a `Producer` into a `Consumer`.
@@ -380,6 +391,35 @@ mod tests {
 
     use crate::sync::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
     use crate::sync::producer::SliceProducer;
+
+    #[test]
+    fn consumes_all_items() -> Result<(), SliceConsumerFullError> {
+        let input = b"tofu-powered ufo";
+
+        let mut buf = [0; 16];
+        let mut consumer = SliceConsumer::new(&mut buf);
+
+        consume_all(input, &mut consumer)?;
+
+        assert_eq!(&buf, input);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fills_all_buffer_slots() -> Result<(), !> {
+        let input = b"tofu";
+
+        let mut buf: [MaybeUninit<u8>; 8] = MaybeUninit::uninit_array();
+        let mut producer = SliceProducer::new(input);
+
+        let (buf_init, buf_uninit) = fill_all(&mut buf, &mut producer)?;
+
+        assert_eq!(&buf_init, input);
+        assert!(buf_uninit.len() == 4);
+
+        Ok(())
+    }
 
     #[test]
     fn pipes_from_slice_producer_to_slice_consumer(
