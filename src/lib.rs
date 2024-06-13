@@ -42,6 +42,15 @@
 //! 
 //! All three modules implement the same concepts; the only differences are whether functions are asynchronous, and, if so, whether futures implement [`Send`]. In particular, each module has its own version of the core traits for interacting with sequences.
 //! 
+//! ## Feature Flags
+//! 
+//! Ufotofu gates several features that are only interesting under certain circumstances behind feature flags. These API docs document *all* functionality, though, as if all feature flags were activated.
+//! 
+//! All functionality that relies on the Rust standard library is gated behind the `std` feature flag (enabled by default).
+//! 
+//! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default).
+//! 
+//! All functinoality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
 
 
 #[cfg(feature = "std")]
@@ -52,8 +61,21 @@ extern crate alloc;
 
 use core::mem::MaybeUninit;
 
+/// [`Future`](core::future::Future)-based, non-blocking APIs for *single-threaded* executors.
 pub mod local_nb;
+/// [`Future`](core::future::Future)-based, non-blocking APIs for *multi-threaded* executors.
 pub mod nb;
+/// Synchronous, blocking versions of the ufotofu APIs.
+/// 
+/// For an introduction and high-level overview, see the [toplevel documentation](crate).
+/// 
+/// Core functionality:
+/// 
+/// - Traits for producing sequences: [`Producer`](sync::Producer), [`BufferedProducer`](sync::BufferedProducer), and [`BulkProducer`](sync::BulkProducer).
+/// - Traits for consuming sequences: [`Consumer`](sync::Consumer), [`BufferedConsumer`](sync::BufferedConsumer), and [`BulkConsumer`](sync::BulkConsumer).
+/// - Piping data: [`pipe`](sync::pipe) and [`bulk_pipe`](sync::bulk_pipe).
+/// 
+/// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](sync::producer) and [`consumer`](sync::consumer) modules respectively.
 pub mod sync;
 
 pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
@@ -61,4 +83,4 @@ pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
     unsafe { core::slice::from_raw_parts_mut(ptr, s.len()) }
 }
 
-// basics: producer-buffered-bulk, consumer-buffered-bulk, piping, wrappers, feature flags, queues, converters
+// basics: wrappers, feature flags, queues, converters
