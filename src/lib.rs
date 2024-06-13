@@ -12,20 +12,37 @@
 //! - consistent error handling semantics across all supported modes of sequence processing,
 //! - meaningful subtyping relations between, for example, streams and readers,
 //! - absence of needless specialization of error types or item types,
-//! - fully analogous APIs for synchronous and asynchronous code, and
-//! - the ability to chain sequences of heterogenous types.
+//! - fully analogous APIs for synchronous and asynchronous code,
+//! - the ability to chain sequences of heterogenous types, and
+//! - `nostd` support.
 //! 
 //! You can read an in-depth discussion of the API designs [here](https://github.com/AljoschaMeyer/lazy_on_principle/blob/main/main.pdf).
 //! 
+//! ## Core Abstractions
+//! 
+//! Ufotofu is built around a small hierarchy of traits that describe how to produce or consume a sequence item by item.
+//! 
+//! A [`Producer`](sync::Producer) provides the items of a sequence to some client code, similar to the [`futurs::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html) or the [`core::iter::Iterator`] traits. Client code can repeatedly request the next item, and receives either another item, an error, or a dedicated *final* item which may be of a different type than the repeated items. An *iterator* of `T`s corresponds to a *producer* of `T`s with final item type `()` and error type `!`.
+//! 
+//! A [`Consumer`](sync::Consumer) accepts the items of a sequence from some client code, similar to the [`futurs::Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html) traits. Client code can repeatedly add new items to the sequence, until it adds a single *final* item which may be of a different type than the repeated items. A final item type of `()` makes adding the final item equivalent to calling a conventional [`close`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html#tymethod.poll_close) method.
+//! 
+//! Producers and consumers are fully dual; the [pipe](sync::pipe) function writes as much data as possible from a producer into a consumer.
+//! 
+//! Consumers often buffer items in an internal queue before performing side-effects on data in larger chunks, such as writing data to the network only once a full packet can be filled. The [`BufferedConsumer`](sync::BufferedConsumer) trait extends the [`Consumer`](sync::Consumer) trait to allow client code to trigger effectfull flushing of internal buffers. Dually, the [`BufferedProducer`](sync::BufferedProducer) trait extends the [`Producer`](sync::Producer) trait to allow client code to trigger effectfull prefetching of data into internal buffers.
+//! 
+//! Finally, the [`BulkProducer`](sync::BulkProducer) and [`BulkConsumer`](sync::BulkConsumer) traits extend [`BufferedProducer`](sync::BufferedProducer) and [`BufferedConsumer`](sync::BufferedConsumer) respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [bulk_pipe](sync::bulk_pipe) function leverages this ability to efficiently pipe data — unlike the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxilliary buffer.
+//! 
 //! ## Crate Organisation
 //! 
-//! The crate is split into three high-level modules:
+//! The ufotofu crate is split into three high-level modules:
 //! 
 //! - [`sync`] provides APIs for synchronous, blocking abstractions (think [`core::iter::Iterator`]),
 //! - [`local_nb`] provides [`Future`](core::future::Future)-based, non-blocking APIs (think [`futures::stream::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html)) for *single-threaded* executors, and
-//! - [`nb`] provides [`Future`](core::future::Future)-based, non-blocking APIs (think [`futures::stream::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html)) for *multi-threaded* executors.
+//! - [`nb`] provides [`Future`](core::future::Future)-based, non-blocking APIs for *multi-threaded* executors.
 //! 
-//! All three modules implement the same concepts; the only differences are whether functions are asynchronous, and, if so, whether futures implement [`Send`].
+//! All three modules implement the same concepts; the only differences are whether functions are asynchronous, and, if so, whether futures implement [`Send`]. In particular, each module has its own version of the core traits for interacting with sequences.
+//! 
+
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -44,4 +61,4 @@ pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
     unsafe { core::slice::from_raw_parts_mut(ptr, s.len()) }
 }
 
-// sync/nb/nb_send, basics: producer-buffered-bulk, consumer-buffered-bulk, piping, wrappers, feature flags, queues, converters
+// basics: producer-buffered-bulk, consumer-buffered-bulk, piping, wrappers, feature flags, queues, converters
