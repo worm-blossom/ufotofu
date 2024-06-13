@@ -158,20 +158,20 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{Cursor, CursorFullError, IntoVec};
+    use crate::sync::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
 
     #[test]
     fn accepts_valid_did_consume_amount() {
-        // Create a cursor that exposes four slots.
+        // Create a slice consumer that exposes four slots.
         let mut buf = [0; 4];
-        let mut cursor = Cursor::new(&mut buf);
+        let mut slice_consumer = SliceConsumer::new(&mut buf);
 
         // Copy data to three of the available slots and call `did_consume`.
         let data = b"ufo";
-        let slots = cursor.consumer_slots().unwrap();
+        let slots = slice_consumer.consumer_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
         unsafe {
-            assert!(cursor.did_consume(3).is_ok());
+            assert!(slice_consumer.did_consume(3).is_ok());
         }
     }
 
@@ -180,47 +180,50 @@ mod tests {
         expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_second_did_consume_with_amount_greater_than_available_slots() {
-        // Create a cursor that exposes four slots.
+        // Create a slice consumer that exposes four slots.
         let mut buf = [0; 4];
-        let mut cursor = Cursor::new(&mut buf);
+        let mut slice_consumer = SliceConsumer::new(&mut buf);
 
         // Copy data to three of the available slots and call `did_consume`.
         let data = b"ufo";
-        let slots = cursor.consumer_slots().unwrap();
+        let slots = slice_consumer.consumer_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
         unsafe {
-            assert!(cursor.did_consume(3).is_ok());
+            assert!(slice_consumer.did_consume(3).is_ok());
         }
 
         // Make a second call to `did_consume` which exceeds the number of available slots.
         unsafe {
-            let _ = cursor.did_consume(2);
+            let _ = slice_consumer.did_consume(2);
         }
     }
 
     #[test]
     fn errors_on_consumer_slots_when_none_are_available() {
-        // Create a cursor that exposes four slots.
+        // Create a slice consumer that exposes four slots.
         let mut buf = [0; 4];
-        let mut cursor = Cursor::new(&mut buf);
+        let mut slice_consumer = SliceConsumer::new(&mut buf);
 
         // Copy data to two of the available slots and call `did_consume`.
         let data = b"tofu";
-        let slots = cursor.consumer_slots().unwrap();
+        let slots = slice_consumer.consumer_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
         unsafe {
-            assert!(cursor.did_consume(2).is_ok());
+            assert!(slice_consumer.did_consume(2).is_ok());
         }
 
         // Copy data to two of the available slots and call `did_consume`.
-        let slots = cursor.consumer_slots().unwrap();
+        let slots = slice_consumer.consumer_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
         unsafe {
-            assert!(cursor.did_consume(2).is_ok());
+            assert!(slice_consumer.did_consume(2).is_ok());
         }
 
         // Make a third call to `consumer_slots` after all available slots have been used.
-        assert_eq!(cursor.consumer_slots().unwrap_err(), CursorFullError);
+        assert_eq!(
+            slice_consumer.consumer_slots().unwrap_err(),
+            SliceConsumerFullError
+        );
     }
 
     // Panic conditions:

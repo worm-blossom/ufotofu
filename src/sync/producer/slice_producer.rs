@@ -8,33 +8,33 @@ use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
 #[derive(Debug)]
 /// Produces data from a slice.
-pub struct Cursor<'a, T>(Invariant<CursorInner<'a, T>>);
+pub struct SliceProducer<'a, T>(Invariant<SliceProducerInner<'a, T>>);
 
-impl<'a, T> Cursor<'a, T> {
+impl<'a, T> SliceProducer<'a, T> {
     /// Create a producer which produces the data in the given slice.
-    pub fn new(slice: &'a [T]) -> Cursor<'a, T> {
-        // Wrap the inner cursor in the invariant type.
-        let invariant = Invariant::new(CursorInner(slice, 0));
+    pub fn new(slice: &'a [T]) -> SliceProducer<'a, T> {
+        // Wrap the inner slice producer in the invariant type.
+        let invariant = Invariant::new(SliceProducerInner(slice, 0));
 
-        Cursor(invariant)
+        SliceProducer(invariant)
     }
 }
 
-impl<'a, T> AsRef<[T]> for Cursor<'a, T> {
+impl<'a, T> AsRef<[T]> for SliceProducer<'a, T> {
     fn as_ref(&self) -> &[T] {
         let inner = self.0.as_ref();
         inner.as_ref()
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for Cursor<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceProducer<'a, T> {
     fn into_inner(self) -> &'a [T] {
         let inner = self.0.into_inner();
         inner.into_inner()
     }
 }
 
-impl<'a, T: Clone> Producer for Cursor<'a, T> {
+impl<'a, T: Clone> Producer for SliceProducer<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -47,13 +47,13 @@ impl<'a, T: Clone> Producer for Cursor<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedProducer for Cursor<'a, T> {
+impl<'a, T: Copy> BufferedProducer for SliceProducer<'a, T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp()
     }
 }
 
-impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
+impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
     fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.0.producer_slots()
     }
@@ -64,21 +64,21 @@ impl<'a, T: Copy> BulkProducer for Cursor<'a, T> {
 }
 
 #[derive(Debug)]
-pub struct CursorInner<'a, T>(&'a [T], usize);
+pub struct SliceProducerInner<'a, T>(&'a [T], usize);
 
-impl<'a, T> AsRef<[T]> for CursorInner<'a, T> {
+impl<'a, T> AsRef<[T]> for SliceProducerInner<'a, T> {
     fn as_ref(&self) -> &[T] {
         self.0
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for CursorInner<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceProducerInner<'a, T> {
     fn into_inner(self) -> &'a [T] {
         self.0
     }
 }
 
-impl<'a, T: Clone> Producer for CursorInner<'a, T> {
+impl<'a, T: Clone> Producer for SliceProducerInner<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -100,14 +100,14 @@ impl<'a, T: Clone> Producer for CursorInner<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedProducer for CursorInner<'a, T> {
+impl<'a, T: Copy> BufferedProducer for SliceProducerInner<'a, T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         // There are no effects to perform so we simply return.
         Ok(())
     }
 }
 
-impl<'a, T: Copy> BulkProducer for CursorInner<'a, T> {
+impl<'a, T: Copy> BulkProducer for SliceProducerInner<'a, T> {
     fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
@@ -144,68 +144,68 @@ mod tests {
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_produce_after_final() {
-        let mut cursor = Cursor::new(b"ufo");
+        let mut slice_producer = SliceProducer::new(b"ufo");
         loop {
             // Call `produce()` until the final value is emitted.
-            if let Ok(Either::Right(_)) = cursor.produce() {
+            if let Ok(Either::Right(_)) = slice_producer.produce() {
                 break;
             }
         }
 
-        let _ = cursor.produce();
+        let _ = slice_producer.produce();
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_slurp_after_final() {
-        let mut cursor = Cursor::new(b"ufo");
+        let mut slice_producer = SliceProducer::new(b"ufo");
         loop {
-            if let Ok(Either::Right(_)) = cursor.produce() {
+            if let Ok(Either::Right(_)) = slice_producer.produce() {
                 break;
             }
         }
 
-        let _ = cursor.slurp();
+        let _ = slice_producer.slurp();
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_producer_slots_after_final() {
-        let mut cursor = Cursor::new(b"ufo");
+        let mut slice_producer = SliceProducer::new(b"ufo");
         loop {
-            if let Ok(Either::Right(_)) = cursor.produce() {
+            if let Ok(Either::Right(_)) = slice_producer.produce() {
                 break;
             }
         }
 
-        let _ = cursor.producer_slots();
+        let _ = slice_producer.producer_slots();
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_did_produce_after_final() {
-        let mut cursor = Cursor::new(b"ufo");
+        let mut slice_producer = SliceProducer::new(b"ufo");
         loop {
-            if let Ok(Either::Right(_)) = cursor.produce() {
+            if let Ok(Either::Right(_)) = slice_producer.produce() {
                 break;
             }
         }
 
-        let _ = cursor.did_produce(3);
+        let _ = slice_producer.did_produce(3);
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_bulk_produce_after_final() {
-        let mut cursor = Cursor::new(b"tofu");
+        let mut slice_producer = SliceProducer::new(b"tofu");
         loop {
-            if let Ok(Either::Right(_)) = cursor.produce() {
+            if let Ok(Either::Right(_)) = slice_producer.produce() {
                 break;
             }
         }
 
         let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-        let _ = cursor.bulk_produce(&mut buf);
+        let _ = slice_producer.bulk_produce(&mut buf);
     }
 
     #[test]
@@ -213,8 +213,8 @@ mod tests {
         expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
-        let mut cursor = Cursor::new(b"ufo");
+        let mut slice_producer = SliceProducer::new(b"ufo");
 
-        let _ = cursor.did_produce(21);
+        let _ = slice_producer.did_produce(21);
     }
 }

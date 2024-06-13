@@ -1,7 +1,15 @@
 use core::mem::MaybeUninit;
 
-use std::alloc::{Allocator, Global};
-use std::vec::Vec;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    alloc::{Allocator, Global},
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    alloc::{Allocator, Global},
+    vec::Vec,
+};
 
 use wrapper::Wrapper;
 

@@ -3,13 +3,35 @@ name = "ufotofu"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["std"]
+
+# Provide implementations for common standard library types like Box<T>
+# and Vec<T>. Requires a dependency on the Rust standard library.
+std = []
+
+# Provide implementations for types in the Rust core allocation and
+# collections library including Box<T> and Vec<T>. This is a subset of std
+# but may be enabled without depending on all of std.
+alloc = []
+
+# Provide implementations for scramblers which are used for fuzz testing.
+dev = []
+
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"]}
 either = "1.10.0"
-thiserror = "1.0.59"
+
+# The `thiserror` crate does not currently support no_std so we're using
+# a fork until it does. Depending on `thiserror-core` in this way means
+# that the dependeny can easily be replaced in the future.
+thiserror = { version = "1.0.50", package = "thiserror-core", default-features = false }
+
 trait-variant = "0.1.1"
+
 # TODO: Update this with crates.io path once published.
 ufotofu_queues = { path = "../ufotofu_queues" }
+
 wrapper = "0.1.1"
 
 [dev-dependencies]

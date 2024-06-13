@@ -378,15 +378,16 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{Cursor as ConsumerCursor, CursorFullError, IntoVec};
-    use crate::sync::producer::Cursor as ProducerCursor;
+    use crate::sync::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
+    use crate::sync::producer::SliceProducer;
 
     #[test]
-    fn pipes_from_producer_to_consumer_cursor() -> Result<(), PipeError<!, CursorFullError>> {
+    fn pipes_from_slice_producer_to_slice_consumer(
+    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
         let mut buf = [0; 3];
 
-        let mut o = ProducerCursor::new(b"ufo");
-        let mut i = ConsumerCursor::new(&mut buf);
+        let mut o = SliceProducer::new(b"ufo");
+        let mut i = SliceConsumer::new(&mut buf);
 
         pipe(&mut o, &mut i)?;
 
@@ -398,8 +399,8 @@ mod tests {
     }
 
     #[test]
-    fn pipes_from_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
-        let mut o = ProducerCursor::new(b"tofu");
+    fn pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
+        let mut o = SliceProducer::new(b"tofu");
         let mut i = IntoVec::new();
 
         pipe(&mut o, &mut i)?;
@@ -410,12 +411,12 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_cursor() -> Result<(), BulkPipeError<!, CursorFullError>>
-    {
+    fn bulk_pipes_from_slice_producer_to_slice_consumer(
+    ) -> Result<(), BulkPipeError<!, SliceConsumerFullError>> {
         let mut buf = [0; 3];
 
-        let mut o = ProducerCursor::new(b"ufo");
-        let mut i = ConsumerCursor::new(&mut buf);
+        let mut o = SliceProducer::new(b"ufo");
+        let mut i = SliceConsumer::new(&mut buf);
 
         bulk_pipe(&mut o, &mut i)?;
 
@@ -427,8 +428,8 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
-        let mut o = ProducerCursor::new(b"tofu");
+    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
+        let mut o = SliceProducer::new(b"tofu");
         let mut i = IntoVec::new();
 
         bulk_pipe(&mut o, &mut i)?;

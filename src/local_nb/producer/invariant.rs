@@ -163,19 +163,19 @@ mod tests {
 
     use super::*;
 
-    use crate::local_nb::producer::Cursor;
+    use crate::local_nb::producer::SliceProducer;
 
     #[test]
     fn accepts_valid_did_produce_amount() {
         smol::block_on(async {
-            // Create a cursor with data that occupies four slots.
-            let mut cursor = Cursor::new(b"tofu");
+            // Create a slice producer with data that occupies four slots.
+            let mut slice_producer = SliceProducer::new(b"tofu");
 
             // Copy data from three of the occupied slots and call `did_produce`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = cursor.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..3], &slots[0..3]);
-                assert!(cursor.did_produce(3).await.is_ok());
+                assert!(slice_producer.did_produce(3).await.is_ok());
             }
         })
     }
@@ -186,44 +186,47 @@ mod tests {
     )]
     fn panics_on_second_did_produce_with_amount_greater_than_available_slots() {
         smol::block_on(async {
-            // Create a cursor with data that occupies four slots.
-            let mut cursor = Cursor::new(b"tofu");
+            // Create a slice producer with data that occupies four slots.
+            let mut slice_producer = SliceProducer::new(b"tofu");
 
             // Copy data from three of the occupied slots and call `did_produce`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = cursor.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..3], &slots[0..3]);
-                assert!(cursor.did_produce(3).await.is_ok());
+                assert!(slice_producer.did_produce(3).await.is_ok());
             }
 
             // Make a second call to `did_produce` which exceeds the number of available slots.
-            let _ = cursor.did_produce(2).await;
+            let _ = slice_producer.did_produce(2).await;
         })
     }
 
     #[test]
     fn produces_final_value_on_producer_slots_after_complete_production() {
         smol::block_on(async {
-            // Create a cursor with data that occupies four slots.
-            let mut cursor = Cursor::new(b"tofu");
+            // Create a slice producer with data that occupies four slots.
+            let mut slice_producer = SliceProducer::new(b"tofu");
 
             // Copy data from two of the occupied slots and call `did_produce`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = cursor.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..2], &slots[0..2]);
-                assert!(cursor.did_produce(2).await.is_ok());
+                assert!(slice_producer.did_produce(2).await.is_ok());
             }
 
             // Copy data from two of the occupied slots and call `did_produce`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = cursor.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..2], &slots[0..2]);
-                assert!(cursor.did_produce(2).await.is_ok());
+                assert!(slice_producer.did_produce(2).await.is_ok());
             }
 
             // Make a third call to `producer_slots` after all items have been yielded,
             // ensuring that the final value is returned.
-            assert_eq!(cursor.producer_slots().await.unwrap(), Either::Right(()));
+            assert_eq!(
+                slice_producer.producer_slots().await.unwrap(),
+                Either::Right(())
+            );
         })
     }
 
@@ -242,15 +245,15 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_produce_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
                 // Call `produce()` until the final value is emitted.
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.produce().await;
+            let _ = slice_producer.produce().await;
         })
     }
 
@@ -258,14 +261,14 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_slurp_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.slurp().await;
+            let _ = slice_producer.slurp().await;
         })
     }
 
@@ -273,14 +276,14 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_producer_slots_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.producer_slots().await;
+            let _ = slice_producer.producer_slots().await;
         })
     }
 
@@ -288,14 +291,14 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_did_produce_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
-            let _ = cursor.did_produce(3).await;
+            let _ = slice_producer.did_produce(3).await;
         })
     }
 
@@ -303,15 +306,15 @@ mod tests {
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_bulk_produce_after_final() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"tofu");
+            let mut slice_producer = SliceProducer::new(b"tofu");
             loop {
-                if let Ok(Either::Right(_)) = cursor.produce().await {
+                if let Ok(Either::Right(_)) = slice_producer.produce().await {
                     break;
                 }
             }
 
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            let _ = cursor.bulk_produce(&mut buf).await;
+            let _ = slice_producer.bulk_produce(&mut buf).await;
         })
     }
 
@@ -321,9 +324,9 @@ mod tests {
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
         smol::block_on(async {
-            let mut cursor = Cursor::new(b"ufo");
+            let mut slice_producer = SliceProducer::new(b"ufo");
 
-            let _ = cursor.did_produce(21).await;
+            let _ = slice_producer.did_produce(21).await;
         })
     }
 }

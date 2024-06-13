@@ -1,9 +1,18 @@
 use core::mem::MaybeUninit;
 use core::slice;
 
-use std::alloc::{Allocator, Global};
-use std::collections;
-use std::vec::Vec;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    alloc::{Allocator, Global},
+    collections::TryReserveError,
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    alloc::{Allocator, Global},
+    collections::TryReserveError,
+    vec::Vec,
+};
 
 use thiserror::Error;
 use wrapper::Wrapper;
@@ -14,7 +23,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 #[error(transparent)]
-pub struct IntoVecError(#[from] collections::TryReserveError);
+pub struct IntoVecError(#[from] TryReserveError);
 
 /// A fallible implementation of `IntoVec` which returns an error
 /// if there is insufficient memory to (re)allocate the inner
