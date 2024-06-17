@@ -4,7 +4,7 @@ use either::Either;
 use wrapper::Wrapper;
 
 use crate::local_nb::producer::SyncToLocalNb;
-use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
+use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 use crate::sync::producer::SliceProducer as SyncSliceProducer;
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl<'a, T> Wrapper<&'a [T]> for SliceProducer<'a, T> {
     }
 }
 
-impl<'a, T: Clone> LocalProducer for SliceProducer<'a, T> {
+impl<'a, T: Clone> Producer for SliceProducer<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -47,13 +47,13 @@ impl<'a, T: Clone> LocalProducer for SliceProducer<'a, T> {
     }
 }
 
-impl<'a, T: Copy> LocalBufferedProducer for SliceProducer<'a, T> {
+impl<'a, T: Copy> BufferedProducer for SliceProducer<'a, T> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp().await
     }
 }
 
-impl<'a, T: Copy> LocalBulkProducer for SliceProducer<'a, T> {
+impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
     async fn producer_slots<'b>(
         &'b mut self,
     ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>

@@ -14,7 +14,7 @@ use std::{
 use wrapper::Wrapper;
 
 use crate::local_nb::consumer::SyncToLocalNb;
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::IntoVec as SyncIntoVec;
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
@@ -69,7 +69,7 @@ impl<T> Wrapper<Vec<T>> for IntoVec<T> {
     }
 }
 
-impl<T> LocalConsumer for IntoVec<T> {
+impl<T> Consumer for IntoVec<T> {
     type Item = T;
     type Final = ();
     type Error = !;
@@ -83,13 +83,13 @@ impl<T> LocalConsumer for IntoVec<T> {
     }
 }
 
-impl<T> LocalBufferedConsumer for IntoVec<T> {
+impl<T> BufferedConsumer for IntoVec<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<T: Copy> LocalBulkConsumer for IntoVec<T> {
+impl<T: Copy> BulkConsumer for IntoVec<T> {
     async fn consumer_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>

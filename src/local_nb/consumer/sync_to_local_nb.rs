@@ -2,10 +2,10 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::sync;
 
-/// Turns a [`sync::Consumer`](crate::sync::Consumer) into a [`local_nb::LocalConsumer`](crate::local_nb::LocalConsumer). Only use this to wrap types that never block (and neither perform time-intensive computations).
+/// Turns a [`sync::Consumer`](crate::sync::Consumer) into a [`local_nb::Consumer`](crate::local_nb::Consumer). Only use this to wrap types that never block (and neither perform time-intensive computations).
 #[derive(Debug)]
 pub struct SyncToLocalNb<C>(pub C);
 
@@ -27,7 +27,7 @@ impl<C> Wrapper<C> for SyncToLocalNb<C> {
     }
 }
 
-impl<C: Consumer> LocalConsumer for SyncToLocalNb<C> {
+impl<C: sync::Consumer> Consumer for SyncToLocalNb<C> {
     type Item = C::Item;
     type Final = C::Final;
     type Error = C::Error;
@@ -41,13 +41,13 @@ impl<C: Consumer> LocalConsumer for SyncToLocalNb<C> {
     }
 }
 
-impl<C: BufferedConsumer> LocalBufferedConsumer for SyncToLocalNb<C> {
+impl<C: sync::BufferedConsumer> BufferedConsumer for SyncToLocalNb<C> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush()
     }
 }
 
-impl<C: BulkConsumer> LocalBulkConsumer for SyncToLocalNb<C>
+impl<C: sync::BulkConsumer> BulkConsumer for SyncToLocalNb<C>
 where
     Self::Item: Copy,
 {

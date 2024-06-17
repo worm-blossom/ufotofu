@@ -8,7 +8,7 @@
 //! 
 //! ## Adaptors
 //! 
-//! The [SyncToLocalNb] adaptor allows you to use a [`sync::Consumer`](crate::sync::Consumer) as a [`local_nb::LocalConsumer`](crate::local_nb::LocalConsumer).
+//! The [SyncToLocalNb] adaptor allows you to use a [`sync::Consumer`](crate::sync::Consumer) as a [`local_nb::Consumer`](crate::local_nb::Consumer).
 //! 
 //! ## Development Helpers
 //! 

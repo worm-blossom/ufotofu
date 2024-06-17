@@ -13,7 +13,7 @@ use ufotofu_queues::fixed::Fixed;
 use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
-use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
+use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 
 /// Operations which may be called against a producer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
@@ -123,9 +123,9 @@ impl<P, T, F, E> Wrapper<P> for Scramble<P, T, F, E> {
 
 // Operates by draining its `queue` and `final_val` and filling them via the
 // `operations` when they become empty.
-impl<P, T, F, E> LocalProducer for Scramble<P, T, F, E>
+impl<P, T, F, E> Producer for Scramble<P, T, F, E>
 where
-    P: LocalBulkProducer<Item = T, Final = F, Error = E>,
+    P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     type Item = T;
@@ -161,9 +161,9 @@ where
     }
 }
 
-impl<P, T, F, E> LocalBufferedProducer for Scramble<P, T, F, E>
+impl<P, T, F, E> BufferedProducer for Scramble<P, T, F, E>
 where
-    P: LocalBulkProducer<Item = T, Final = F, Error = E>,
+    P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
@@ -186,9 +186,9 @@ where
     }
 }
 
-impl<P, T, F, E> LocalBulkProducer for Scramble<P, T, F, E>
+impl<P, T, F, E> BulkProducer for Scramble<P, T, F, E>
 where
-    P: LocalBulkProducer<Item = T, Final = F, Error = E>,
+    P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn producer_slots<'a>(
@@ -231,7 +231,7 @@ where
 
 impl<P, T, F, E> Scramble<P, T, F, E>
 where
-    P: LocalBulkProducer<Item = T, Final = F, Error = E>,
+    P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn perform_operation(&mut self) -> Result<Option<F>, E> {

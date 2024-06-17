@@ -16,7 +16,7 @@ pub mod producer;
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
-pub trait LocalConsumer {
+pub trait Consumer {
     /// The sequence consumed by this consumer *starts* with *arbitrarily many* values of this type.
     type Item;
     /// The sequence consumed by this consumer *ends* with *up to one* value of this type.
@@ -49,7 +49,7 @@ pub trait LocalConsumer {
 ///
 /// It must not delay performing side-effects when being closed. In other words,
 /// calling `close` should internally trigger flushing.
-pub trait LocalBufferedConsumer: LocalConsumer {
+pub trait BufferedConsumer: Consumer {
     /// Perform any side-effects that were delayed for previously consumed items.
     ///
     /// This function allows the client code to force execution of the (potentially expensive)
@@ -70,7 +70,7 @@ pub trait LocalBufferedConsumer: LocalConsumer {
 /// difference between consuming items in bulk or one item at a time.
 ///
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait LocalBulkConsumer: LocalBufferedConsumer
+pub trait BulkConsumer: BufferedConsumer
 where
     Self::Item: Copy,
 {
@@ -157,7 +157,7 @@ where
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A producer can also signal an error of type `Self::Error` instead of producing an item.
-pub trait LocalProducer {
+pub trait Producer {
     /// The sequence produced by this producer *starts* with *arbitrarily many* values of this type.
     type Item;
     /// The sequence produced by this producer *ends* with *up to one* value of this type.
@@ -182,7 +182,7 @@ pub trait LocalProducer {
 }
 
 /// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
-pub trait LocalBufferedProducer: LocalProducer {
+pub trait BufferedProducer: Producer {
     /// Prepare some values for yielding. This function allows the `Producer` to perform side
     /// effects that it would otherwise have to do just-in-time when `produce` gets called.
     ///
@@ -199,7 +199,7 @@ pub trait LocalBufferedProducer: LocalProducer {
 /// between producing items in bulk or one item at a time.
 ///
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait LocalBulkProducer: LocalBufferedProducer
+pub trait BulkProducer: BufferedProducer
 where
     Self::Item: Copy,
 {
@@ -280,8 +280,8 @@ pub async fn pipe<P, C>(
     consumer: &mut C,
 ) -> Result<(), PipeError<P::Error, C::Error>>
 where
-    P: LocalProducer,
-    C: LocalConsumer<Item = P::Item, Final = P::Final>,
+    P: Producer,
+    C: Consumer<Item = P::Item, Final = P::Final>,
 {
     loop {
         match producer.produce().await {
@@ -318,9 +318,9 @@ pub async fn bulk_pipe<P, C>(
     consumer: &mut C,
 ) -> Result<(), BulkPipeError<P::Error, C::Error>>
 where
-    P: LocalBulkProducer,
+    P: BulkProducer,
     P::Item: Copy,
-    C: LocalBulkConsumer<Item = P::Item, Final = P::Final>,
+    C: BulkConsumer<Item = P::Item, Final = P::Final>,
 {
     loop {
         match producer.producer_slots().await {

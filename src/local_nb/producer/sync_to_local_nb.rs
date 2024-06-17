@@ -3,10 +3,10 @@ use core::mem::MaybeUninit;
 use either::Either;
 use wrapper::Wrapper;
 
-use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
-use crate::sync::{BufferedProducer, BulkProducer, Producer};
+use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
+use crate::sync;
 
-/// Turns a [`sync::Producer`](crate::sync::Producer) into a [`local_nb::LocalProducer`](crate::local_nb::LocalProducer). Only use this to wrap types that never block (and neither perform time-intensive computations).
+/// Turns a [`sync::Producer`](crate::sync::Producer) into a [`local_nb::Producer`](crate::local_nb::Producer). Only use this to wrap types that never block (and neither perform time-intensive computations).
 #[derive(Debug)]
 pub struct SyncToLocalNb<P>(pub P);
 
@@ -28,7 +28,7 @@ impl<P> Wrapper<P> for SyncToLocalNb<P> {
     }
 }
 
-impl<P: Producer> LocalProducer for SyncToLocalNb<P> {
+impl<P: sync::Producer> Producer for SyncToLocalNb<P> {
     type Item = P::Item;
     type Final = P::Final;
     type Error = P::Error;
@@ -38,13 +38,13 @@ impl<P: Producer> LocalProducer for SyncToLocalNb<P> {
     }
 }
 
-impl<P: BufferedProducer> LocalBufferedProducer for SyncToLocalNb<P> {
+impl<P: sync::BufferedProducer> BufferedProducer for SyncToLocalNb<P> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp()
     }
 }
 
-impl<P: BulkProducer> LocalBulkProducer for SyncToLocalNb<P>
+impl<P: sync::BulkProducer> BulkProducer for SyncToLocalNb<P>
 where
     Self::Item: Copy,
 {

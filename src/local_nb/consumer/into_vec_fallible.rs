@@ -14,7 +14,7 @@ use std::{
 use wrapper::Wrapper;
 
 use crate::local_nb::consumer::SyncToLocalNb;
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::{IntoVecError, IntoVecFallible as SyncIntoVecFallible};
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
@@ -71,7 +71,7 @@ impl<T> Wrapper<Vec<T>> for IntoVecFallible<T> {
     }
 }
 
-impl<T> LocalConsumer for IntoVecFallible<T> {
+impl<T> Consumer for IntoVecFallible<T> {
     type Item = T;
     type Final = ();
     type Error = IntoVecError;
@@ -85,13 +85,13 @@ impl<T> LocalConsumer for IntoVecFallible<T> {
     }
 }
 
-impl<T> LocalBufferedConsumer for IntoVecFallible<T> {
+impl<T> BufferedConsumer for IntoVecFallible<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<T: Copy> LocalBulkConsumer for IntoVecFallible<T> {
+impl<T: Copy> BulkConsumer for IntoVecFallible<T> {
     async fn consumer_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>

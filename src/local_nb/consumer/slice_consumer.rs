@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 use wrapper::Wrapper;
 
 use crate::local_nb::consumer::SyncToLocalNb;
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::{SliceConsumer as SyncSliceConsumer, SliceConsumerFullError};
 
 /// Consumes data into a mutable slice.
@@ -41,7 +41,7 @@ impl<'a, T> Wrapper<&'a [T]> for SliceConsumer<'a, T> {
     }
 }
 
-impl<'a, T> LocalConsumer for SliceConsumer<'a, T> {
+impl<'a, T> Consumer for SliceConsumer<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
     /// The value signifying the end of the consumed sequence.
@@ -59,13 +59,13 @@ impl<'a, T> LocalConsumer for SliceConsumer<'a, T> {
     }
 }
 
-impl<'a, T> LocalBufferedConsumer for SliceConsumer<'a, T> {
+impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<'a, T: Copy> LocalBulkConsumer for SliceConsumer<'a, T> {
+impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
     async fn consumer_slots<'b>(
         &'b mut self,
     ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>

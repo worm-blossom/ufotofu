@@ -13,7 +13,7 @@ use ufotofu_queues::fixed::Fixed;
 use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Operations which may be called against a consumer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
@@ -117,9 +117,9 @@ impl<C, T, F, E> Wrapper<C> for Scramble<C, T, F, E> {
     }
 }
 
-impl<C, T, F, E> LocalConsumer for Scramble<C, T, F, E>
+impl<C, T, F, E> Consumer for Scramble<C, T, F, E>
 where
-    C: LocalBulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     type Item = T;
@@ -159,9 +159,9 @@ where
     }
 }
 
-impl<C, T, F, E> LocalBufferedConsumer for Scramble<C, T, F, E>
+impl<C, T, F, E> BufferedConsumer for Scramble<C, T, F, E>
 where
-    C: LocalBulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
@@ -177,9 +177,9 @@ where
     }
 }
 
-impl<C, T, F, E> LocalBulkConsumer for Scramble<C, T, F, E>
+impl<C, T, F, E> BulkConsumer for Scramble<C, T, F, E>
 where
-    C: LocalBulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn consumer_slots<'a>(
@@ -222,7 +222,7 @@ where
 
 impl<C, T, F, E> Scramble<C, T, F, E>
 where
-    C: LocalBulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn perform_operation(&mut self) -> Result<(), E> {

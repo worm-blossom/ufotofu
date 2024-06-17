@@ -69,8 +69,8 @@ use core::mem::MaybeUninit;
 /// 
 /// Core functionality:
 /// 
-/// - Traits for producing sequences: [`LocalProducer`](local_nb::LocalProducer), [`LocalBufferedProducer`](local_nb::LocalBufferedProducer), and [`LocalBulkProducer`](local_nb::LocalBulkProducer).
-/// - Traits for consuming sequences: [`LocalConsumer`](local_nb::LocalConsumer), [`LocalBufferedConsumer`](local_nb::LocalBufferedConsumer), and [`LocalBulkConsumer`](local_nb::LocalBulkConsumer).
+/// - Traits for producing sequences: [`Producer`](local_nb::Producer), [`BufferedProducer`](local_nb::BufferedProducer), and [`BulkProducer`](local_nb::BulkProducer).
+/// - Traits for consuming sequences: [`Consumer`](local_nb::Consumer), [`BufferedConsumer`](local_nb::BufferedConsumer), and [`BulkConsumer`](local_nb::BulkConsumer).
 /// - Piping data: [`pipe`](local_nb::pipe) and [`bulk_pipe`](local_nb::bulk_pipe).
 /// 
 /// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](local_nb::producer) and [`consumer`](local_nb::consumer) modules respectively.

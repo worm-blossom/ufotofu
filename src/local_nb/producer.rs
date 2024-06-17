@@ -6,7 +6,7 @@
 //! 
 //! ## Adaptors
 //! 
-//! The [SyncToLocalNb] adaptor allows you to use a [`sync::Producer`](crate::sync::Producer) as a [`local_nb::LocalProducer`](crate::local_nb::LocalProducer).
+//! The [SyncToLocalNb] adaptor allows you to use a [`sync::Producer`](crate::sync::Producer) as a [`local_nb::Producer`](crate::local_nb::Producer).
 //! 
 //! ## Development Helpers
 //! 
