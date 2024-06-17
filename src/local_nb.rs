@@ -8,7 +8,6 @@ use crate::sync::{BulkPipeError, PipeError};
 
 pub mod consumer;
 pub mod producer;
-pub mod sync_to_local_nb;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///

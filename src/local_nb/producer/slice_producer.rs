@@ -3,20 +3,20 @@ use core::convert::AsRef;
 use either::Either;
 use wrapper::Wrapper;
 
-use crate::local_nb::sync_to_local_nb::SyncToLocalNbProducer;
+use crate::local_nb::producer::SyncToLocalNb;
 use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
 use crate::sync::producer::SliceProducer as SyncSliceProducer;
 
 #[derive(Debug)]
 /// Produces data from a slice.
-pub struct SliceProducer<'a, T>(SyncToLocalNbProducer<SyncSliceProducer<'a, T>>);
+pub struct SliceProducer<'a, T>(SyncToLocalNb<SyncSliceProducer<'a, T>>);
 
 impl<'a, T> SliceProducer<'a, T> {
     /// Create a producer which produces the data in the given slice.
     pub fn new(slice: &'a [T]) -> SliceProducer<'a, T> {
         let slice_producer = SyncSliceProducer::new(slice);
 
-        SliceProducer(SyncToLocalNbProducer(slice_producer))
+        SliceProducer(SyncToLocalNb(slice_producer))
     }
 }
 

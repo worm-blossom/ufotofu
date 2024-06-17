@@ -8,7 +8,7 @@
 //! 
 //! ## Adaptors
 //! 
-//! TODO doc sync_to_nb_local here
+//! The [SyncToLocalNb] adaptor allows you to use a [`sync::Consumer`](crate::sync::Consumer) as a [`local_nb::LocalConsumer`](crate::local_nb::LocalConsumer).
 //! 
 //! ## Development Helpers
 //! 
@@ -20,6 +20,8 @@
 mod into_vec;
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod into_vec_fallible;
+
+mod sync_to_local_nb;
 
 mod invariant;
 mod invariant_noop;
@@ -34,6 +36,8 @@ pub use into_vec::IntoVec;
 pub use into_vec_fallible::IntoVecFallible;
 
 pub use slice_consumer::SliceConsumer;
+
+pub use sync_to_local_nb::SyncToLocalNb;
 
 #[cfg(any(feature = "dev", doc))]
 pub use scramble::{ConsumeOperations, Scramble};

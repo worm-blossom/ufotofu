@@ -13,14 +13,14 @@ use std::{
 
 use wrapper::Wrapper;
 
-use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
+use crate::local_nb::consumer::SyncToLocalNb;
 use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
 use crate::sync::consumer::{IntoVecError, IntoVecFallible as SyncIntoVecFallible};
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 #[derive(Debug)]
 pub struct IntoVecFallible<T, A: Allocator = Global>(
-    SyncToLocalNbConsumer<SyncIntoVecFallible<T, A>>,
+    SyncToLocalNb<SyncIntoVecFallible<T, A>>,
 );
 
 impl<T> Default for IntoVecFallible<T> {
@@ -33,7 +33,7 @@ impl<T> IntoVecFallible<T> {
     pub fn new() -> IntoVecFallible<T> {
         let into_vec = SyncIntoVecFallible::new();
 
-        IntoVecFallible(SyncToLocalNbConsumer(into_vec))
+        IntoVecFallible(SyncToLocalNb(into_vec))
     }
 
     pub fn into_vec(self) -> Vec<T> {
@@ -46,7 +46,7 @@ impl<T, A: Allocator> IntoVecFallible<T, A> {
     pub fn new_in(alloc: A) -> IntoVecFallible<T, A> {
         let into_vec = SyncIntoVecFallible::new_in(alloc);
 
-        IntoVecFallible(SyncToLocalNbConsumer(into_vec))
+        IntoVecFallible(SyncToLocalNb(into_vec))
     }
 }
 

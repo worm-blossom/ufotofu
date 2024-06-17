@@ -42,6 +42,8 @@
 //! 
 //! All three modules implement the same concepts; the only differences are whether functions are asynchronous, and, if so, whether futures implement [`Send`]. In particular, each module has its own version of the core traits for interacting with sequences.
 //! 
+//! The [`nb`] module lacks most features of the [`sync`] and [`local_nb`] modules, but the core trait definitions are there, and we happily accept pull-requests.
+//! 
 //! ## Feature Flags
 //! 
 //! Ufotofu gates several features that are only interesting under certain circumstances behind feature flags. These API docs document *all* functionality, though, as if all feature flags were activated.
@@ -50,7 +52,7 @@
 //! 
 //! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default).
 //! 
-//! All functinoality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
+//! All functionality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
 
 
 #[cfg(feature = "std")]
@@ -74,6 +76,14 @@ use core::mem::MaybeUninit;
 /// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](local_nb::producer) and [`consumer`](local_nb::consumer) modules respectively.
 pub mod local_nb;
 /// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *multi-threaded* executors.
+/// 
+/// For an introduction and high-level overview, see the [toplevel documentation](crate).
+/// 
+/// Core functionality:
+/// 
+/// - Traits for producing sequences: [`Producer`](nb::Producer), [`BufferedProducer`](nb::BufferedProducer), and [`BulkProducer`](nb::BulkProducer).
+/// - Traits for consuming sequences: [`Consumer`](nb::Consumer), [`BufferedConsumer`](nb::BufferedConsumer), and [`BulkConsumer`](nb::BulkConsumer).
+/// - Piping data: [`pipe`](nb::pipe) and [`bulk_pipe`](nb::bulk_pipe).
 pub mod nb;
 /// Synchronous, blocking versions of the ufotofu APIs.
 /// 
@@ -92,5 +102,3 @@ pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
     let ptr = s.as_mut_ptr().cast::<MaybeUninit<T>>();
     unsafe { core::slice::from_raw_parts_mut(ptr, s.len()) }
 }
-
-// basics: wrappers, feature flags, queues, converters
