@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 
 use either::Either;
 
-use crate::sync::{BulkPipeError, PipeError};
+use crate::sync::{PipeError};
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
@@ -317,7 +317,7 @@ where
 pub async fn bulk_pipe<P, C>(
     producer: &mut P,
     consumer: &mut C,
-) -> Result<(), BulkPipeError<P::Error, C::Error>>
+) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: BulkProducer,
     P::Item: Copy + Sync + Send,
@@ -330,23 +330,23 @@ where
             Ok(Either::Left(slots)) => {
                 let amount = match consumer.bulk_consume(slots).await {
                     Ok(amount) => amount,
-                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
                 match producer.did_produce(amount).await {
                     Ok(()) => {
                         // No-op, continues with next loop iteration.
                     }
-                    Err(producer_error) => return Err(BulkPipeError::Producer(producer_error)),
+                    Err(producer_error) => return Err(PipeError::Producer(producer_error)),
                 };
             }
             Ok(Either::Right(final_value)) => {
                 match consumer.close(final_value).await {
                     Ok(()) => return Ok(()),
-                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
             }
             Err(producer_error) => {
-                return Err(BulkPipeError::Producer(producer_error));
+                return Err(PipeError::Producer(producer_error));
             }
         }
     }
