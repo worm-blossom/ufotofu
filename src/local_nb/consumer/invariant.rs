@@ -2,7 +2,7 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// A `Consumer` wrapper that panics when callers violate API contracts such
 /// as halting interaction after an error.
@@ -81,9 +81,9 @@ impl<C> Wrapper<C> for Invariant<C> {
     }
 }
 
-impl<C, T, F, E> LocalConsumer for Invariant<C>
+impl<C, T, F, E> Consumer for Invariant<C>
 where
-    C: LocalConsumer<Item = T, Final = F, Error = E>,
+    C: Consumer<Item = T, Final = F, Error = E>,
 {
     type Item = T;
     type Final = F;
@@ -107,9 +107,9 @@ where
     }
 }
 
-impl<C, T, F, E> LocalBufferedConsumer for Invariant<C>
+impl<C, T, F, E> BufferedConsumer for Invariant<C>
 where
-    C: LocalBufferedConsumer<Item = T, Final = F, Error = E>,
+    C: BufferedConsumer<Item = T, Final = F, Error = E>,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_inactive();
@@ -120,9 +120,9 @@ where
     }
 }
 
-impl<C, T, F, E> LocalBulkConsumer for Invariant<C>
+impl<C, T, F, E> BulkConsumer for Invariant<C>
 where
-    C: LocalBulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn consumer_slots<'a>(

@@ -3,20 +3,20 @@ use core::convert::AsRef;
 use either::Either;
 use wrapper::Wrapper;
 
-use crate::local_nb::sync_to_local_nb::SyncToLocalNbProducer;
-use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
+use crate::local_nb::producer::SyncToLocalNb;
+use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 use crate::sync::producer::SliceProducer as SyncSliceProducer;
 
 #[derive(Debug)]
 /// Produces data from a slice.
-pub struct SliceProducer<'a, T>(SyncToLocalNbProducer<SyncSliceProducer<'a, T>>);
+pub struct SliceProducer<'a, T>(SyncToLocalNb<SyncSliceProducer<'a, T>>);
 
 impl<'a, T> SliceProducer<'a, T> {
     /// Create a producer which produces the data in the given slice.
     pub fn new(slice: &'a [T]) -> SliceProducer<'a, T> {
         let slice_producer = SyncSliceProducer::new(slice);
 
-        SliceProducer(SyncToLocalNbProducer(slice_producer))
+        SliceProducer(SyncToLocalNb(slice_producer))
     }
 }
 
@@ -34,7 +34,7 @@ impl<'a, T> Wrapper<&'a [T]> for SliceProducer<'a, T> {
     }
 }
 
-impl<'a, T: Clone> LocalProducer for SliceProducer<'a, T> {
+impl<'a, T: Clone> Producer for SliceProducer<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -47,13 +47,13 @@ impl<'a, T: Clone> LocalProducer for SliceProducer<'a, T> {
     }
 }
 
-impl<'a, T: Copy> LocalBufferedProducer for SliceProducer<'a, T> {
+impl<'a, T: Copy> BufferedProducer for SliceProducer<'a, T> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp().await
     }
 }
 
-impl<'a, T: Copy> LocalBulkProducer for SliceProducer<'a, T> {
+impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
     async fn producer_slots<'b>(
         &'b mut self,
     ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>

@@ -23,13 +23,10 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 #[error(transparent)]
+/// Error to indicate that consuming data into a `Vec` failed because allocating more memory for the `Vec` failed.
 pub struct IntoVecError(#[from] TryReserveError);
 
-/// A fallible implementation of `IntoVec` which returns an error
-/// if there is insufficient memory to (re)allocate the inner
-/// vector or if the allocator reports a failure.
-///
-/// Collects data and can at any point be converted into a `Vec<T>`.
+/// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 #[derive(Debug)]
 pub struct IntoVecFallible<T, A: Allocator = Global>(Invariant<IntoVecFallibleInner<T, A>>);
 

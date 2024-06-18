@@ -3,7 +3,7 @@ use core::convert::{AsMut, AsRef};
 use either::Either;
 use wrapper::Wrapper;
 
-use crate::local_nb::{LocalBufferedProducer, LocalBulkProducer, LocalProducer};
+use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 
 /// A `Producer` wrapper that panics when callers violate API contracts such
 /// as halting interaction after an error.
@@ -60,9 +60,9 @@ impl<P> Wrapper<P> for Invariant<P> {
     }
 }
 
-impl<P, T, F, E> LocalProducer for Invariant<P>
+impl<P, T, F, E> Producer for Invariant<P>
 where
-    P: LocalProducer<Item = T, Final = F, Error = E>,
+    P: Producer<Item = T, Final = F, Error = E>,
 {
     type Item = T;
     type Final = F;
@@ -73,18 +73,18 @@ where
     }
 }
 
-impl<P, T, F, E> LocalBufferedProducer for Invariant<P>
+impl<P, T, F, E> BufferedProducer for Invariant<P>
 where
-    P: LocalBufferedProducer<Item = T, Final = F, Error = E>,
+    P: BufferedProducer<Item = T, Final = F, Error = E>,
 {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.inner.slurp().await
     }
 }
 
-impl<P, T, F, E> LocalBulkProducer for Invariant<P>
+impl<P, T, F, E> BulkProducer for Invariant<P>
 where
-    P: LocalBulkProducer<Item = T, Final = F, Error = E>,
+    P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn producer_slots<'a>(

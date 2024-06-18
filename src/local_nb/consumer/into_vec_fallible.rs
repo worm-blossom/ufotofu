@@ -13,18 +13,14 @@ use std::{
 
 use wrapper::Wrapper;
 
-use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::consumer::SyncToLocalNb;
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::{IntoVecError, IntoVecFallible as SyncIntoVecFallible};
 
-/// A fallible implementation of `IntoVec` which returns an error
-/// if there is insufficient memory to (re)allocate the inner
-/// vector or if the allocator reports a failure.
-///
-/// Collects data and can at any point be converted into a `Vec<T>`.
+/// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 #[derive(Debug)]
 pub struct IntoVecFallible<T, A: Allocator = Global>(
-    SyncToLocalNbConsumer<SyncIntoVecFallible<T, A>>,
+    SyncToLocalNb<SyncIntoVecFallible<T, A>>,
 );
 
 impl<T> Default for IntoVecFallible<T> {
@@ -37,7 +33,7 @@ impl<T> IntoVecFallible<T> {
     pub fn new() -> IntoVecFallible<T> {
         let into_vec = SyncIntoVecFallible::new();
 
-        IntoVecFallible(SyncToLocalNbConsumer(into_vec))
+        IntoVecFallible(SyncToLocalNb(into_vec))
     }
 
     pub fn into_vec(self) -> Vec<T> {
@@ -50,7 +46,7 @@ impl<T, A: Allocator> IntoVecFallible<T, A> {
     pub fn new_in(alloc: A) -> IntoVecFallible<T, A> {
         let into_vec = SyncIntoVecFallible::new_in(alloc);
 
-        IntoVecFallible(SyncToLocalNbConsumer(into_vec))
+        IntoVecFallible(SyncToLocalNb(into_vec))
     }
 }
 
@@ -75,7 +71,7 @@ impl<T> Wrapper<Vec<T>> for IntoVecFallible<T> {
     }
 }
 
-impl<T> LocalConsumer for IntoVecFallible<T> {
+impl<T> Consumer for IntoVecFallible<T> {
     type Item = T;
     type Final = ();
     type Error = IntoVecError;
@@ -89,13 +85,13 @@ impl<T> LocalConsumer for IntoVecFallible<T> {
     }
 }
 
-impl<T> LocalBufferedConsumer for IntoVecFallible<T> {
+impl<T> BufferedConsumer for IntoVecFallible<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<T: Copy> LocalBulkConsumer for IntoVecFallible<T> {
+impl<T: Copy> BulkConsumer for IntoVecFallible<T> {
     async fn consumer_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>

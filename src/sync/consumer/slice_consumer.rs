@@ -10,6 +10,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 #[error("slice consumer is full")]
+/// Error to indicate that consuming data into a slice failed because the end of the slice was reached.
 pub struct SliceConsumerFullError;
 
 /// Consumes data into a mutable slice.

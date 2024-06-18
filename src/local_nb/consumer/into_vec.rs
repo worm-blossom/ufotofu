@@ -13,13 +13,13 @@ use std::{
 
 use wrapper::Wrapper;
 
-use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::consumer::SyncToLocalNb;
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::IntoVec as SyncIntoVec;
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
 #[derive(Debug)]
-pub struct IntoVec<T, A: Allocator = Global>(SyncToLocalNbConsumer<SyncIntoVec<T, A>>);
+pub struct IntoVec<T, A: Allocator = Global>(SyncToLocalNb<SyncIntoVec<T, A>>);
 
 impl<T> Default for IntoVec<T> {
     fn default() -> Self {
@@ -31,7 +31,7 @@ impl<T> IntoVec<T> {
     pub fn new() -> IntoVec<T> {
         let into_vec = SyncIntoVec::new();
 
-        IntoVec(SyncToLocalNbConsumer(into_vec))
+        IntoVec(SyncToLocalNb(into_vec))
     }
 
     pub fn into_vec(self) -> Vec<T> {
@@ -44,7 +44,7 @@ impl<T, A: Allocator> IntoVec<T, A> {
     pub fn new_in(alloc: A) -> IntoVec<T, A> {
         let into_vec = SyncIntoVec::new_in(alloc);
 
-        IntoVec(SyncToLocalNbConsumer(into_vec))
+        IntoVec(SyncToLocalNb(into_vec))
     }
 }
 
@@ -69,7 +69,7 @@ impl<T> Wrapper<Vec<T>> for IntoVec<T> {
     }
 }
 
-impl<T> LocalConsumer for IntoVec<T> {
+impl<T> Consumer for IntoVec<T> {
     type Item = T;
     type Final = ();
     type Error = !;
@@ -83,13 +83,13 @@ impl<T> LocalConsumer for IntoVec<T> {
     }
 }
 
-impl<T> LocalBufferedConsumer for IntoVec<T> {
+impl<T> BufferedConsumer for IntoVec<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<T: Copy> LocalBulkConsumer for IntoVec<T> {
+impl<T: Copy> BulkConsumer for IntoVec<T> {
     async fn consumer_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>

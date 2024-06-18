@@ -3,20 +3,20 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
-use crate::local_nb::sync_to_local_nb::SyncToLocalNbConsumer;
-use crate::local_nb::{LocalBufferedConsumer, LocalBulkConsumer, LocalConsumer};
+use crate::local_nb::consumer::SyncToLocalNb;
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::{SliceConsumer as SyncSliceConsumer, SliceConsumerFullError};
 
 /// Consumes data into a mutable slice.
 #[derive(Debug)]
-pub struct SliceConsumer<'a, T>(SyncToLocalNbConsumer<SyncSliceConsumer<'a, T>>);
+pub struct SliceConsumer<'a, T>(SyncToLocalNb<SyncSliceConsumer<'a, T>>);
 
 /// Creates a consumer which places consumed data into the given slice.
 impl<'a, T> SliceConsumer<'a, T> {
     pub fn new(slice: &mut [T]) -> SliceConsumer<'_, T> {
         let slice_consumer = SyncSliceConsumer::new(slice);
 
-        SliceConsumer(SyncToLocalNbConsumer(slice_consumer))
+        SliceConsumer(SyncToLocalNb(slice_consumer))
     }
 }
 
@@ -41,7 +41,7 @@ impl<'a, T> Wrapper<&'a [T]> for SliceConsumer<'a, T> {
     }
 }
 
-impl<'a, T> LocalConsumer for SliceConsumer<'a, T> {
+impl<'a, T> Consumer for SliceConsumer<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
     /// The value signifying the end of the consumed sequence.
@@ -59,13 +59,13 @@ impl<'a, T> LocalConsumer for SliceConsumer<'a, T> {
     }
 }
 
-impl<'a, T> LocalBufferedConsumer for SliceConsumer<'a, T> {
+impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush().await
     }
 }
 
-impl<'a, T: Copy> LocalBulkConsumer for SliceConsumer<'a, T> {
+impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
     async fn consumer_slots<'b>(
         &'b mut self,
     ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
