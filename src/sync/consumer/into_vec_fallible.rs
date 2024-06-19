@@ -24,7 +24,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 #[error(transparent)]
 /// Error to indicate that consuming data into a `Vec` failed because allocating more memory for the `Vec` failed.
-pub struct IntoVecError(#[from] TryReserveError);
+pub struct IntoVecError(#[from] pub TryReserveError);
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 #[derive(Debug)]
