@@ -54,7 +54,9 @@ impl<P> Invariant<P> {
         }
     }
 
-    fn check_inactive(&self) {
+    /// Checks the state of the `active` field and panics if the value is
+    /// `false`.
+    pub fn check_inactive(&self) {
         if !self.active {
             panic!("may not call `Producer` methods after the sequence has ended");
         }
