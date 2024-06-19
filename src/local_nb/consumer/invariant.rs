@@ -2,7 +2,13 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
+use crate::local_nb::consumer::SyncToLocalNb;
 use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::sync::consumer::Invariant as SyncInvariant;
+use crate::sync::{
+    BufferedConsumer as SyncBufferedConsumer, BulkConsumer as SyncBulkConsumer,
+    Consumer as SyncConsumer,
+};
 
 /// A `Consumer` wrapper that panics when callers violate API contracts such
 /// as halting interaction after an error.
@@ -29,17 +35,8 @@ use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 ///   an error.
 /// - Must not call `did_consume` for slots that had not been exposed by
 ///   `consumer_slots` before.
-#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
-pub struct Invariant<C> {
-    /// An implementer of the `Consumer` traits.
-    inner: C,
-    /// The status of the consumer. `true` while the caller may call trait
-    /// methods, `false` once that becomes disallowed (because a method returned
-    /// an error, or because `close` was called).
-    active: bool,
-    /// The maximum `amount` that a caller may supply to `did_consume`.
-    exposed_slots: usize,
-}
+#[derive(Debug)]
+pub struct Invariant<C>(SyncToLocalNb<SyncInvariant<C>>);
 
 impl<C> Invariant<C> {
     /// Return a `Consumer` that behaves exactly like the wrapped `Consumer`
@@ -47,82 +44,75 @@ impl<C> Invariant<C> {
     /// validation of API invariants and panics if they are violated by a
     /// caller.
     pub fn new(inner: C) -> Self {
-        Invariant {
-            inner,
-            active: true,
-            exposed_slots: 0,
-        }
+        let invariant = SyncInvariant::new(inner);
+
+        Invariant(SyncToLocalNb(invariant))
     }
 
     /// Checks the state of the `active` field and panics if the value is
     /// `false`.
+    #[cfg(test)]
     fn check_inactive(&self) {
-        if !self.active {
-            panic!("may not call `Consumer` methods after the sequence has ended");
-        }
+        self.0 .0.check_inactive()
     }
 }
 
 impl<C> AsRef<C> for Invariant<C> {
     fn as_ref(&self) -> &C {
-        &self.inner
+        let inner = self.0.as_ref();
+        inner.as_ref()
     }
 }
 
 impl<C> AsMut<C> for Invariant<C> {
     fn as_mut(&mut self) -> &mut C {
-        &mut self.inner
+        let inner = self.0.as_mut();
+        inner.as_mut()
     }
 }
 
 impl<C> Wrapper<C> for Invariant<C> {
     fn into_inner(self) -> C {
-        self.inner
+        let inner = self.0.into_inner();
+        inner.into_inner()
     }
 }
 
 impl<C, T, F, E> Consumer for Invariant<C>
 where
-    C: Consumer<Item = T, Final = F, Error = E>,
+    C: SyncConsumer<Item = T, Final = F, Error = E>,
 {
     type Item = T;
     type Final = F;
     type Error = E;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        self.check_inactive();
+        self.0.consume(item).await?;
 
-        self.inner.consume(item).await.inspect_err(|_| {
-            // Since `consume()` returned an error, we need to ensure
-            // that any future call to trait methods will panic.
-            self.active = false;
-        })
+        Ok(())
     }
 
     async fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
-        self.check_inactive();
-        self.active = false;
+        self.0.close(final_val).await?;
 
-        self.inner.close(final_val).await
+        Ok(())
     }
 }
 
 impl<C, T, F, E> BufferedConsumer for Invariant<C>
 where
-    C: BufferedConsumer<Item = T, Final = F, Error = E>,
+    C: SyncBufferedConsumer<Item = T, Final = F, Error = E>,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
-        self.check_inactive();
+        self.0.flush().await?;
 
-        self.inner.flush().await.inspect_err(|_| {
-            self.active = false;
-        })
+        Ok(())
     }
 }
 
 impl<C, T, F, E> BulkConsumer for Invariant<C>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: SyncBulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn consumer_slots<'a>(
@@ -131,32 +121,15 @@ where
     where
         T: 'a,
     {
-        self.check_inactive();
+        let slots = self.0.consumer_slots().await?;
 
-        self.inner
-            .consumer_slots()
-            .await
-            .inspect(|slots| {
-                self.exposed_slots = slots.len();
-            })
-            .inspect_err(|_| {
-                self.active = false;
-            })
+        Ok(slots)
     }
 
     async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.check_inactive();
+        self.0.did_consume(amount).await?;
 
-        if amount > self.exposed_slots {
-            panic!(
-                "may not call `did_consume` with an amount exceeding the total number of exposed slots"
-            );
-        } else {
-            self.exposed_slots -= amount;
-        }
-
-        // Proceed with the inner call to `did_consume` and return the result.
-        self.inner.did_consume(amount).await
+        Ok(())
     }
 }
 

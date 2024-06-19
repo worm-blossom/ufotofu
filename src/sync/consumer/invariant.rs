@@ -56,7 +56,7 @@ impl<C> Invariant<C> {
 
     /// Checks the state of the `active` field and panics if the value is
     /// `false`.
-    fn check_inactive(&self) {
+    pub fn check_inactive(&self) {
         if !self.active {
             panic!("may not call `Consumer` methods after the sequence has ended");
         }
