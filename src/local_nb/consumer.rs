@@ -33,9 +33,9 @@ mod scramble;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use into_vec::IntoVec;
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub use into_vec_fallible::IntoVecFallible;
+pub use into_vec_fallible::{IntoVecError, IntoVecFallible};
 
-pub use slice_consumer::SliceConsumer;
+pub use slice_consumer::{SliceConsumer, SliceConsumerFullError};
 
 pub use sync_to_local_nb::SyncToLocalNb;
 

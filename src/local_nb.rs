@@ -361,9 +361,8 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{IntoVec, SliceConsumer};
+    use crate::local_nb::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
     use crate::local_nb::producer::SliceProducer;
-    use crate::sync::consumer::SliceConsumerFullError;
 
     #[test]
     fn pipes_from_slice_producer_to_slice_consumer(
