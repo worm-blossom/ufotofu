@@ -4,16 +4,25 @@ use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 #[cfg(feature = "std")]
-use std::boxed::Box;
+use std::{boxed::Box, vec::Vec};
 
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
 use ufotofu_queues::fixed::Fixed;
 use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
+use crate::local_nb::consumer::SyncToLocalNb;
 use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::sync::consumer::{
+    ConsumeOperation as SyncConsumeOperation, ConsumeOperations as SyncConsumeOperations,
+    Scramble as SyncScramble,
+};
+use crate::sync::{
+    BufferedConsumer as SyncBufferedConsumer, BulkConsumer as SyncBulkConsumer,
+    Consumer as SyncConsumer,
+};
 
 /// Operations which may be called against a consumer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
@@ -61,65 +70,67 @@ impl<'a> Arbitrary<'a> for ConsumeOperations {
     }
 }
 
+/// Convert a set of local, non-blocking operations into their synchronous
+/// equivalents.
+fn sync_from_local_nb(operations: ConsumeOperations) -> SyncConsumeOperations {
+    let mut sync_operations = Vec::new();
+
+    for operation in operations.0.iter() {
+        match operation {
+            ConsumeOperation::Consume => sync_operations.push(SyncConsumeOperation::Consume),
+            ConsumeOperation::ConsumerSlots(amount) => {
+                sync_operations.push(SyncConsumeOperation::ConsumerSlots(*amount))
+            }
+            ConsumeOperation::Flush => sync_operations.push(SyncConsumeOperation::Flush),
+        }
+    }
+
+    SyncConsumeOperations(sync_operations.into_boxed_slice())
+}
+
 /// A `Consumer` wrapper that scrambles the methods that get called on a wrapped consumer, without changing the observable semantics. Unless it uncovers buggy behavior on the wrapped consumer, that is.
 #[derive(Debug)]
-pub struct Scramble<C, T, F, E> {
-    /// The `Consumer` that we wrap. All consumer operations on the `Scramble`
-    /// will be transformed into semantically equivalent scrambled operations,
-    /// and then forwarded to the `inner` consumer.
-    inner: C,
-    /// A fixed capacity queue of items. We store items here before forwarding
-    /// them to the `inner` consumer. Intermediate storage is necessary so that
-    /// we can arbitrarily scramble operations before forwarding.
-    queue: Fixed<T>,
-    /// The instructions on how to scramble consumer operations. We cycle
-    /// through these round-robin.
-    operations: Box<[ConsumeOperation]>,
-    /// The next operation to call on the `inner` consumer once we need to empty
-    /// our item queue.
-    operations_index: usize,
-    /// Satisfy the type checker, no useful semantics.
-    fe: PhantomData<(F, E)>,
-}
+pub struct Scramble<C, T, F, E>(SyncToLocalNb<SyncScramble<C, T, F, E>>);
 
 impl<C, T, F, E> Scramble<C, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
     pub fn new(inner: C, operations: ConsumeOperations, capacity: usize) -> Self {
-        Scramble::<C, T, F, E> {
-            inner,
-            queue: Fixed::new(capacity),
-            operations: operations.0,
-            operations_index: 0,
-            fe: PhantomData,
-        }
+        let sync_operations = sync_from_local_nb(operations);
+
+        let scramble = SyncScramble::new(inner, sync_operations, capacity);
+
+        Scramble(SyncToLocalNb(scramble))
     }
 
     fn advance_operations_index(&mut self) {
-        self.operations_index = (self.operations_index + 1) % self.operations.len();
+        self.0 .0.advance_operations_index()
     }
 }
 
 impl<C, T, F, E> AsRef<C> for Scramble<C, T, F, E> {
     fn as_ref(&self) -> &C {
-        &self.inner
+        let inner = self.0.as_ref();
+        inner.as_ref()
     }
 }
 
 impl<C, T, F, E> AsMut<C> for Scramble<C, T, F, E> {
     fn as_mut(&mut self) -> &mut C {
-        &mut self.inner
+        let inner = self.0.as_mut();
+        inner.as_mut()
     }
 }
 
 impl<C, T, F, E> Wrapper<C> for Scramble<C, T, F, E> {
     fn into_inner(self) -> C {
-        self.inner
+        let inner = self.0.into_inner();
+        inner.into_inner()
     }
 }
 
 impl<C, T, F, E> Consumer for Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: SyncBulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     type Item = T;
@@ -127,33 +138,13 @@ where
     type Error = E;
 
     async fn consume(&mut self, item: T) -> Result<(), Self::Error> {
-        // Attempt to add an item to the queue.
-        //
-        // The item will be returned if the queue is full.
-        // In that case, perform operations until the queue is empty.
-        if self.queue.enqueue(item).is_some() {
-            while self.queue.amount() > 0 {
-                self.perform_operation().await?;
-            }
-
-            // Now that the queue has been emptied, enqueue the item.
-            //
-            // Return value should always be `None` in this context so we
-            // ignore it.
-            let _ = self.queue.enqueue(item);
-        }
+        self.0.consume(item).await?;
 
         Ok(())
     }
 
     async fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
-        // Perform operations until the queue is empty.
-        while self.queue.amount() > 0 {
-            self.perform_operation().await?;
-        }
-
-        // Then close the inner consumer using the final value.
-        self.inner.close(final_val).await?;
+        self.0.close(final_val).await?;
 
         Ok(())
     }
@@ -161,17 +152,11 @@ where
 
 impl<C, T, F, E> BufferedConsumer for Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: SyncBulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
-        // Perform operations until the queue is empty.
-        while self.queue.amount() > 0 {
-            self.perform_operation().await?;
-        }
-
-        // Then flush the inner consumer.
-        self.inner.flush().await?;
+        self.0.flush().await?;
 
         Ok(())
     }
@@ -179,7 +164,7 @@ where
 
 impl<C, T, F, E> BulkConsumer for Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: SyncBulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn consumer_slots<'a>(
@@ -188,33 +173,13 @@ where
     where
         T: 'a,
     {
-        let amount = self.queue.amount();
-        let capacity = self.queue.capacity();
+        let slots = self.0.consumer_slots().await?;
 
-        // If the queue has available capacity, return writeable slots.
-        if amount < capacity {
-            let slots = self
-                .queue
-                .enqueue_slots()
-                .expect("queue should have available capacity");
-            Ok(slots)
-        } else {
-            // Perform operations until the queue is empty.
-            while self.queue.amount() > 0 {
-                self.perform_operation().await?;
-            }
-
-            // Return writeable slots.
-            let slots = self.queue.enqueue_slots().expect(
-                "queue should have available capacity after being emptied by performing operations",
-            );
-
-            Ok(slots)
-        }
+        Ok(slots)
     }
 
     async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.queue.did_enqueue(amount);
+        self.0.did_consume(amount).await?;
 
         Ok(())
     }
@@ -222,51 +187,11 @@ where
 
 impl<C, T, F, E> Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: SyncBulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn perform_operation(&mut self) -> Result<(), E> {
-        debug_assert!(self.queue.amount() > 0);
-
-        match self.operations[self.operations_index] {
-            ConsumeOperation::Consume => {
-                // Remove an item from the queue.
-                let item = self
-                    .queue
-                    .dequeue()
-                    .expect("queue should contain an item for consumption");
-
-                // Feed the item to the inner consumer.
-                self.inner.consume(item).await?;
-            }
-            ConsumeOperation::ConsumerSlots(n) => {
-                // Remove items from the queue in bulk and place them in the inner consumer slots.
-                //
-                // Request writeable slots from the inner consumer.
-                let slots = self.inner.consumer_slots().await?;
-
-                // Set an upper bound on the slice of slots by comparing the number of available
-                // inner slots and the number provided by the `ConsumerSlots` operation and taking
-                // the lowest value.
-                let slots_len = slots.len();
-                let available_slots = &mut slots[..min(slots_len, n)];
-
-                // Dequeue items into the inner consumer.
-                let amount = self.queue.bulk_dequeue(available_slots);
-
-                // Report the amount of items consumed.
-                unsafe {
-                    self.inner.did_consume(amount).await?;
-                }
-            }
-            ConsumeOperation::Flush => {
-                // Flush the inner consumer.
-                self.inner.flush().await?;
-            }
-        }
-
-        // Update the operations index.
-        self.advance_operations_index();
+        self.0 .0.perform_operation()?;
 
         Ok(())
     }
