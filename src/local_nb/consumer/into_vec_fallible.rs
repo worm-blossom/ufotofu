@@ -17,19 +17,12 @@ use wrapper::Wrapper;
 
 use crate::local_nb::consumer::SyncToLocalNb;
 use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
-use crate::sync::consumer::IntoVecError as SyncIntoVecError;
 use crate::sync::consumer::IntoVecFallible as SyncIntoVecFallible;
 
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 #[error(transparent)]
 /// Error to indicate that consuming data into a `Vec` failed because allocating more memory for the `Vec` failed.
 pub struct IntoVecError(#[from] pub TryReserveError);
-
-impl From<SyncIntoVecError> for IntoVecError {
-    fn from(err: SyncIntoVecError) -> Self {
-        Self(err.0)
-    }
-}
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 #[derive(Debug)]
@@ -89,23 +82,23 @@ impl<T> Consumer for IntoVecFallible<T> {
     type Error = IntoVecError;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        self.0.consume(item).await?;
-
-        Ok(())
+        self.0
+            .consume(item)
+            .await
+            .map_err(|err| IntoVecError(err.0))
     }
 
     async fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
-        self.0.close(final_val).await?;
-
-        Ok(())
+        self.0
+            .close(final_val)
+            .await
+            .map_err(|err| IntoVecError(err.0))
     }
 }
 
 impl<T> BufferedConsumer for IntoVecFallible<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
-        self.0.flush().await?;
-
-        Ok(())
+        self.0.flush().await.map_err(|err| IntoVecError(err.0))
     }
 }
 
@@ -116,15 +109,17 @@ impl<T: Copy> BulkConsumer for IntoVecFallible<T> {
     where
         T: 'a,
     {
-        let slots = self.0.consumer_slots().await?;
-
-        Ok(slots)
+        self.0
+            .consumer_slots()
+            .await
+            .map_err(|err| IntoVecError(err.0))
     }
 
     async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_consume(amount).await?;
-
-        Ok(())
+        self.0
+            .did_consume(amount)
+            .await
+            .map_err(|err| IntoVecError(err.0))
     }
 }
 
