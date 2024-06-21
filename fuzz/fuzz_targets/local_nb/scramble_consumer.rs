@@ -10,7 +10,7 @@ use wrapper::Wrapper;
 
 use ufotofu::local_nb::consumer::{ConsumeOperations, IntoVec, Scramble};
 use ufotofu::local_nb::producer::SliceProducer;
-use ufotofu::local_nb::{self, LocalBufferedConsumer};
+use ufotofu::local_nb::{self, BufferedConsumer, BulkConsumer, Consumer};
 
 fn data_is_invalid(data: &TestData) -> bool {
     if data.outer_capacity < 1 || data.outer_capacity > 2048 {

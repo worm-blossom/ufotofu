@@ -1,6 +1,4 @@
-use core::cmp::min;
 use core::fmt::Debug;
-use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -9,8 +7,6 @@ use alloc::{boxed::Box, vec::Vec};
 use std::{boxed::Box, vec::Vec};
 
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
-use ufotofu_queues::fixed::Fixed;
-use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
 use crate::local_nb::consumer::SyncToLocalNb;
@@ -19,10 +15,7 @@ use crate::sync::consumer::{
     ConsumeOperation as SyncConsumeOperation, ConsumeOperations as SyncConsumeOperations,
     Scramble as SyncScramble,
 };
-use crate::sync::{
-    BufferedConsumer as SyncBufferedConsumer, BulkConsumer as SyncBulkConsumer,
-    Consumer as SyncConsumer,
-};
+use crate::sync::BulkConsumer as SyncBulkConsumer;
 
 /// Operations which may be called against a consumer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
