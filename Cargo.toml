@@ -2,6 +2,10 @@
 name = "ufotofu"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/worm-blossom/ufotofu"
+description = "Abstractions for lazily consuming and producing sequences"
 
 [features]
 default = ["std"]
