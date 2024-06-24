@@ -10,8 +10,8 @@ use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
+use ufotofu::sync;
 use ufotofu::sync::producer::{ProduceOperations, Scramble, SliceProducer};
-use ufotofu::sync::{self};
 
 fn data_is_invalid(data: &TestData) -> bool {
     if data.capacity < 1 || data.capacity > 2048 {

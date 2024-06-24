@@ -91,8 +91,22 @@ doc = false
 bench = false
 
 [[bin]]
+name = "local_nb_scramble_consume_all"
+path = "fuzz_targets/local_nb/scramble_consume_all.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "local_nb_scramble_producer"
 path = "fuzz_targets/local_nb/scramble_producer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "local_nb_scramble_fill_all"
+path = "fuzz_targets/local_nb/scramble_fill_all.rs"
 test = false
 doc = false
 bench = false
