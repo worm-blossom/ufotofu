@@ -3,12 +3,10 @@ use core::future::Future;
 use core::mem::MaybeUninit;
 
 use either::Either;
-
-use crate::sync::{BulkPipeError, PipeError};
+use thiserror::Error;
 
 pub mod consumer;
 pub mod producer;
-pub mod sync_to_local_nb;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
@@ -17,7 +15,7 @@ pub mod sync_to_local_nb;
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
-pub trait LocalConsumer {
+pub trait Consumer {
     /// The sequence consumed by this consumer *starts* with *arbitrarily many* values of this type.
     type Item;
     /// The sequence consumed by this consumer *ends* with *up to one* value of this type.
@@ -50,7 +48,7 @@ pub trait LocalConsumer {
 ///
 /// It must not delay performing side-effects when being closed. In other words,
 /// calling `close` should internally trigger flushing.
-pub trait LocalBufferedConsumer: LocalConsumer {
+pub trait BufferedConsumer: Consumer {
     /// Perform any side-effects that were delayed for previously consumed items.
     ///
     /// This function allows the client code to force execution of the (potentially expensive)
@@ -71,7 +69,7 @@ pub trait LocalBufferedConsumer: LocalConsumer {
 /// difference between consuming items in bulk or one item at a time.
 ///
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait LocalBulkConsumer: LocalBufferedConsumer
+pub trait BulkConsumer: BufferedConsumer
 where
     Self::Item: Copy,
 {
@@ -152,7 +150,7 @@ where
 }
 
 /// Consume all of the given items into the given consumer.
-pub async fn consume_all<Item: Copy, C: LocalBulkConsumer<Item = Item>>(
+pub async fn consume_all<Item: Copy, C: BulkConsumer<Item = Item>>(
     items: &[Item],
     consumer: &mut C,
 ) -> Result<(), C::Error> {
@@ -175,7 +173,7 @@ pub async fn consume_all<Item: Copy, C: LocalBulkConsumer<Item = Item>>(
 /// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
 ///
 /// A producer can also signal an error of type `Self::Error` instead of producing an item.
-pub trait LocalProducer {
+pub trait Producer {
     /// The sequence produced by this producer *starts* with *arbitrarily many* values of this type.
     type Item;
     /// The sequence produced by this producer *ends* with *up to one* value of this type.
@@ -200,7 +198,7 @@ pub trait LocalProducer {
 }
 
 /// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
-pub trait LocalBufferedProducer: LocalProducer {
+pub trait BufferedProducer: Producer {
     /// Prepare some values for yielding. This function allows the `Producer` to perform side
     /// effects that it would otherwise have to do just-in-time when `produce` gets called.
     ///
@@ -217,7 +215,7 @@ pub trait LocalBufferedProducer: LocalProducer {
 /// between producing items in bulk or one item at a time.
 ///
 /// Note that `Self::Item` must be `Copy` for efficiency reasons.
-pub trait LocalBulkProducer: LocalBufferedProducer
+pub trait BulkProducer: BufferedProducer
 where
     Self::Item: Copy,
 {
@@ -292,7 +290,7 @@ where
 }
 
 /// Fill the given buffer with items from the given producer.
-pub async fn fill_all<'a, Item: Copy, P: LocalBulkProducer<Item = Item>>(
+pub async fn fill_all<'a, Item: Copy, P: BulkProducer<Item = Item>>(
     buf: &'a mut [MaybeUninit<Item>],
     producer: &mut P,
 ) -> Result<(&'a [Item], &'a [MaybeUninit<Item>]), P::Error> {
@@ -317,6 +315,15 @@ pub async fn fill_all<'a, Item: Copy, P: LocalBulkProducer<Item = Item>>(
     Ok((buf_init, buf_maybe_uninit))
 }
 
+/// Everything that can go wrong when piping a `Producer` into a `Consumer`.
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+pub enum PipeError<ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Producer(ProducerError),
+    /// The `Consumer` emitted an error when consuming an `Item`.
+    Consumer(ConsumerError),
+}
+
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
 pub async fn pipe<P, C>(
@@ -324,8 +331,8 @@ pub async fn pipe<P, C>(
     consumer: &mut C,
 ) -> Result<(), PipeError<P::Error, C::Error>>
 where
-    P: LocalProducer,
-    C: LocalConsumer<Item = P::Item, Final = P::Final>,
+    P: Producer,
+    C: Consumer<Item = P::Item, Final = P::Final>,
 {
     loop {
         match producer.produce().await {
@@ -360,34 +367,34 @@ where
 pub async fn bulk_pipe<P, C>(
     producer: &mut P,
     consumer: &mut C,
-) -> Result<(), BulkPipeError<P::Error, C::Error>>
+) -> Result<(), PipeError<P::Error, C::Error>>
 where
-    P: LocalBulkProducer,
+    P: BulkProducer,
     P::Item: Copy,
-    C: LocalBulkConsumer<Item = P::Item, Final = P::Final>,
+    C: BulkConsumer<Item = P::Item, Final = P::Final>,
 {
     loop {
         match producer.producer_slots().await {
             Ok(Either::Left(slots)) => {
                 let amount = match consumer.bulk_consume(slots).await {
                     Ok(amount) => amount,
-                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
                 match producer.did_produce(amount).await {
                     Ok(()) => {
                         // No-op, continues with next loop iteration.
                     }
-                    Err(producer_error) => return Err(BulkPipeError::Producer(producer_error)),
+                    Err(producer_error) => return Err(PipeError::Producer(producer_error)),
                 };
             }
             Ok(Either::Right(final_value)) => {
                 match consumer.close(final_value).await {
                     Ok(()) => return Ok(()),
-                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
             }
             Err(producer_error) => {
-                return Err(BulkPipeError::Producer(producer_error));
+                return Err(PipeError::Producer(producer_error));
             }
         }
     }
@@ -397,9 +404,8 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{IntoVec, SliceConsumer};
+    use crate::local_nb::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
     use crate::local_nb::producer::SliceProducer;
-    use crate::sync::consumer::SliceConsumerFullError;
 
     #[test]
     fn consumes_all_items() -> Result<(), SliceConsumerFullError> {
@@ -469,7 +475,7 @@ mod tests {
 
     #[test]
     fn bulk_pipes_from_slice_producer_to_slice_consumer(
-    ) -> Result<(), BulkPipeError<!, SliceConsumerFullError>> {
+    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
@@ -487,7 +493,7 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
+    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
         smol::block_on(async {
             let mut o = SliceProducer::new(b"tofu");
             let mut i = IntoVec::new();

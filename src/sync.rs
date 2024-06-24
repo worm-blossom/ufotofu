@@ -337,22 +337,13 @@ where
     }
 }
 
-/// Everything that can go wrong when bulk piping a `Producer` into a `Consumer`.
-#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
-pub enum BulkPipeError<ProducerError, ConsumerError> {
-    /// The `Producer` emitted an error.
-    Producer(ProducerError),
-    /// The `Consumer` emitted an error when consuming `Item`s.
-    Consumer(ConsumerError),
-}
-
 /// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
 /// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
 /// emitted by the producer.
 pub fn bulk_pipe<P, C>(
     producer: &mut P,
     consumer: &mut C,
-) -> Result<(), BulkPipeError<P::Error, C::Error>>
+) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: BulkProducer,
     P::Item: Copy,
@@ -363,23 +354,23 @@ where
             Ok(Either::Left(slots)) => {
                 let amount = match consumer.bulk_consume(slots) {
                     Ok(amount) => amount,
-                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
                 match producer.did_produce(amount) {
                     Ok(()) => {
                         // No-op, continues with next loop iteration.
                     }
-                    Err(producer_error) => return Err(BulkPipeError::Producer(producer_error)),
+                    Err(producer_error) => return Err(PipeError::Producer(producer_error)),
                 };
             }
             Ok(Either::Right(final_value)) => {
                 match consumer.close(final_value) {
                     Ok(()) => return Ok(()),
-                    Err(consumer_error) => return Err(BulkPipeError::Consumer(consumer_error)),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
             }
             Err(producer_error) => {
-                return Err(BulkPipeError::Producer(producer_error));
+                return Err(PipeError::Producer(producer_error));
             }
         }
     }
@@ -452,7 +443,7 @@ mod tests {
 
     #[test]
     fn bulk_pipes_from_slice_producer_to_slice_consumer(
-    ) -> Result<(), BulkPipeError<!, SliceConsumerFullError>> {
+    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
         let mut buf = [0; 3];
 
         let mut o = SliceProducer::new(b"ufo");
@@ -468,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), BulkPipeError<!, !>> {
+    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
         let mut o = SliceProducer::new(b"tofu");
         let mut i = IntoVec::new();
 
