@@ -275,8 +275,8 @@ pub fn fill_all<'a, Item: Copy, P: BulkProducer<Item = Item>>(
 ) -> Result<(&'a [Item], &'a [MaybeUninit<Item>]), P::Error> {
     let mut amount_produced = 0;
 
-    // Call `bulk_produce()` until all items have been produced.
-    while let Either::Left(amount) = producer.bulk_produce(buf)? {
+    // Call `bulk_produce()` to fill the buffer.
+    if let Either::Left(amount) = producer.bulk_produce(buf)? {
         amount_produced += amount;
     }
 
