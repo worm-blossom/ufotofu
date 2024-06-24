@@ -42,8 +42,22 @@ doc = false
 bench = false
 
 [[bin]]
+name = "scramble_consume_all"
+path = "fuzz_targets/sync/scramble_consume_all.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "scramble_producer"
 path = "fuzz_targets/sync/scramble_producer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scramble_fill_all"
+path = "fuzz_targets/sync/scramble_fill_all.rs"
 test = false
 doc = false
 bench = false
