@@ -220,6 +220,7 @@ where
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
+    #[allow(clippy::type_complexity)]
     fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
 
     /// Mark `amount` many items as having been produced. Future calls to `produce` and to
@@ -269,6 +270,7 @@ where
 }
 
 /// Fill the given buffer with items from the given producer.
+#[allow(clippy::type_complexity)]
 pub fn fill_all<'a, Item: Copy, P: BulkProducer<Item = Item>>(
     buf: &'a mut [MaybeUninit<Item>],
     producer: &mut P,
