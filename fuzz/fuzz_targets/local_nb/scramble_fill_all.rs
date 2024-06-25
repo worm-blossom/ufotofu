@@ -49,7 +49,7 @@ fuzz_target!(|data: TestData| {
         // Buffer to fill with items from the producer.
         let mut buffer: [MaybeUninit<u8>; 2048] = MaybeUninit::uninit_array();
 
-        // Fill the buffer with all items from the producer.
+        // Fill the buffer with items from the producer.
         let (items, _maybe_uninit_) = local_nb::fill_all(&mut buffer, &mut o).await.unwrap();
 
         // Access the inner producer (`slice_producer`).
