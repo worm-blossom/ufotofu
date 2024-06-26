@@ -29,10 +29,7 @@ either = "1.10.0"
 thiserror = { version = "1.0.50", package = "thiserror-core", default-features = false }
 
 trait-variant = "0.1.1"
-
-# TODO: Update this with crates.io path once published.
-ufotofu_queues = { path = "../ufotofu_queues" }
-
+ufotofu_queues = "0.1.0"
 wrapper = "0.1.1"
 
 [dev-dependencies]
