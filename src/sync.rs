@@ -136,6 +136,23 @@ where
     }
 }
 
+/// Consume all of the given items into the given consumer.
+pub fn consume_all<Item: Copy, C: BulkConsumer<Item = Item>>(
+    items: &[Item],
+    consumer: &mut C,
+) -> Result<(), C::Error> {
+    let items_len = items.len();
+    let mut amount_consumed = 0;
+
+    // Call `bulk_consume()` until all items have been consumed.
+    while amount_consumed < items_len {
+        let amount = consumer.bulk_consume(&items[amount_consumed..])?;
+        amount_consumed += amount;
+    }
+
+    Ok(())
+}
+
 /// A `Producer` produces a potentially infinite sequence, one item at a time.
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
@@ -252,6 +269,33 @@ where
     }
 }
 
+/// Fill the given buffer with items from the given producer.
+#[allow(clippy::type_complexity)]
+pub fn fill_all<'a, Item: Copy, P: BulkProducer<Item = Item>>(
+    buf: &'a mut [MaybeUninit<Item>],
+    producer: &mut P,
+) -> Result<(&'a [Item], &'a [MaybeUninit<Item>]), P::Error> {
+    let mut amount_produced = 0;
+
+    // Call `bulk_produce()` to fill the buffer.
+    if let Either::Left(amount) = producer.bulk_produce(buf)? {
+        amount_produced += amount;
+    }
+
+    // The call to `slice_assume_init_ref` will panic if the number of items
+    // produced exceeds the capacity of the given buffer, so we index
+    // by the lowest of the two values.
+    let min_amount = min(buf.len(), amount_produced);
+
+    // Return all slots that were filled with items.
+    let buf_init: &[Item] = unsafe { MaybeUninit::slice_assume_init_ref(&buf[..min_amount]) };
+
+    // Return all remaining slots.
+    let buf_maybe_uninit = &buf[min_amount..];
+
+    Ok((buf_init, buf_maybe_uninit))
+}
+
 /// Everything that can go wrong when piping a `Producer` into a `Consumer`.
 #[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
 pub enum PipeError<ProducerError, ConsumerError> {
@@ -340,6 +384,35 @@ mod tests {
 
     use crate::sync::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
     use crate::sync::producer::SliceProducer;
+
+    #[test]
+    fn consumes_all_items() -> Result<(), SliceConsumerFullError> {
+        let input = b"tofu-powered ufo";
+
+        let mut buf = [0; 16];
+        let mut consumer = SliceConsumer::new(&mut buf);
+
+        consume_all(input, &mut consumer)?;
+
+        assert_eq!(&buf, input);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fills_all_buffer_slots() -> Result<(), !> {
+        let input = b"tofu";
+
+        let mut buf: [MaybeUninit<u8>; 8] = MaybeUninit::uninit_array();
+        let mut producer = SliceProducer::new(input);
+
+        let (buf_init, buf_uninit) = fill_all(&mut buf, &mut producer)?;
+
+        assert_eq!(&buf_init, input);
+        assert!(buf_uninit.len() == 4);
+
+        Ok(())
+    }
 
     #[test]
     fn pipes_from_slice_producer_to_slice_consumer(
