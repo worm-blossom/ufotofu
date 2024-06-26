@@ -9,8 +9,7 @@ use std::boxed::Box;
 
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
 use either::Either;
-use ufotofu_queues::fixed::Fixed;
-use ufotofu_queues::Queue;
+use ufotofu_queues::{Fixed, Queue};
 use wrapper::Wrapper;
 
 use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
