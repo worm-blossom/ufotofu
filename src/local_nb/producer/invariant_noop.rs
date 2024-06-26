@@ -37,6 +37,7 @@ pub struct Invariant<P> {
 impl<P> Invariant<P> {
     /// Return a `Producer` that behaves exactly like the wrapped `Producer`
     /// `inner`.
+    #[allow(dead_code)]
     pub fn new(inner: P) -> Self {
         Invariant { inner }
     }

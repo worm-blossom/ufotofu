@@ -46,6 +46,7 @@ impl<C> Invariant<C> {
     /// `inner`, except that - when running tests - it performs runtime
     /// validation of API invariants and panics if they are violated by a
     /// caller.
+    #[allow(dead_code)]
     pub fn new(inner: C) -> Self {
         Invariant {
             inner,
