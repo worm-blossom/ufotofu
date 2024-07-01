@@ -9,7 +9,7 @@ use alloc::boxed::Box;
 use std::boxed::Box;
 
 use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
-use ufotofu_queues::fixed::Fixed;
+use ufotofu_queues::Fixed;
 use ufotofu_queues::Queue;
 use wrapper::Wrapper;
 
