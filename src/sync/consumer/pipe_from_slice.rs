@@ -20,9 +20,21 @@ pub fn pipe_from_slice<T, C>(
     consumer: &mut C,
 ) -> Result<(), PipeFromSliceError<C::Error>>
 where
+    T: Clone,
     C: Consumer<Item = T>,
 {
-    unimplemented!()
+    for i in 0..buf.len() {
+        let item = buf[i].clone();
+
+        if let Err(err) = consumer.consume(item) {
+            return Err(PipeFromSliceError {
+                consumed: i,
+                reason: err,
+            });
+        }
+    }
+
+    Ok(())
 }
 
 /// Try to completely consume the items of a slice with a bulk consumer.
@@ -35,5 +47,19 @@ where
     T: Copy,
     C: BulkConsumer<Item = T>,
 {
-    unimplemented!()
+    let mut consumed_so_far = 0;
+
+    while consumed_so_far < buf.len() {
+        match consumer.bulk_consume(buf) {
+            Ok(consumed_count) => consumed_so_far += consumed_count,
+            Err(err) => {
+                return Err(PipeFromSliceError {
+                    consumed: consumed_so_far,
+                    reason: err,
+                });
+            }
+        }
+    }
+
+    Ok(())
 }

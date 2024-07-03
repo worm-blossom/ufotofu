@@ -65,6 +65,6 @@ where
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        self.0.bulk_produce(buf)
+        self.0.bulk_produce_uninit(buf)
     }
 }

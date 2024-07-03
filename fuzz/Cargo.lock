@@ -502,6 +502,7 @@ dependencies = [
 name = "ufotofu-fuzz"
 version = "0.0.0"
 dependencies = [
+ "either",
  "libfuzzer-sys",
  "smol",
  "ufotofu",

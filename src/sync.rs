@@ -217,6 +217,23 @@ where
     /// Must not be called after any function of this trait returned a final item or an error.
     fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error>;
 
+    fn bulk_produce(
+        &mut self,
+        buf: &mut [Self::Item],
+    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        match self.producer_slots()? {
+            Either::Left(slots) => {
+                let amount = min(slots.len(), buf.len());
+                buf[0..amount].copy_from_slice(&slots[0..amount]);
+
+                self.did_produce(amount)?;
+
+                Ok(Either::Left(amount))
+            }
+            Either::Right(final_value) => Ok(Either::Right(final_value)),
+        }
+    }
+
     /// Produce a non-zero number of items by writing them into a given buffer and returning how
     /// many items were produced. If the sequence of items has not ended yet, but no item is
     /// available at the time of calling, the function must block until at least one more item
@@ -234,7 +251,7 @@ where
     /// The default implementation orchestrates `producer_slots` and `did_produce` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
-    fn bulk_produce(
+    fn bulk_produce_uninit(
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
