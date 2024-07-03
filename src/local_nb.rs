@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 
 use either::Either;
 
-use crate::sync::{PipeError};
+use crate::sync::PipeError;
 
 pub mod consumer;
 pub mod producer;
@@ -255,6 +255,42 @@ where
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
     fn bulk_produce(
+        &mut self,
+        buf: &mut [Self::Item],
+    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {
+        async {
+            match self.producer_slots().await? {
+                Either::Left(slots) => {
+                    let amount = min(slots.len(), buf.len());
+                    buf[0..amount].copy_from_slice(&slots[0..amount]);
+
+                    self.did_produce(amount).await?;
+
+                    Ok(Either::Left(amount))
+                }
+                Either::Right(final_value) => Ok(Either::Right(final_value)),
+            }
+        }
+    }
+
+    /// Produce a non-zero number of items by writing them into a given buffer and returning how
+    /// many items were produced. If the sequence of items has not ended yet, but no item is
+    /// available at the time of calling, the function must block until at least one more item
+    /// becomes available (or it becomes clear that the final value or an error should be yielded).
+    ///
+    /// After this function returns the final item, or after it returns an error, no further
+    /// functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned a final item or an error.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// The default implementation orchestrates `producer_slots` and `did_produce` in a
+    /// straightforward manner. Only provide your own implementation if you can do better
+    /// than that.
+    fn bulk_produce_uninit(
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {
