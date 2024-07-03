@@ -4,8 +4,8 @@ use alloc::vec::Vec;
 use arbitrary::{Arbitrary, Unstructured};
 use wrapper::Wrapper;
 
-use crate::sync::consumer::{IntoVec, Scramble};
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::local_nb::consumer::{IntoVec, Scramble};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 
 use super::ConsumeOperations;
 
@@ -40,25 +40,25 @@ where
     type Final = Final;
     type Error = Error;
 
-    fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
             return Err(self.error.take().expect(
                 "Do not call consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.consume(item).unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.consume(item).await.unwrap()); // may unwrap because Err<!>
         }
     }
 
-    fn close(&mut self, _f: Self::Final) -> Result<(), Self::Error> {
+    async fn close(&mut self, _f: Self::Final) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
             return Err(self.error.take().expect(
                 "Do not close consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.close(()).unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.close(()).await.unwrap()); // may unwrap because Err<!>
         }
     }
 }
@@ -67,14 +67,14 @@ impl<Item, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error>
 where
     Item: Copy,
 {
-    fn flush(&mut self) -> Result<(), Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
             return Err(self.error.take().expect(
                 "Do not call flush after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.flush().unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.flush().await.unwrap()); // may unwrap because Err<!>
         }
     }
 }
@@ -83,25 +83,30 @@ impl<Item, Final, Error> BulkConsumer for TestConsumer<Item, Final, Error>
 where
     Item: Copy,
 {
-    fn consumer_slots(&mut self) -> Result<&mut [core::mem::MaybeUninit<Self::Item>], Self::Error> {
+    async fn consumer_slots<'a>(
+        &'a mut self,
+    ) -> Result<&'a mut [core::mem::MaybeUninit<Self::Item>], Self::Error>
+    where
+        Item: 'a,
+    {
         if self.countdown_till_error == 0 {
             return Err(self.error.take().expect(
                 "Do not call consumer_slots after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.consumer_slots().unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.consumer_slots().await.unwrap()); // may unwrap because Err<!>
         }
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
             return Err(self.error.take().expect(
                 "Do not call did_consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.did_consume(amount).unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.did_consume(amount).await.unwrap()); // may unwrap because Err<!>
         }
     }
 }
