@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["std", "alloc", "dev"]
+
+default = ["std", "dev", "alloc"]
 
 # Provide functionality that relies on the std library. Enabled by default.
 std = []
