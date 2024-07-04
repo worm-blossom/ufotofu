@@ -42,6 +42,8 @@ where
 
     fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
+            let _ = self.inner.as_mut().flush();
+
             return Err(self.error.take().expect(
                 "Do not call consume after close or after any trait function has caused an error.",
             ));
@@ -53,6 +55,8 @@ where
 
     fn close(&mut self, _f: Self::Final) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
+            let _ = self.inner.as_mut().flush();
+
             return Err(self.error.take().expect(
                 "Do not close consume after close or after any trait function has caused an error.",
             ));
@@ -69,6 +73,8 @@ where
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
+            let _ = self.inner.as_mut().flush();
+
             return Err(self.error.take().expect(
                 "Do not call flush after close or after any trait function has caused an error.",
             ));
@@ -85,6 +91,8 @@ where
 {
     fn consumer_slots(&mut self) -> Result<&mut [core::mem::MaybeUninit<Self::Item>], Self::Error> {
         if self.countdown_till_error == 0 {
+            let _ = self.inner.as_mut().flush();
+
             return Err(self.error.take().expect(
                 "Do not call consumer_slots after close or after any trait function has caused an error.",
             ));
@@ -96,6 +104,7 @@ where
 
     unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
+            let _ = self.inner.as_mut().flush();
             return Err(self.error.take().expect(
                 "Do not call did_consume after close or after any trait function has caused an error.",
             ));
