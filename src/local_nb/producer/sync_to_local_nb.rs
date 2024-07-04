@@ -6,7 +6,7 @@ use wrapper::Wrapper;
 use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 use crate::sync;
 
-/// Turns a [`sync::Producer`](crate::sync::Producer) into a [`local_nb::Producer`](crate::local_nb::Producer). Only use this to wrap types that never block (and neither perform time-intensive computations).
+/// Turns a [`sync::Producer`](crate::sync::Producer) into a [`local_nb::Producer`](crate::local_nb::Producer). Only use this to wrap types that never block and do not perform time-intensive computations.
 #[derive(Debug)]
 pub struct SyncToLocalNb<P>(pub P);
 

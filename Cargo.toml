@@ -2,6 +2,14 @@
 name = "ufotofu"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/worm-blossom/ufotofu"
+description = "Abstractions for lazily consuming and producing sequences"
+exclude = [
+    "fuzz/*",
+    ".github/workflows/rust.yml",
+]
 
 [features]
 
@@ -27,7 +35,6 @@ ufotofu_queues = "0.1.0"
 thiserror = { version = "1.0.50", package = "thiserror-core", default-features = false }
 
 trait-variant = "0.1.1"
-
 wrapper = "0.1.1"
 
 [dev-dependencies]

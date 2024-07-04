@@ -1,13 +1,18 @@
 use core::convert::{AsMut, AsRef};
 use core::mem::MaybeUninit;
 
+use thiserror::Error;
 use wrapper::Wrapper;
 
 use crate::local_nb::consumer::SyncToLocalNb;
 use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
-use crate::sync::consumer::{SliceConsumer as SyncSliceConsumer, SliceConsumerFullError};
+use crate::sync::consumer::SliceConsumer as SyncSliceConsumer;
 
-/// Consumes data into a mutable slice.
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+#[error("slice consumer is full")]
+/// Error to indicate that consuming data into a slice failed because the end of the slice was reached.
+pub struct SliceConsumerFullError;
+
 #[derive(Debug)]
 pub struct SliceConsumer<'a, T>(SyncToLocalNb<SyncSliceConsumer<'a, T>>);
 
@@ -51,17 +56,23 @@ impl<'a, T> Consumer for SliceConsumer<'a, T> {
     type Error = SliceConsumerFullError;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        self.0.consume(item).await
+        self.0
+            .consume(item)
+            .await
+            .map_err(|_| SliceConsumerFullError)
     }
 
     async fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
-        self.0.close(final_val).await
+        self.0
+            .close(final_val)
+            .await
+            .map_err(|_| SliceConsumerFullError)
     }
 }
 
 impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
-        self.0.flush().await
+        self.0.flush().await.map_err(|_| SliceConsumerFullError)
     }
 }
 
@@ -72,11 +83,17 @@ impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
     where
         T: 'b,
     {
-        self.0.consumer_slots().await
+        self.0
+            .consumer_slots()
+            .await
+            .map_err(|_| SliceConsumerFullError)
     }
 
     async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_consume(amount).await
+        self.0
+            .did_consume(amount)
+            .await
+            .map_err(|_| SliceConsumerFullError)
     }
 }
 
