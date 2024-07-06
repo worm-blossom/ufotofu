@@ -54,17 +54,17 @@ impl<T: Copy> BufferedProducer for FromVec<T> {
 }
 
 impl<T: Copy> BulkProducer for FromVec<T> {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
         T: 'a,
     {
-        self.0.producer_slots().await
+        self.0.expose_items().await
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_produce(amount).await
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consider_produced(amount).await
     }
 }
 
@@ -111,7 +111,7 @@ impl<T: Copy> BufferedProducer for FromVecInner<T> {
 }
 
 impl<T: Copy> BulkProducer for FromVecInner<T> {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
@@ -125,7 +125,7 @@ impl<T: Copy> BulkProducer for FromVecInner<T> {
         }
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.1 += amount;
 
         Ok(())
@@ -191,7 +191,7 @@ mod tests {
                 }
             }
 
-            let _ = prod.producer_slots();
+            let _ = prod.expose_items();
         });
     }
 
@@ -206,7 +206,7 @@ mod tests {
                 }
             }
 
-            let _ = prod.did_produce(3);
+            let _ = prod.consider_produced(3);
         });
     }
 
@@ -228,12 +228,12 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consider_produced` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
         let mut prod = FromVec::new(b"ufo".to_vec());
         smol::block_on(async {
-            let _ = prod.did_produce(21);
+            let _ = prod.consider_produced(21);
         });
     }
 }

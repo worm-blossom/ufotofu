@@ -48,17 +48,17 @@ impl<P: sync::BulkProducer> BulkProducer for SyncToLocalNb<P>
 where
     Self::Item: Copy,
 {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
         Self::Item: 'a,
     {
-        self.0.producer_slots()
+        self.0.expose_items()
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_produce(amount)
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consider_produced(amount)
     }
 
     async fn bulk_produce(

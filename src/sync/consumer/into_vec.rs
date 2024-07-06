@@ -93,12 +93,12 @@ impl<T> BufferedConsumer for IntoVec<T> {
 }
 
 impl<T: Copy> BulkConsumer for IntoVec<T> {
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        self.0.consumer_slots()
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+        self.0.expose_slots()
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_consume(amount)
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consume_slots(amount)
     }
 }
 
@@ -148,7 +148,7 @@ impl<T> BufferedConsumer for IntoVecInner<T> {
 }
 
 impl<T: Copy> BulkConsumer for IntoVecInner<T> {
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         // Allocate additional capacity to the vector if no empty slots are available.
         if self.v.capacity() == self.v.len() {
             self.v.reserve((self.v.capacity() * 2) + 1);
@@ -168,7 +168,7 @@ impl<T: Copy> BulkConsumer for IntoVecInner<T> {
         }
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         // Update the length of the vector based on the amount of items consumed.
         self.v.set_len(self.v.len() + amount);
 
@@ -232,7 +232,7 @@ mod tests {
     fn panics_on_consumer_slots_after_close() {
         let mut into_vec: IntoVec<u8> = IntoVec::new();
         let _ = into_vec.close(());
-        let _ = into_vec.consumer_slots();
+        let _ = into_vec.expose_slots();
     }
 
     #[test]
@@ -242,7 +242,7 @@ mod tests {
         let _ = into_vec.close(());
 
         unsafe {
-            let _ = into_vec.did_consume(7);
+            let _ = into_vec.consume_slots(7);
         }
     }
 
@@ -256,13 +256,13 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         let mut into_vec: IntoVec<u8> = IntoVec::new();
 
         unsafe {
-            let _ = into_vec.did_consume(21);
+            let _ = into_vec.consume_slots(21);
         }
     }
 }

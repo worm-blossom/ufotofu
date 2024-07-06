@@ -87,11 +87,11 @@ where
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error>;
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error>;
 
     /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
     /// 
-    ///  Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
+    /// Instruct the consumer to consume the first `amount` many items of the slots
     /// it has most recently exposed. The semantics must be equivalent to those of `consume`
     /// being called `amount` many times with exactly those items.
     ///
@@ -99,7 +99,7 @@ where
     ///
     /// #### Invariants
     ///
-    /// Callers must have written into (at least) the `amount` many first `consumer_slots` that
+    /// Callers must have written into (at least) the `amount` many first slots that
     /// were most recently exposed. Failure to uphold this invariant may cause undefined behavior.
     ///
     /// Must not be called after any function of this trait has returned an error, nor after
@@ -107,11 +107,11 @@ where
     ///
     /// #### Safety
     ///
-    /// The consumer may assume the first `amount` many `consumer_slots` that were most recently
+    /// The consumer may assume the first `amount` many slots that were most recently
     /// exposed to contain initialized memory after this call, even if the memory it exposed was originally
     /// uninitialized. Violating the invariants can cause the consumer to read undefined
     /// memory, which triggers undefined behavior.
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error>;
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error>;
 
     /// Consume a non-zero number of items by reading them from a given buffer and returning how
     /// many items were consumed.
@@ -125,15 +125,15 @@ where
     ///
     /// #### Implementation Notes
     ///
-    /// The default implementation orchestrates `consumer_slots` and `did_consume` in a
+    /// The default implementation orchestrates `expose_slots` and `consume_slots` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
     fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        let slots = self.consumer_slots()?;
+        let slots = self.expose_slots()?;
         let amount = min(slots.len(), buf.len());
         MaybeUninit::copy_from_slice(&mut slots[0..amount], &buf[0..amount]);
         unsafe {
-            self.did_consume(amount)?;
+            self.consume_slots(amount)?;
         }
 
         Ok(amount)
@@ -210,21 +210,21 @@ where
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
     #[allow(clippy::type_complexity)]
-    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
+    fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
 
     /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
     /// 
     ///  Mark `amount` many items as having been produced. Future calls to `produce` and to
-    /// `producer_slots` must act as if `produce` had been called `amount` many times.
+    /// `expose_items` must act as if `produce` had been called `amount` many times.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
     ///
     /// #### Invariants
     ///
-    /// Callers must not mark items as produced that had not previously been exposed by `producer_slots`.
+    /// Callers must not mark items as produced that had not previously been exposed by `expose_items`.
     ///
     /// Must not be called after any function of this trait returned a final item or an error.
-    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error>;
+    fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error>;
 
     /// Produce a non-zero number of items by writing them into a given buffer and returning how
     /// many items were produced. If the sequence of items has not ended yet, but no item is
@@ -240,19 +240,19 @@ where
     ///
     /// #### Implementation Notes
     ///
-    /// The default implementation orchestrates `producer_slots` and `did_produce` in a
+    /// The default implementation orchestrates `expose_items` and `consider_produced` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
     fn bulk_produce(
         &mut self,
         buf: &mut [Self::Item],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        match self.producer_slots()? {
+        match self.expose_items()? {
             Either::Left(slots) => {
                 let amount = min(slots.len(), buf.len());
                 buf[0..amount].copy_from_slice(&slots[0..amount]);
 
-                self.did_produce(amount)?;
+                self.consider_produced(amount)?;
 
                 Ok(Either::Left(amount))
             }
@@ -274,18 +274,18 @@ where
     ///
     /// #### Implementation Notes
     ///
-    /// The default implementation orchestrates `producer_slots` and `did_produce` in a
+    /// The default implementation orchestrates `expose_items` and `consider_produced` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
     fn bulk_produce_maybeuninit(
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        match self.producer_slots()? {
+        match self.expose_items()? {
             Either::Left(slots) => {
                 let amount = min(slots.len(), buf.len());
                 MaybeUninit::copy_from_slice(&mut buf[0..amount], &slots[0..amount]);
-                self.did_produce(amount)?;
+                self.consider_produced(amount)?;
 
                 Ok(Either::Left(amount))
             }
@@ -350,13 +350,13 @@ where
     C: BulkConsumer<Item = P::Item, Final = P::Final>,
 {
     loop {
-        match producer.producer_slots() {
+        match producer.expose_items() {
             Ok(Either::Left(slots)) => {
                 let amount = match consumer.bulk_consume(slots) {
                     Ok(amount) => amount,
                     Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
                 };
-                match producer.did_produce(amount) {
+                match producer.consider_produced(amount) {
                     Ok(()) => {
                         // No-op, continues with next loop iteration.
                     }

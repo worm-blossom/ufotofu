@@ -54,12 +54,12 @@ impl<'a, T: Copy> BufferedProducer for SliceProducer<'a, T> {
 }
 
 impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
-    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
-        self.0.producer_slots()
+    fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+        self.0.expose_items()
     }
 
-    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_produce(amount)
+    fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consider_produced(amount)
     }
 }
 
@@ -108,7 +108,7 @@ impl<'a, T: Copy> BufferedProducer for SliceProducerInner<'a, T> {
 }
 
 impl<'a, T: Copy> BulkProducer for SliceProducerInner<'a, T> {
-    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
             Ok(Either::Right(()))
@@ -117,7 +117,7 @@ impl<'a, T: Copy> BulkProducer for SliceProducerInner<'a, T> {
         }
     }
 
-    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.1 += amount;
 
         Ok(())
@@ -178,7 +178,7 @@ mod tests {
             }
         }
 
-        let _ = slice_producer.producer_slots();
+        let _ = slice_producer.expose_items();
     }
 
     #[test]
@@ -191,7 +191,7 @@ mod tests {
             }
         }
 
-        let _ = slice_producer.did_produce(3);
+        let _ = slice_producer.consider_produced(3);
     }
 
     #[test]
@@ -210,11 +210,11 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consider_produced` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
         let mut slice_producer = SliceProducer::new(b"ufo");
 
-        let _ = slice_producer.did_produce(21);
+        let _ = slice_producer.consider_produced(21);
     }
 }

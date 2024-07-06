@@ -22,13 +22,13 @@ use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 /// - Must not call any of the following functions after the final item has been returned:
 ///   - `produce`
 ///   - `slurp`
-///   - `producer_slots`
-///   - `did_produce`
+///   - `expose_items`
+///   - `consider_produced`
 ///   - `bulk_produce`
 /// - Must not call any of the prior functions after any of them had returned
 ///   an error.
-/// - Must not call `did_produce` with an amount exceeding the number of available slots
-///   previously exposed by a call to `producer_slots`.
+/// - Must not call `consider_produced` with an amount exceeding the number of available slots
+///   previously exposed by a call to `expose_items`.
 #[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
     /// An implementer of the `Producer` traits.
@@ -37,7 +37,7 @@ pub struct Invariant<P> {
     /// methods, `false` once that becomes disallowed (because a method returned
     /// an error, or because `close` was called).
     active: bool,
-    /// The maximum `amount` that a caller may supply to `did_produce`.
+    /// The maximum `amount` that a caller may supply to `consider_produced`.
     exposed_slots: usize,
 }
 
@@ -124,7 +124,7 @@ where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
@@ -133,7 +133,7 @@ where
         self.check_inactive();
 
         self.inner
-            .producer_slots()
+            .expose_items()
             .await
             .inspect(|either| match either {
                 Either::Left(slots) => self.exposed_slots = slots.len(),
@@ -144,17 +144,17 @@ where
             })
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_inactive();
 
         if amount > self.exposed_slots {
-            panic!("may not call `did_produce` with an amount exceeding the total number of exposed slots");
+            panic!("may not call `consider_produced` with an amount exceeding the total number of exposed slots");
         } else {
             self.exposed_slots -= amount;
         }
 
-        // Proceed with the inner call to `did_produce` and return the result.
-        self.inner.did_produce(amount).await
+        // Proceed with the inner call to `consider_produced` and return the result.
+        self.inner.consider_produced(amount).await
     }
 }
 
@@ -172,33 +172,33 @@ mod tests {
             // Create a slice producer with data that occupies four slots.
             let mut slice_producer = SliceProducer::new(b"tofu");
 
-            // Copy data from three of the occupied slots and call `did_produce`.
+            // Copy data from three of the occupied slots and call `consider_produced`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.expose_items().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..3], &slots[0..3]);
-                assert!(slice_producer.did_produce(3).await.is_ok());
+                assert!(slice_producer.consider_produced(3).await.is_ok());
             }
         })
     }
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consider_produced` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_second_did_produce_with_amount_greater_than_available_slots() {
         smol::block_on(async {
             // Create a slice producer with data that occupies four slots.
             let mut slice_producer = SliceProducer::new(b"tofu");
 
-            // Copy data from three of the occupied slots and call `did_produce`.
+            // Copy data from three of the occupied slots and call `consider_produced`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.expose_items().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..3], &slots[0..3]);
-                assert!(slice_producer.did_produce(3).await.is_ok());
+                assert!(slice_producer.consider_produced(3).await.is_ok());
             }
 
-            // Make a second call to `did_produce` which exceeds the number of available slots.
-            let _ = slice_producer.did_produce(2).await;
+            // Make a second call to `consider_produced` which exceeds the number of available slots.
+            let _ = slice_producer.consider_produced(2).await;
         })
     }
 
@@ -208,24 +208,24 @@ mod tests {
             // Create a slice producer with data that occupies four slots.
             let mut slice_producer = SliceProducer::new(b"tofu");
 
-            // Copy data from two of the occupied slots and call `did_produce`.
+            // Copy data from two of the occupied slots and call `consider_produced`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.expose_items().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..2], &slots[0..2]);
-                assert!(slice_producer.did_produce(2).await.is_ok());
+                assert!(slice_producer.consider_produced(2).await.is_ok());
             }
 
-            // Copy data from two of the occupied slots and call `did_produce`.
+            // Copy data from two of the occupied slots and call `consider_produced`.
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            if let Ok(Either::Left(slots)) = slice_producer.producer_slots().await {
+            if let Ok(Either::Left(slots)) = slice_producer.expose_items().await {
                 MaybeUninit::copy_from_slice(&mut buf[0..2], &slots[0..2]);
-                assert!(slice_producer.did_produce(2).await.is_ok());
+                assert!(slice_producer.consider_produced(2).await.is_ok());
             }
 
-            // Make a third call to `producer_slots` after all items have been yielded,
+            // Make a third call to `expose_items` after all items have been yielded,
             // ensuring that the final value is returned.
             assert_eq!(
-                slice_producer.producer_slots().await.unwrap(),
+                slice_producer.expose_items().await.unwrap(),
                 Either::Right(())
             );
         })
@@ -284,7 +284,7 @@ mod tests {
                 }
             }
 
-            let _ = slice_producer.producer_slots().await;
+            let _ = slice_producer.expose_items().await;
         })
     }
 
@@ -299,7 +299,7 @@ mod tests {
                 }
             }
 
-            let _ = slice_producer.did_produce(3).await;
+            let _ = slice_producer.consider_produced(3).await;
         })
     }
 
@@ -321,13 +321,13 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consider_produced` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
         smol::block_on(async {
             let mut slice_producer = SliceProducer::new(b"ufo");
 
-            let _ = slice_producer.did_produce(21).await;
+            let _ = slice_producer.consider_produced(21).await;
         })
     }
 }

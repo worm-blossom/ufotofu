@@ -31,7 +31,7 @@
 //!
 //! Consumers often buffer items in an internal queue before performing side-effects on data in larger chunks, such as writing data to the network only once a full packet can be filled. The [`BufferedConsumer`](sync::BufferedConsumer) trait extends the [`Consumer`](sync::Consumer) trait to allow client code to trigger effectful flushing of internal buffers. Dually, the [`BufferedProducer`](sync::BufferedProducer) trait extends the [`Producer`](sync::Producer) trait to allow client code to trigger effectful prefetching of data into internal buffers.
 //!
-//! Finally, the [`BulkProducer`](sync::BulkProducer) and [`BulkConsumer`](sync::BulkConsumer) traits extend [`BufferedProducer`](sync::BufferedProducer) and [`BufferedConsumer`](sync::BufferedConsumer) respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [bulk_pipe](sync::bulk_pipe) function leverages this ability to efficiently pipe data — unlike the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxilliary buffer.
+//! Finally, the [`BulkProducer`](sync::BulkProducer) and [`BulkConsumer`](sync::BulkConsumer) traits extend [`BufferedProducer`](sync::BufferedProducer) and [`BufferedConsumer`](sync::BufferedConsumer) respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [bulk_pipe](sync::bulk_pipe) function leverages this ability to efficiently pipe data — unlike the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxiliary buffer.
 //!
 //! ## Crate Organisation
 //!

@@ -181,7 +181,7 @@ where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn consumer_slots<'a>(
+    async fn expose_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
     where
@@ -212,7 +212,7 @@ where
         }
     }
 
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.queue.did_enqueue(amount);
 
         Ok(())
@@ -242,7 +242,7 @@ where
                 // Remove items from the queue in bulk and place them in the inner consumer slots.
                 //
                 // Request writeable slots from the inner consumer.
-                let slots = self.inner.consumer_slots().await?;
+                let slots = self.inner.expose_slots().await?;
 
                 // Set an upper bound on the slice of slots by comparing the number of available
                 // inner slots and the number provided by the `ConsumerSlots` operation and taking
@@ -255,7 +255,7 @@ where
 
                 // Report the amount of items consumed.
                 unsafe {
-                    self.inner.did_consume(amount).await?;
+                    self.inner.consume_slots(amount).await?;
                 }
             }
             ConsumeOperation::Flush => {

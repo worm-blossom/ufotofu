@@ -191,7 +191,7 @@ where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         // While the final value has not been set and the queue is not full, perform operations.
         // If the final value is returned from an operation, set the final value.
         while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
@@ -217,7 +217,7 @@ where
         Ok(Either::Left(slots))
     }
 
-    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.queue.did_dequeue(amount);
 
         Ok(())
@@ -245,7 +245,7 @@ where
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
             // Attempt to expose slots from the inner producer.
-            ProduceOperation::ProducerSlots(n) => match self.inner.producer_slots()? {
+            ProduceOperation::ProducerSlots(n) => match self.inner.expose_items()? {
                 Either::Left(slots) => {
                     // Set an upper bound on the slice of slots by comparing the number of available
                     // inner slots and the number provided by the `ProducerSlots` operation and taking
@@ -257,7 +257,7 @@ where
                     let amount = self.queue.bulk_enqueue(available_slots);
 
                     // Report the amount of items produced.
-                    self.inner.did_produce(amount)?;
+                    self.inner.consider_produced(amount)?;
                 }
                 // If the final value was produced, return it.
                 Either::Right(final_val) => return Ok(Some(final_val)),

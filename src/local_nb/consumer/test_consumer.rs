@@ -83,7 +83,7 @@ impl<Item, Final, Error> BulkConsumer for TestConsumer<Item, Final, Error>
 where
     Item: Copy,
 {
-    async fn consumer_slots<'a>(
+    async fn expose_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [core::mem::MaybeUninit<Self::Item>], Self::Error>
     where
@@ -95,18 +95,18 @@ where
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.consumer_slots().await.unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.expose_slots().await.unwrap()); // may unwrap because Err<!>
         }
     }
 
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
             return Err(self.error.take().expect(
                 "Do not call did_consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.did_consume(amount).await.unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.consume_slots(amount).await.unwrap()); // may unwrap because Err<!>
         }
     }
 }

@@ -89,7 +89,7 @@ impl<Item, Final, Error> BulkConsumer for TestConsumer<Item, Final, Error>
 where
     Item: Copy,
 {
-    fn consumer_slots(&mut self) -> Result<&mut [core::mem::MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [core::mem::MaybeUninit<Self::Item>], Self::Error> {
         if self.countdown_till_error == 0 {
             let _ = self.inner.as_mut().flush();
 
@@ -98,11 +98,11 @@ where
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.consumer_slots().unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.expose_slots().unwrap()); // may unwrap because Err<!>
         }
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
             let _ = self.inner.as_mut().flush();
             return Err(self.error.take().expect(
@@ -110,7 +110,7 @@ where
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(self.inner.did_consume(amount).unwrap()); // may unwrap because Err<!>
+            return Ok(self.inner.consume_slots(amount).unwrap()); // may unwrap because Err<!>
         }
     }
 }

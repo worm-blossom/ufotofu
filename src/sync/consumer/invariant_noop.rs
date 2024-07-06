@@ -22,12 +22,12 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 ///   - `consume`
 ///   - `close`
 ///   - `flush`
-///   - `consumer_slots`
-///   - `did_consume`
+///   - slots
+///   - `consume_slots`
 ///   - `bulk_consume`
 /// - Must not call any of the prior functions after any of them had returned
 ///   an error.
-/// - Must not call `did_consume` for slots that had not been exposed by
+/// - Must not call `consume_slots` for slots that had not been exposed by
 #[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
@@ -92,11 +92,11 @@ where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        self.inner.consumer_slots()
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+        self.inner.expose_slots()
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.inner.did_consume(amount)
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.inner.consume_slots(amount)
     }
 }

@@ -73,12 +73,12 @@ impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
 }
 
 impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        self.0.consumer_slots()
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+        self.0.expose_slots()
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_consume(amount)
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consume_slots(amount)
     }
 }
 
@@ -139,7 +139,7 @@ impl<'a, T> BufferedConsumer for SliceConsumerInner<'a, T> {
 }
 
 impl<'a, T: Copy> BulkConsumer for SliceConsumerInner<'a, T> {
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         if self.0.len() == self.1 {
             Err(SliceConsumerFullError)
         } else {
@@ -147,7 +147,7 @@ impl<'a, T: Copy> BulkConsumer for SliceConsumerInner<'a, T> {
         }
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.1 += amount;
 
         Ok(())
@@ -207,7 +207,7 @@ mod tests {
 
         let mut slice_consumer = SliceConsumer::new(&mut buf);
         let _ = slice_consumer.close(());
-        let _ = slice_consumer.consumer_slots();
+        let _ = slice_consumer.expose_slots();
     }
 
     #[test]
@@ -219,7 +219,7 @@ mod tests {
         let _ = slice_consumer.close(());
 
         unsafe {
-            let _ = slice_consumer.did_consume(7);
+            let _ = slice_consumer.consume_slots(7);
         }
     }
 
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         let mut buf = [0; 8];
@@ -243,7 +243,7 @@ mod tests {
         let mut slice_consumer = SliceConsumer::new(&mut buf);
 
         unsafe {
-            let _ = slice_consumer.did_consume(21);
+            let _ = slice_consumer.consume_slots(21);
         }
     }
 }

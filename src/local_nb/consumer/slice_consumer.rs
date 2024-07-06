@@ -77,21 +77,21 @@ impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
 }
 
 impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
-    async fn consumer_slots<'b>(
+    async fn expose_slots<'b>(
         &'b mut self,
     ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
     where
         T: 'b,
     {
         self.0
-            .consumer_slots()
+            .expose_slots()
             .await
             .map_err(|_| SliceConsumerFullError)
     }
 
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.0
-            .did_consume(amount)
+            .consume_slots(amount)
             .await
             .map_err(|_| SliceConsumerFullError)
     }
@@ -157,7 +157,7 @@ mod tests {
 
             let mut slice_consumer = SliceConsumer::new(&mut buf);
             let _ = slice_consumer.close(()).await;
-            let _ = slice_consumer.consumer_slots().await;
+            let _ = slice_consumer.expose_slots().await;
         })
     }
 
@@ -171,7 +171,7 @@ mod tests {
             let _ = slice_consumer.close(()).await;
 
             unsafe {
-                let _ = slice_consumer.did_consume(7).await;
+                let _ = slice_consumer.consume_slots(7).await;
             }
         })
     }
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         smol::block_on(async {
@@ -199,7 +199,7 @@ mod tests {
             let mut slice_consumer = SliceConsumer::new(&mut buf);
 
             unsafe {
-                let _ = slice_consumer.did_consume(21).await;
+                let _ = slice_consumer.consume_slots(21).await;
             }
         })
     }

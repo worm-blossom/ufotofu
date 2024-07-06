@@ -103,21 +103,21 @@ impl<T> BufferedConsumer for IntoVecFallible<T> {
 }
 
 impl<T: Copy> BulkConsumer for IntoVecFallible<T> {
-    async fn consumer_slots<'a>(
+    async fn expose_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
     where
         T: 'a,
     {
         self.0
-            .consumer_slots()
+            .expose_slots()
             .await
             .map_err(|err| IntoVecError(err.0))
     }
 
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.0
-            .did_consume(amount)
+            .consume_slots(amount)
             .await
             .map_err(|err| IntoVecError(err.0))
     }
@@ -188,7 +188,7 @@ mod tests {
         smol::block_on(async {
             let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
             let _ = into_vec.close(()).await;
-            let _ = into_vec.consumer_slots().await;
+            let _ = into_vec.expose_slots().await;
         })
     }
 
@@ -200,7 +200,7 @@ mod tests {
             let _ = into_vec.close(()).await;
 
             unsafe {
-                let _ = into_vec.did_consume(7).await;
+                let _ = into_vec.consume_slots(7).await;
             }
         })
     }
@@ -217,14 +217,14 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         smol::block_on(async {
             let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
 
             unsafe {
-                let _ = into_vec.did_consume(21).await;
+                let _ = into_vec.consume_slots(21).await;
             }
         })
     }

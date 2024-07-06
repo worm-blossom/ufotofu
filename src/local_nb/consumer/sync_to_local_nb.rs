@@ -51,17 +51,17 @@ impl<C: sync::BulkConsumer> BulkConsumer for SyncToLocalNb<C>
 where
     Self::Item: Copy,
 {
-    async fn consumer_slots<'a>(
+    async fn expose_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
     where
         Self::Item: 'a,
     {
-        self.0.consumer_slots()
+        self.0.expose_slots()
     }
 
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_consume(amount)
+    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consume_slots(amount)
     }
 
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {

@@ -59,9 +59,9 @@ impl<Item, Final, Error> BulkProducer for TestProducer<Item, Final, Error>
 where
     Item: Copy,
 {
-    fn producer_slots(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
+    fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         // Unwrapping is okay because the error is of never.
-        match self.inner.producer_slots() {
+        match self.inner.expose_items() {
          Ok(Left(slots)) => Ok(Left(slots)),
          Ok(Right(())) => match self.termination.take().expect("Must not call produce after any function of the producer returned a final item or error.") {
              Left(fin) => Ok(Right(fin)),
@@ -71,9 +71,9 @@ where
         }
     }
 
-    fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         // Unwrapping is okay because the error is of never.
-        Ok(self.inner.did_produce(amount).unwrap())
+        Ok(self.inner.consider_produced(amount).unwrap())
     }
 }
 

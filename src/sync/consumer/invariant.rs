@@ -22,13 +22,13 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 ///   - `consume`
 ///   - `close`
 ///   - `flush`
-///   - `consumer_slots`
-///   - `did_consume`
+///   - slots
+///   - `consume_slots`
 ///   - `bulk_consume`
 /// - Must not call any of the prior functions after any of them had returned
 ///   an error.
-/// - Must not call `did_consume` for slots that had not been exposed by
-///   `consumer_slots` before.
+/// - Must not call `consume_slots` for slots that had not been exposed by
+///   slots before.
 #[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
@@ -37,7 +37,7 @@ pub struct Invariant<C> {
     /// methods, `false` once that becomes disallowed (because a method returned
     /// an error, or because `close` was called).
     active: bool,
-    /// The maximum `amount` that a caller may supply to `did_consume`.
+    /// The maximum `amount` that a caller may supply to `consume_slots`.
     exposed_slots: usize,
 }
 
@@ -126,11 +126,11 @@ where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn consumer_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         self.check_inactive();
 
         self.inner
-            .consumer_slots()
+            .expose_slots()
             .inspect(|slots| {
                 self.exposed_slots = slots.len();
             })
@@ -139,19 +139,19 @@ where
             })
     }
 
-    unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
+    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_inactive();
 
         if amount > self.exposed_slots {
             panic!(
-                "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+                "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
             );
         } else {
             self.exposed_slots -= amount;
         }
 
-        // Proceed with the inner call to `did_consume` and return the result.
-        self.inner.did_consume(amount)
+        // Proceed with the inner call to `consume_slots` and return the result.
+        self.inner.consume_slots(amount)
     }
 }
 
@@ -167,35 +167,35 @@ mod tests {
         let mut buf = [0; 4];
         let mut slice_consumer = SliceConsumer::new(&mut buf);
 
-        // Copy data to three of the available slots and call `did_consume`.
+        // Copy data to three of the available slots and call `consume_slots`.
         let data = b"ufo";
-        let slots = slice_consumer.consumer_slots().unwrap();
+        let slots = slice_consumer.expose_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
         unsafe {
-            assert!(slice_consumer.did_consume(3).is_ok());
+            assert!(slice_consumer.consume_slots(3).is_ok());
         }
     }
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_second_did_consume_with_amount_greater_than_available_slots() {
         // Create a slice consumer that exposes four slots.
         let mut buf = [0; 4];
         let mut slice_consumer = SliceConsumer::new(&mut buf);
 
-        // Copy data to three of the available slots and call `did_consume`.
+        // Copy data to three of the available slots and call `consume_slots`.
         let data = b"ufo";
-        let slots = slice_consumer.consumer_slots().unwrap();
+        let slots = slice_consumer.expose_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..3], &data[0..3]);
         unsafe {
-            assert!(slice_consumer.did_consume(3).is_ok());
+            assert!(slice_consumer.consume_slots(3).is_ok());
         }
 
-        // Make a second call to `did_consume` which exceeds the number of available slots.
+        // Make a second call to `consume_slots` which exceeds the number of available slots.
         unsafe {
-            let _ = slice_consumer.did_consume(2);
+            let _ = slice_consumer.consume_slots(2);
         }
     }
 
@@ -205,24 +205,24 @@ mod tests {
         let mut buf = [0; 4];
         let mut slice_consumer = SliceConsumer::new(&mut buf);
 
-        // Copy data to two of the available slots and call `did_consume`.
+        // Copy data to two of the available slots and call `consume_slots`.
         let data = b"tofu";
-        let slots = slice_consumer.consumer_slots().unwrap();
+        let slots = slice_consumer.expose_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
         unsafe {
-            assert!(slice_consumer.did_consume(2).is_ok());
+            assert!(slice_consumer.consume_slots(2).is_ok());
         }
 
-        // Copy data to two of the available slots and call `did_consume`.
-        let slots = slice_consumer.consumer_slots().unwrap();
+        // Copy data to two of the available slots and call `consume_slots`.
+        let slots = slice_consumer.expose_slots().unwrap();
         MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
         unsafe {
-            assert!(slice_consumer.did_consume(2).is_ok());
+            assert!(slice_consumer.consume_slots(2).is_ok());
         }
 
-        // Make a third call to `consumer_slots` after all available slots have been used.
+        // Make a third call to slots after all available slots have been used.
         assert_eq!(
-            slice_consumer.consumer_slots().unwrap_err(),
+            slice_consumer.expose_slots().unwrap_err(),
             SliceConsumerFullError
         );
     }
@@ -269,7 +269,7 @@ mod tests {
     fn panics_on_consumer_slots_after_close() {
         let mut into_vec: IntoVec<u8> = IntoVec::new();
         let _ = into_vec.close(());
-        let _ = into_vec.consumer_slots();
+        let _ = into_vec.expose_slots();
     }
 
     #[test]
@@ -279,7 +279,7 @@ mod tests {
         let _ = into_vec.close(());
 
         unsafe {
-            let _ = into_vec.did_consume(7);
+            let _ = into_vec.consume_slots(7);
         }
     }
 
@@ -293,13 +293,13 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "may not call `did_consume` with an amount exceeding the total number of exposed slots"
+        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         let mut into_vec: IntoVec<u8> = IntoVec::new();
 
         unsafe {
-            let _ = into_vec.did_consume(21);
+            let _ = into_vec.consume_slots(21);
         }
     }
 }

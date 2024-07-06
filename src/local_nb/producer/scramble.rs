@@ -191,7 +191,7 @@ where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
@@ -222,7 +222,7 @@ where
         Ok(Either::Left(slots))
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.queue.did_dequeue(amount);
 
         Ok(())
@@ -250,7 +250,7 @@ where
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
             // Attempt to expose slots from the inner producer.
-            ProduceOperation::ProducerSlots(n) => match self.inner.producer_slots().await? {
+            ProduceOperation::ProducerSlots(n) => match self.inner.expose_items().await? {
                 Either::Left(slots) => {
                     // Set an upper bound on the slice of slots by comparing the number of available
                     // inner slots and the number provided by the `ProducerSlots` operation and taking
@@ -262,7 +262,7 @@ where
                     let amount = self.queue.bulk_enqueue(available_slots);
 
                     // Report the amount of items produced.
-                    self.inner.did_produce(amount).await?;
+                    self.inner.consider_produced(amount).await?;
                 }
                 // If the final value was produced, return it.
                 Either::Right(final_val) => return Ok(Some(final_val)),

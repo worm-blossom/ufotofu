@@ -22,12 +22,12 @@ use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 /// - Must not call any of the following functions after the final item has been returned:
 ///   - `produce`
 ///   - `slurp`
-///   - `producer_slots`
-///   - `did_produce`
+///   - `expose_items`
+///   - `consider_produced`
 ///   - `bulk_produce`
 /// - Must not call any of the prior functions after any of them had returned
 ///   an error.
-/// - Must not call `did_produce` with an amount exceeding the number of available slots
+/// - Must not call `consider_produced` with an amount exceeding the number of available slots
 #[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
     /// An implementer of the `Producer` traits.
@@ -88,16 +88,16 @@ where
     P: BulkProducer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
         T: 'a,
     {
-        self.inner.producer_slots().await
+        self.inner.expose_items().await
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.inner.did_produce(amount).await
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.inner.consider_produced(amount).await
     }
 }
