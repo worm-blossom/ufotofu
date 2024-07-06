@@ -137,7 +137,7 @@ where
         //
         // While the final value has not been set and the queue is not full, perform operations.
         // If the final value is returned from an operation, set the final value.
-        while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
+        while self.final_val.is_none() && self.queue.len() < self.queue.capacity() {
             if let Some(final_val) = self.perform_operation()? {
                 self.final_val = Some(final_val)
             }
@@ -145,7 +145,7 @@ where
 
         // Return the final value if the queue is empty and the value
         // was previously returned from an operation.
-        if self.queue.amount() == 0 {
+        if self.queue.len() == 0 {
             if let Some(final_val) = self.final_val.take() {
                 return Ok(Either::Right(final_val));
             }
@@ -174,7 +174,7 @@ where
             self.inner.slurp()?;
 
             // Perform operations until the queue is full.
-            while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
+            while self.final_val.is_none() && self.queue.len() < self.queue.capacity() {
                 if let Some(final_val) = self.perform_operation()? {
                     // Set the final value if returned from an operation.
                     self.final_val = Some(final_val);
@@ -194,7 +194,7 @@ where
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         // While the final value has not been set and the queue is not full, perform operations.
         // If the final value is returned from an operation, set the final value.
-        while self.final_val.is_none() && self.queue.amount() < self.queue.capacity() {
+        while self.final_val.is_none() && self.queue.len() < self.queue.capacity() {
             if let Some(final_val) = self.perform_operation()? {
                 self.final_val = Some(final_val)
             }
@@ -202,7 +202,7 @@ where
 
         // Return the final value if the queue is empty and the value
         // was previously returned from an operation.
-        if self.queue.amount() == 0 {
+        if self.queue.len() == 0 {
             if let Some(final_val) = self.final_val.take() {
                 return Ok(Either::Right(final_val));
             }
@@ -211,14 +211,14 @@ where
         // Return readable slots.
         let slots = self
             .queue
-            .dequeue_slots()
+            .expose_items()
             .expect("queue should contain items after being filled by performing operations");
 
         Ok(Either::Left(slots))
     }
 
     fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.queue.did_dequeue(amount);
+        self.queue.consider_dequeued(amount);
 
         Ok(())
     }
@@ -230,7 +230,7 @@ where
     T: Copy,
 {
     fn perform_operation(&mut self) -> Result<Option<F>, E> {
-        debug_assert!(self.queue.amount() < self.queue.capacity());
+        debug_assert!(self.queue.len() < self.queue.capacity());
 
         match self.operations[self.operations_index] {
             // Attempt to produce an item from the inner producer.

@@ -27,7 +27,7 @@ dev = []
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"]}
 either = "1.10.0"
-ufotofu_queues = "0.1.0"
+ufotofu_queues = "0.3.0"
 
 # The `thiserror` crate does not currently support no_std so we're using
 # a fork until it does. Depending on `thiserror-core` in this way means

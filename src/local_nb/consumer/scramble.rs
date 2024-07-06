@@ -131,7 +131,7 @@ where
         // The item will be returned if the queue is full.
         // In that case, perform operations until the queue is empty.
         if self.queue.enqueue(item).is_some() {
-            while self.queue.amount() > 0 {
+            while self.queue.len() > 0 {
                 self.perform_operation().await?;
             }
 
@@ -147,7 +147,7 @@ where
 
     async fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
         // Perform operations until the queue is empty.
-        while self.queue.amount() > 0 {
+        while self.queue.len() > 0 {
             self.perform_operation().await?;
         }
 
@@ -165,7 +165,7 @@ where
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         // Perform operations until the queue is empty.
-        while self.queue.amount() > 0 {
+        while self.queue.len() > 0 {
             self.perform_operation().await?;
         }
 
@@ -187,24 +187,24 @@ where
     where
         T: 'a,
     {
-        let amount = self.queue.amount();
+        let amount = self.queue.len();
         let capacity = self.queue.capacity();
 
         // If the queue has available capacity, return writeable slots.
         if amount < capacity {
             let slots = self
                 .queue
-                .enqueue_slots()
+                .expose_slots()
                 .expect("queue should have available capacity");
             Ok(slots)
         } else {
             // Perform operations until the queue is empty.
-            while self.queue.amount() > 0 {
+            while self.queue.len() > 0 {
                 self.perform_operation().await?;
             }
 
             // Return writeable slots.
-            let slots = self.queue.enqueue_slots().expect(
+            let slots = self.queue.expose_slots().expect(
                 "queue should have available capacity after being emptied by performing operations",
             );
 
@@ -213,7 +213,7 @@ where
     }
 
     async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.queue.did_enqueue(amount);
+        self.queue.consider_enqueued(amount);
 
         Ok(())
     }
@@ -225,7 +225,7 @@ where
     T: Copy,
 {
     async fn perform_operation(&mut self) -> Result<(), E> {
-        debug_assert!(self.queue.amount() > 0);
+        debug_assert!(self.queue.len() > 0);
 
         match self.operations[self.operations_index] {
             ConsumeOperation::Consume => {
@@ -251,7 +251,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer.
-                let amount = self.queue.bulk_dequeue(available_slots);
+                let amount = self.queue.bulk_dequeue_maybeuninit(available_slots);
 
                 // Report the amount of items consumed.
                 unsafe {
