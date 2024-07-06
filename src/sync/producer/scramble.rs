@@ -274,7 +274,3 @@ where
         Ok(None)
     }
 }
-
-// To the interested reader: this implementation writes *at most* `n` items, but does not attempt
-// to write *exactly* `n` items; the actual amount is governed by the number of items currently in
-// the scrambler's queue. We should improve this at some point.

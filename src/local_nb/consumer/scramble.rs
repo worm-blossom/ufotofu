@@ -270,8 +270,3 @@ where
         Ok(())
     }
 }
-
-// To the interested reader: this implementation uses `n` only as an upper bound on how many slots
-// it fills at once. A more thorough scrambler should fill *exactly* `n` slots. But this requires
-// some additional state keeping (waiting until item queue has enough items) which we have not
-// implemented yet. We might, though, eventually.
