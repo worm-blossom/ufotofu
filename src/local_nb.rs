@@ -74,7 +74,9 @@ pub trait BulkConsumer: BufferedConsumer
 where
     Self::Item: Copy,
 {
-    /// Expose a non-empty slice of memory for the client code to fill with items that should
+    /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
+    /// 
+    ///  Expose a non-empty slice of memory for the client code to fill with items that should
     /// be consumed.
     ///
     /// The consumer should expose the largest contiguous slice it can expose efficiently.
@@ -93,7 +95,9 @@ where
     where
         Self::Item: 'a;
 
-    /// Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
+    /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
+    /// 
+    ///  Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
     /// it has most recently exposed. The semantics must be equivalent to those of `consume`
     /// being called `amount` many times with exactly those items.
     ///
@@ -203,7 +207,9 @@ pub trait BulkProducer: BufferedProducer
 where
     Self::Item: Copy,
 {
-    /// Expose a non-empty slice of items to be produced (or the final value, or an error).
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
+    /// 
+    ///  Expose a non-empty slice of items to be produced (or the final value, or an error).
     /// The items in the slice must not have been emitted by `produce` before. If the sequence
     /// of items has not ended yet, but no item is available at the time of calling, the
     /// function must block until at least one more item becomes available (or it becomes clear
@@ -225,7 +231,9 @@ where
     where
         Self::Item: 'a;
 
-    /// Mark `amount` many items as having been produced. Future calls to `produce` and to
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
+    /// 
+    ///  Mark `amount` many items as having been produced. Future calls to `produce` and to
     /// `producer_slots` must act as if `produce` had been called `amount` many times.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
@@ -273,7 +281,7 @@ where
         }
     }
 
-    /// Produce a non-zero number of items by writing them into a given buffer and returning how
+    /// Produce a non-zero number of items by writing them into a given buffer of possible uninitialised memory and returning how
     /// many items were produced. If the sequence of items has not ended yet, but no item is
     /// available at the time of calling, the function must block until at least one more item
     /// becomes available (or it becomes clear that the final value or an error should be yielded).
@@ -290,7 +298,7 @@ where
     /// The default implementation orchestrates `producer_slots` and `did_produce` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
-    fn bulk_produce_uninit(
+    fn bulk_produce_maybeuninit(
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {

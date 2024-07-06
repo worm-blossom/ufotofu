@@ -72,7 +72,9 @@ where
     Self: Send,
     Self::Item: Copy + Sync,
 {
-    /// Expose a non-empty slice of memory for the client code to fill with items that should
+    /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
+    ///
+    ///  Expose a non-empty slice of memory for the client code to fill with items that should
     /// be consumed.
     ///
     /// The consumer should expose the largest contiguous slice it can expose efficiently.
@@ -89,7 +91,9 @@ where
         &mut self,
     ) -> impl Future<Output = Result<&mut [MaybeUninit<Self::Item>], Self::Error>> + Send;
 
-    /// Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
+    /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
+    ///
+    ///  Instruct the consumer to consume the first `amount` many items of the `consumer_slots`
     /// it has most recently exposed. The semantics must be equivalent to those of `consume`
     /// being called `amount` many times with exactly those items.
     ///
@@ -202,6 +206,8 @@ where
     Self::Final: Send,
     Self::Error: Send,
 {
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
+    /// 
     /// Expose a non-empty slice of items to be produced (or the final value, or an error).
     /// The items in the slice must not have been emitted by `produce` before. If the sequence
     /// of items has not ended yet, but no item is available at the time of calling, the
@@ -222,6 +228,8 @@ where
         &mut self,
     ) -> impl Future<Output = Result<Either<&[Self::Item], Self::Final>, Self::Error>> + Send;
 
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
+    /// 
     /// Mark `amount` many items as having been produced. Future calls to `produce` and to
     /// `producer_slots` must act as if `produce` had been called `amount` many times.
     ///
@@ -256,8 +264,43 @@ where
     /// than that.
     fn bulk_produce(
         &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
+        buf: &mut [Self::Item],
     ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> + Send {
+        async {
+            match self.producer_slots().await? {
+                Either::Left(slots) => {
+                    let amount = min(slots.len(), buf.len());
+                    buf[0..amount].copy_from_slice(&slots[0..amount]);
+                    self.did_produce(amount).await?;
+
+                    Ok(Either::Left(amount))
+                }
+                Either::Right(final_value) => Ok(Either::Right(final_value)),
+            }
+        }
+    }
+
+    /// Produce a non-zero number of items by writing them into a given buffer and returning how
+    /// many items were produced. If the sequence of items has not ended yet, but no item is
+    /// available at the time of calling, the function must block until at least one more item
+    /// becomes available (or it becomes clear that the final value or an error should be yielded).
+    ///
+    /// After this function returns the final item, or after it returns an error, no further
+    /// functions of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned a final item or an error.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// The default implementation orchestrates `producer_slots` and `did_produce` in a
+    /// straightforward manner. Only provide your own implementation if you can do better
+    /// than that.
+    fn bulk_produce_maybeuninit(
+        &mut self,
+        buf: &mut [MaybeUninit<Self::Item>],
+    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {
         async {
             match self.producer_slots().await? {
                 Either::Left(slots) => {
