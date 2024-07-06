@@ -14,20 +14,16 @@
 //! ## Reading from Producers
 //!
 //! The [pipe_into_slice] and [bulk_pipe_into_slice] functions try to fill a slice from a (bulk) producer; using a bulk producer is more efficient. The [pipe_into_slice_uninit] and [bulk_pipe_into_slice_uninit] variants do not require the slice to be initialised first.
-//!
-//! The [produce_n_static] and [bulk_produce_n_static] functions try to obtain exactly `N` items from a (bulk) producer, where `N` is a static (const generic) parameter.
 
 mod invariant;
 mod invariant_noop;
 mod pipe_into_slice;
-mod produce_n;
 mod slice_producer;
 
 #[cfg(any(feature = "dev", doc))]
 mod scramble;
 
 pub use pipe_into_slice::*;
-pub use produce_n::*;
 pub use slice_producer::SliceProducer;
 
 #[cfg(any(feature = "dev", doc))]

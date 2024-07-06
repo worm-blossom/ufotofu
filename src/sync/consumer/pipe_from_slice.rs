@@ -1,5 +1,3 @@
-use either::Either;
-
 use crate::sync::{BulkConsumer, Consumer};
 
 /// Information you get from the `pipe_from_slice` family of functions when the consumer is unable to consume the complete slice.

@@ -152,78 +152,78 @@ mod tests {
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_produce_after_final() {
-        async {
-            let mut slice_producer = FromVec::new(b"ufo".to_vec());
+        smol::block_on(async {
+            let mut prod = FromVec::new(b"ufo".to_vec());
             loop {
                 // Call `produce()` until the final value is emitted.
-                if let Ok(Either::Right(_)) = slice_producer.produce().await {
+                if let Ok(Either::Right(_)) = prod.produce().await {
                     break;
                 }
             }
 
-            let _ = slice_producer.produce();
-        };
+            let _ = prod.produce();
+        })
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_slurp_after_final() {
-        async {
-            let mut slice_producer = FromVec::new(b"ufo".to_vec());
+        smol::block_on(async {
+            let mut prod = FromVec::new(b"ufo".to_vec());
             loop {
-                if let Ok(Either::Right(_)) = slice_producer.produce().await {
+                if let Ok(Either::Right(_)) = prod.produce().await {
                     break;
                 }
             }
 
-            let _ = slice_producer.slurp();
-        };
+            let _ = prod.slurp();
+        });
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_producer_slots_after_final() {
-        async {
-            let mut slice_producer = FromVec::new(b"ufo".to_vec());
+        smol::block_on(async {
+            let mut prod = FromVec::new(b"ufo".to_vec());
             loop {
-                if let Ok(Either::Right(_)) = slice_producer.produce().await {
+                if let Ok(Either::Right(_)) = prod.produce().await {
                     break;
                 }
             }
 
-            let _ = slice_producer.producer_slots();
-        };
+            let _ = prod.producer_slots();
+        });
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_did_produce_after_final() {
-        async {
-            let mut slice_producer = FromVec::new(b"ufo".to_vec());
+        smol::block_on(async {
+            let mut prod = FromVec::new(b"ufo".to_vec());
             loop {
-                if let Ok(Either::Right(_)) = slice_producer.produce().await {
+                if let Ok(Either::Right(_)) = prod.produce().await {
                     break;
                 }
             }
 
-            let _ = slice_producer.did_produce(3);
-        };
+            let _ = prod.did_produce(3);
+        });
     }
 
     #[test]
     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
     fn panics_on_bulk_produce_after_final() {
-        async {
-            let mut slice_producer = FromVec::new(b"tofu".to_vec());
+        smol::block_on(async {
+            let mut prod = FromVec::new(b"tofu".to_vec());
             loop {
-                if let Ok(Either::Right(_)) = slice_producer.produce().await {
+                if let Ok(Either::Right(_)) = prod.produce().await {
                     break;
                 }
             }
 
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            let _ = slice_producer.bulk_produce_uninit(&mut buf);
-        };
+            let _ = prod.bulk_produce_uninit(&mut buf);
+        });
     }
 
     #[test]
@@ -231,8 +231,9 @@ mod tests {
         expected = "may not call `did_produce` with an amount exceeding the total number of exposed slots"
     )]
     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
-        let mut slice_producer = FromVec::new(b"ufo".to_vec());
-
-        let _ = slice_producer.did_produce(21);
+        let mut prod = FromVec::new(b"ufo".to_vec());
+        smol::block_on(async {
+            let _ = prod.did_produce(21);
+        });
     }
 }
