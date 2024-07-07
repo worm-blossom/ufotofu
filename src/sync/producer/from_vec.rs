@@ -7,34 +7,39 @@ use wrapper::Wrapper;
 use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
-#[derive(Debug)]
 /// Produces data from a slice.
-pub struct FromVec<T>(Invariant<FromVecInner<T>>);
+pub struct FromVec_<T>(Invariant<FromVec<T>>);
 
-impl<T> FromVec<T> {
-    /// Create a producer which produces the data in the given slice.
-    pub fn new(v: Vec<T>) -> FromVec<T> {
-        let invariant = Invariant::new(FromVecInner(v, 0));
-
-        FromVec(invariant)
+impl<T: core::fmt::Debug> core::fmt::Debug for FromVec_<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
-impl<T> AsRef<[T]> for FromVec<T> {
+impl<T> FromVec_<T> {
+    /// Create a producer which produces the data in the given slice.
+    pub fn new(v: Vec<T>) -> FromVec_<T> {
+        let invariant = Invariant::new(FromVec(v, 0));
+
+        FromVec_(invariant)
+    }
+}
+
+impl<T> AsRef<[T]> for FromVec_<T> {
     fn as_ref(&self) -> &[T] {
         let inner = self.0.as_ref();
         inner.as_ref()
     }
 }
 
-impl<T> Wrapper<Vec<T>> for FromVec<T> {
+impl<T> Wrapper<Vec<T>> for FromVec_<T> {
     fn into_inner(self) -> Vec<T> {
         let inner = self.0.into_inner();
         inner.into_inner()
     }
 }
 
-impl<T: Clone> Producer for FromVec<T> {
+impl<T: Clone> Producer for FromVec_<T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -47,13 +52,13 @@ impl<T: Clone> Producer for FromVec<T> {
     }
 }
 
-impl<T: Copy> BufferedProducer for FromVec<T> {
+impl<T: Copy> BufferedProducer for FromVec_<T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp()
     }
 }
 
-impl<T: Copy> BulkProducer for FromVec<T> {
+impl<T: Copy> BulkProducer for FromVec_<T> {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.0.expose_items()
     }
@@ -64,21 +69,21 @@ impl<T: Copy> BulkProducer for FromVec<T> {
 }
 
 #[derive(Debug)]
-pub struct FromVecInner<T>(Vec<T>, usize);
+struct FromVec<T>(Vec<T>, usize);
 
-impl<T> AsRef<[T]> for FromVecInner<T> {
+impl<T> AsRef<[T]> for FromVec<T> {
     fn as_ref(&self) -> &[T] {
         self.0.as_ref()
     }
 }
 
-impl<T> Wrapper<Vec<T>> for FromVecInner<T> {
+impl<T> Wrapper<Vec<T>> for FromVec<T> {
     fn into_inner(self) -> Vec<T> {
         self.0
     }
 }
 
-impl<T: Clone> Producer for FromVecInner<T> {
+impl<T: Clone> Producer for FromVec<T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -98,14 +103,14 @@ impl<T: Clone> Producer for FromVecInner<T> {
     }
 }
 
-impl<T: Copy> BufferedProducer for FromVecInner<T> {
+impl<T: Copy> BufferedProducer for FromVec<T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         // There are no effects to perform so we simply return.
         Ok(())
     }
 }
 
-impl<T: Copy> BulkProducer for FromVecInner<T> {
+impl<T: Copy> BulkProducer for FromVec<T> {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
@@ -124,9 +129,19 @@ impl<T: Copy> BulkProducer for FromVecInner<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::*;
+    use crate::sync::*;
 
     use core::mem::MaybeUninit;
+
+    use either::Either;
+
+    // The debug output hides the internals of using semantically transparent wrappers.
+    #[test]
+    fn debug_output_hides_transparent_wrappers() {
+        let prod = FromVec::new(b"ufo".to_vec());
+        assert_eq!(format!("{:?}", prod), "FromVec([117, 102, 111], 0)");
+    }
 
     // Panic conditions:
     //

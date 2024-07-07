@@ -29,7 +29,7 @@ use crate::sync::{BufferedProducer, BulkProducer, Producer};
 ///   an error.
 /// - Must not call `consider_produced` with an amount exceeding the number of available slots
 ///   previously exposed by a call to `expose_items`.
-#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
     /// An implementer of the `Producer` traits.
     inner: P,
@@ -39,6 +39,12 @@ pub struct Invariant<P> {
     active: bool,
     /// The maximum `amount` that a caller may supply to `consider_produced`.
     exposed_slots: usize,
+}
+
+impl<P: core::fmt::Debug> core::fmt::Debug for Invariant<P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.inner.fmt(f)
+    }
 }
 
 impl<P> Invariant<P> {

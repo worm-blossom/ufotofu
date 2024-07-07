@@ -29,7 +29,7 @@ use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 ///   an error.
 /// - Must not call `consume_slots` for slots that had not been exposed by
 ///   slots before.
-#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
     inner: C,
@@ -39,6 +39,12 @@ pub struct Invariant<C> {
     active: bool,
     /// The maximum `amount` that a caller may supply to `consume_slots`.
     exposed_slots: usize,
+}
+
+impl<C: core::fmt::Debug> core::fmt::Debug for Invariant<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.inner.fmt(f)
+    }
 }
 
 impl<C> Invariant<C> {

@@ -24,7 +24,7 @@ mod slice_producer;
 mod scramble;
 
 pub use pipe_into_slice::*;
-pub use slice_producer::SliceProducer;
+pub use slice_producer::SliceProducer_ as SliceProducer;
 
 #[cfg(any(feature = "dev", doc))]
 pub use scramble::{ProduceOperations, Scramble};
@@ -42,4 +42,4 @@ mod test_producer;
 pub use test_producer::*;
 
 mod from_vec;
-pub use from_vec::*;
+pub use from_vec::FromVec_ as FromVec;

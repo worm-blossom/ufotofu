@@ -7,9 +7,14 @@ use crate::local_nb::producer::SyncToLocalNb;
 use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 use crate::sync::producer::SliceProducer as SyncSliceProducer;
 
-#[derive(Debug)]
 /// Produces data from a slice.
 pub struct SliceProducer<'a, T>(SyncToLocalNb<SyncSliceProducer<'a, T>>);
+
+impl<'a, T: core::fmt::Debug> core::fmt::Debug for SliceProducer<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<'a, T> SliceProducer<'a, T> {
     /// Create a producer which produces the data in the given slice.
@@ -73,6 +78,13 @@ mod tests {
     use super::*;
 
     use core::mem::MaybeUninit;
+
+    // The debug output hides the internals of using semantically transparent wrappers.
+    #[test]
+    fn debug_output_hides_transparent_wrappers() {
+        let prod = SliceProducer::new(b"ufo");
+        assert_eq!(format!("{:?}", prod), "SliceProducer([117, 102, 111], 0)");
+    }
 
     // Panic conditions:
     //

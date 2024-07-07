@@ -14,41 +14,46 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 pub struct SliceConsumerFullError;
 
 /// Consumes data into a mutable slice.
-#[derive(Debug)]
-pub struct SliceConsumer<'a, T>(Invariant<SliceConsumerInner<'a, T>>);
+pub struct SliceConsumer_<'a, T>(Invariant<SliceConsumer<'a, T>>);
 
-/// Creates a consumer which places consumed data into the given slice.
-impl<'a, T> SliceConsumer<'a, T> {
-    pub fn new(slice: &mut [T]) -> SliceConsumer<'_, T> {
-        // Wrap the inner slice consumer in the invariant type.
-        let invariant = Invariant::new(SliceConsumerInner(slice, 0));
-
-        SliceConsumer(invariant)
+impl<'a, T: core::fmt::Debug> core::fmt::Debug for SliceConsumer_<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
-impl<'a, T> AsRef<[T]> for SliceConsumer<'a, T> {
+/// Creates a consumer which places consumed data into the given slice.
+impl<'a, T> SliceConsumer_<'a, T> {
+    pub fn new(slice: &mut [T]) -> SliceConsumer_<'_, T> {
+        // Wrap the inner slice consumer in the invariant type.
+        let invariant = Invariant::new(SliceConsumer(slice, 0));
+
+        SliceConsumer_(invariant)
+    }
+}
+
+impl<'a, T> AsRef<[T]> for SliceConsumer_<'a, T> {
     fn as_ref(&self) -> &[T] {
         let inner = self.0.as_ref();
         inner.as_ref()
     }
 }
 
-impl<'a, T> AsMut<[T]> for SliceConsumer<'a, T> {
+impl<'a, T> AsMut<[T]> for SliceConsumer_<'a, T> {
     fn as_mut(&mut self) -> &mut [T] {
         let inner = self.0.as_mut();
         inner.as_mut()
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for SliceConsumer<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceConsumer_<'a, T> {
     fn into_inner(self) -> &'a [T] {
         let inner = self.0.into_inner();
         inner.into_inner()
     }
 }
 
-impl<'a, T> Consumer for SliceConsumer<'a, T> {
+impl<'a, T> Consumer for SliceConsumer_<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
     /// The value signifying the end of the consumed sequence.
@@ -66,13 +71,13 @@ impl<'a, T> Consumer for SliceConsumer<'a, T> {
     }
 }
 
-impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
+impl<'a, T> BufferedConsumer for SliceConsumer_<'a, T> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.0.flush()
     }
 }
 
-impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
+impl<'a, T: Copy> BulkConsumer for SliceConsumer_<'a, T> {
     fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         self.0.expose_slots()
     }
@@ -84,27 +89,27 @@ impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
 
 // A tuple of slice and counter (amount of items).
 #[derive(Debug)]
-pub struct SliceConsumerInner<'a, T>(&'a mut [T], usize);
+struct SliceConsumer<'a, T>(&'a mut [T], usize);
 
-impl<'a, T> AsRef<[T]> for SliceConsumerInner<'a, T> {
+impl<'a, T> AsRef<[T]> for SliceConsumer<'a, T> {
     fn as_ref(&self) -> &[T] {
         self.0
     }
 }
 
-impl<'a, T> AsMut<[T]> for SliceConsumerInner<'a, T> {
+impl<'a, T> AsMut<[T]> for SliceConsumer<'a, T> {
     fn as_mut(&mut self) -> &mut [T] {
         self.0
     }
 }
 
-impl<'a, T> Wrapper<&'a mut [T]> for SliceConsumerInner<'a, T> {
+impl<'a, T> Wrapper<&'a mut [T]> for SliceConsumer<'a, T> {
     fn into_inner(self) -> &'a mut [T] {
         self.0
     }
 }
 
-impl<'a, T> Consumer for SliceConsumerInner<'a, T> {
+impl<'a, T> Consumer for SliceConsumer<'a, T> {
     /// The type of the items to be consumed.
     type Item = T;
     /// The value signifying the end of the consumed sequence.
@@ -132,13 +137,13 @@ impl<'a, T> Consumer for SliceConsumerInner<'a, T> {
     }
 }
 
-impl<'a, T> BufferedConsumer for SliceConsumerInner<'a, T> {
+impl<'a, T> BufferedConsumer for SliceConsumer<'a, T> {
     fn flush(&mut self) -> Result<Self::Final, Self::Error> {
         Ok(())
     }
 }
 
-impl<'a, T: Copy> BulkConsumer for SliceConsumerInner<'a, T> {
+impl<'a, T: Copy> BulkConsumer for SliceConsumer<'a, T> {
     fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         if self.0.len() == self.1 {
             Err(SliceConsumerFullError)
@@ -156,7 +161,8 @@ impl<'a, T: Copy> BulkConsumer for SliceConsumerInner<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::*;
+    use crate::sync::*;
 
     // Panic conditions:
     //

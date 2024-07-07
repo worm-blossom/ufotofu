@@ -6,35 +6,40 @@ use wrapper::Wrapper;
 use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
-#[derive(Debug)]
 /// Produces data from a slice.
-pub struct SliceProducer<'a, T>(Invariant<SliceProducerInner<'a, T>>);
+pub struct SliceProducer_<'a, T>(Invariant<SliceProducer<'a, T>>);
 
-impl<'a, T> SliceProducer<'a, T> {
-    /// Create a producer which produces the data in the given slice.
-    pub fn new(slice: &'a [T]) -> SliceProducer<'a, T> {
-        // Wrap the inner slice producer in the invariant type.
-        let invariant = Invariant::new(SliceProducerInner(slice, 0));
-
-        SliceProducer(invariant)
+impl<'a, T: core::fmt::Debug> core::fmt::Debug for SliceProducer_<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
-impl<'a, T> AsRef<[T]> for SliceProducer<'a, T> {
+impl<'a, T> SliceProducer_<'a, T> {
+    /// Create a producer which produces the data in the given slice.
+    pub fn new(slice: &'a [T]) -> SliceProducer_<'a, T> {
+        // Wrap the inner slice producer in the invariant type.
+        let invariant = Invariant::new(SliceProducer(slice, 0));
+
+        SliceProducer_(invariant)
+    }
+}
+
+impl<'a, T> AsRef<[T]> for SliceProducer_<'a, T> {
     fn as_ref(&self) -> &[T] {
         let inner = self.0.as_ref();
         inner.as_ref()
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for SliceProducer<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceProducer_<'a, T> {
     fn into_inner(self) -> &'a [T] {
         let inner = self.0.into_inner();
         inner.into_inner()
     }
 }
 
-impl<'a, T: Clone> Producer for SliceProducer<'a, T> {
+impl<'a, T: Clone> Producer for SliceProducer_<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -47,13 +52,13 @@ impl<'a, T: Clone> Producer for SliceProducer<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedProducer for SliceProducer<'a, T> {
+impl<'a, T: Copy> BufferedProducer for SliceProducer_<'a, T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         self.0.slurp()
     }
 }
 
-impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
+impl<'a, T: Copy> BulkProducer for SliceProducer_<'a, T> {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.0.expose_items()
     }
@@ -64,21 +69,21 @@ impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
 }
 
 #[derive(Debug)]
-pub struct SliceProducerInner<'a, T>(&'a [T], usize);
+struct SliceProducer<'a, T>(&'a [T], usize);
 
-impl<'a, T> AsRef<[T]> for SliceProducerInner<'a, T> {
+impl<'a, T> AsRef<[T]> for SliceProducer<'a, T> {
     fn as_ref(&self) -> &[T] {
         self.0
     }
 }
 
-impl<'a, T> Wrapper<&'a [T]> for SliceProducerInner<'a, T> {
+impl<'a, T> Wrapper<&'a [T]> for SliceProducer<'a, T> {
     fn into_inner(self) -> &'a [T] {
         self.0
     }
 }
 
-impl<'a, T: Clone> Producer for SliceProducerInner<'a, T> {
+impl<'a, T: Clone> Producer for SliceProducer<'a, T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -100,14 +105,14 @@ impl<'a, T: Clone> Producer for SliceProducerInner<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedProducer for SliceProducerInner<'a, T> {
+impl<'a, T: Copy> BufferedProducer for SliceProducer<'a, T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         // There are no effects to perform so we simply return.
         Ok(())
     }
 }
 
-impl<'a, T: Copy> BulkProducer for SliceProducerInner<'a, T> {
+impl<'a, T: Copy> BulkProducer for SliceProducer<'a, T> {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
@@ -126,9 +131,11 @@ impl<'a, T: Copy> BulkProducer for SliceProducerInner<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::*;
+    use crate::sync::*;
 
     use core::mem::MaybeUninit;
+    use either::Either;
 
     // Panic conditions:
     //

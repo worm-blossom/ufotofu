@@ -25,8 +25,15 @@ use crate::sync::consumer::IntoVecFallible as SyncIntoVecFallible;
 pub struct IntoVecError(#[from] pub TryReserveError);
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
-#[derive(Debug)]
 pub struct IntoVecFallible<T, A: Allocator = Global>(SyncToLocalNb<SyncIntoVecFallible<T, A>>);
+
+impl<T: core::fmt::Debug, A: Allocator + core::fmt::Debug> core::fmt::Debug
+    for IntoVecFallible<T, A>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<T> Default for IntoVecFallible<T> {
     fn default() -> Self {

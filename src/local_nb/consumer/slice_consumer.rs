@@ -13,8 +13,13 @@ use crate::sync::consumer::SliceConsumer as SyncSliceConsumer;
 /// Error to indicate that consuming data into a slice failed because the end of the slice was reached.
 pub struct SliceConsumerFullError;
 
-#[derive(Debug)]
 pub struct SliceConsumer<'a, T>(SyncToLocalNb<SyncSliceConsumer<'a, T>>);
+
+impl<'a, T: core::fmt::Debug> core::fmt::Debug for SliceConsumer<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 /// Creates a consumer which places consumed data into the given slice.
 impl<'a, T> SliceConsumer<'a, T> {

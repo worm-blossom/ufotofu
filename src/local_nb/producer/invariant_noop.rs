@@ -28,10 +28,16 @@ use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 /// - Must not call any of the prior functions after any of them had returned
 ///   an error.
 /// - Must not call `consider_produced` with an amount exceeding the number of available slots
-#[derive(Debug, Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Invariant<P> {
     /// An implementer of the `Producer` traits.
     inner: P,
+}
+
+impl<P: core::fmt::Debug> core::fmt::Debug for Invariant<P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.inner.fmt(f)
+    }
 }
 
 impl<P> Invariant<P> {

@@ -6,8 +6,13 @@ use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync;
 
 /// Turns a [`sync::Consumer`](crate::sync::Consumer) into a [`local_nb::Consumer`](crate::local_nb::Consumer). Only use this to wrap types that never block and do not perform time-intensive computations.
-#[derive(Debug)]
 pub struct SyncToLocalNb<C>(pub C);
+
+impl<C: core::fmt::Debug> core::fmt::Debug for SyncToLocalNb<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<C> AsRef<C> for SyncToLocalNb<C> {
     fn as_ref(&self) -> &C {

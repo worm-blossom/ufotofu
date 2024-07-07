@@ -18,8 +18,13 @@ use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync::consumer::IntoVec as SyncIntoVec;
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
-#[derive(Debug)]
 pub struct IntoVec<T, A: Allocator = Global>(SyncToLocalNb<SyncIntoVec<T, A>>);
+
+impl<T: core::fmt::Debug, A: Allocator + core::fmt::Debug> core::fmt::Debug for IntoVec<T, A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<T> Default for IntoVec<T> {
     fn default() -> Self {
@@ -107,6 +112,13 @@ impl<T: Copy> BulkConsumer for IntoVec<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The debug output hides the internals of using semantically transparent wrappers.
+    #[test]
+    fn debug_output_hides_transparent_wrappers() {
+        let consumer: IntoVec<u8> = IntoVec::new();
+        assert_eq!(format!("{:?}", consumer), "IntoVec([])");
+    }
 
     #[test]
     fn converts_into_vec() {

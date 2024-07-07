@@ -61,7 +61,6 @@ impl<'a> Arbitrary<'a> for ConsumeOperations {
 }
 
 /// A `Consumer` wrapper that scrambles the methods that get called on a wrapped consumer, without changing the observable semantics. Unless it uncovers buggy behavior on the wrapped consumer, that is.
-#[derive(Debug)]
 pub struct Scramble<C, T, F, E> {
     /// The `Consumer` that we wrap. All consumer operations on the `Scramble`
     /// will be transformed into semantically equivalent scrambled operations,
@@ -70,7 +69,7 @@ pub struct Scramble<C, T, F, E> {
     /// A fixed capacity queue of items. We store items here before forwarding
     /// them to the `inner` consumer. Intermediate storage is necessary so that
     /// we can arbitrarily scramble operations before forwarding.
-    queue: Fixed<T>,
+    buffer: Fixed<T>,
     /// The instructions on how to scramble consumer operations. We cycle
     /// through these round-robin.
     operations: Box<[ConsumeOperation]>,
@@ -78,7 +77,19 @@ pub struct Scramble<C, T, F, E> {
     /// our item queue.
     operations_index: usize,
     /// Satisfy the type checker, no useful semantics.
-    fe: PhantomData<(F, E)>,
+    phantom: PhantomData<(F, E)>,
+}
+
+impl<C: core::fmt::Debug, T: core::fmt::Debug, F, E> core::fmt::Debug for Scramble<C, T, F, E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not print `self.phantom`.
+        f.debug_struct("Scramble")
+            .field("inner", &self.inner)
+            .field("buffer", &self.buffer)
+            .field("operations", &self.operations)
+            .field("operations_index", &self.operations_index)
+            .finish()
+    }
 }
 
 impl<C, T, F, E> Scramble<C, T, F, E> {
@@ -86,10 +97,10 @@ impl<C, T, F, E> Scramble<C, T, F, E> {
     pub fn new(inner: C, operations: ConsumeOperations, capacity: usize) -> Self {
         Scramble::<C, T, F, E> {
             inner,
-            queue: Fixed::new(capacity),
+            buffer: Fixed::new(capacity),
             operations: operations.0,
             operations_index: 0,
-            fe: PhantomData,
+            phantom: PhantomData,
         }
     }
 
@@ -130,8 +141,8 @@ where
         //
         // The item will be returned if the queue is full.
         // In that case, perform operations until the queue is empty.
-        if self.queue.enqueue(item).is_some() {
-            while self.queue.len() > 0 {
+        if self.buffer.enqueue(item).is_some() {
+            while self.buffer.len() > 0 {
                 self.perform_operation().await?;
             }
 
@@ -139,7 +150,7 @@ where
             //
             // Return value should always be `None` in this context so we
             // ignore it.
-            let _ = self.queue.enqueue(item);
+            let _ = self.buffer.enqueue(item);
         }
 
         Ok(())
@@ -147,7 +158,7 @@ where
 
     async fn close(&mut self, final_val: Self::Final) -> Result<(), Self::Error> {
         // Perform operations until the queue is empty.
-        while self.queue.len() > 0 {
+        while self.buffer.len() > 0 {
             self.perform_operation().await?;
         }
 
@@ -165,7 +176,7 @@ where
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         // Perform operations until the queue is empty.
-        while self.queue.len() > 0 {
+        while self.buffer.len() > 0 {
             self.perform_operation().await?;
         }
 
@@ -187,24 +198,24 @@ where
     where
         T: 'a,
     {
-        let amount = self.queue.len();
-        let capacity = self.queue.capacity();
+        let amount = self.buffer.len();
+        let capacity = self.buffer.capacity();
 
         // If the queue has available capacity, return writeable slots.
         if amount < capacity {
             let slots = self
-                .queue
+                .buffer
                 .expose_slots()
                 .expect("queue should have available capacity");
             Ok(slots)
         } else {
             // Perform operations until the queue is empty.
-            while self.queue.len() > 0 {
+            while self.buffer.len() > 0 {
                 self.perform_operation().await?;
             }
 
             // Return writeable slots.
-            let slots = self.queue.expose_slots().expect(
+            let slots = self.buffer.expose_slots().expect(
                 "queue should have available capacity after being emptied by performing operations",
             );
 
@@ -213,7 +224,7 @@ where
     }
 
     async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.queue.consider_enqueued(amount);
+        self.buffer.consider_enqueued(amount);
 
         Ok(())
     }
@@ -225,13 +236,13 @@ where
     T: Copy,
 {
     async fn perform_operation(&mut self) -> Result<(), E> {
-        debug_assert!(self.queue.len() > 0);
+        debug_assert!(self.buffer.len() > 0);
 
         match self.operations[self.operations_index] {
             ConsumeOperation::Consume => {
                 // Remove an item from the queue.
                 let item = self
-                    .queue
+                    .buffer
                     .dequeue()
                     .expect("queue should contain an item for consumption");
 
@@ -251,7 +262,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer.
-                let amount = self.queue.bulk_dequeue_maybeuninit(available_slots);
+                let amount = self.buffer.bulk_dequeue_maybeuninit(available_slots);
 
                 // Report the amount of items consumed.
                 unsafe {

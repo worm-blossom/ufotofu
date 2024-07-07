@@ -7,9 +7,14 @@ use wrapper::Wrapper;
 use crate::local_nb::producer::Invariant;
 use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 
-#[derive(Debug)]
 /// Produces data from a slice.
 pub struct FromVec<T>(Invariant<FromVecInner<T>>);
+
+impl<T: core::fmt::Debug> core::fmt::Debug for FromVec<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<T> FromVec<T> {
     /// Create a producer which produces the data in the given slice.
