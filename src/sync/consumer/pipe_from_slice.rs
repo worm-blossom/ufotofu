@@ -5,7 +5,7 @@ use crate::sync::{BulkConsumer, Consumer};
 /// `E` the `Error` type of the consumer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PipeFromSliceError<E> {
-    /// The nuber of items that were consumed.
+    /// The number of items that were consumed.
     pub consumed: usize,
     /// Why did the consumer stop accepting items?
     pub reason: E,
