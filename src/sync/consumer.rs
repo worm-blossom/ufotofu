@@ -18,7 +18,7 @@
 //!
 //! The [pipe_from_slice] and [bulk_pipe_from_slice] functions try make a (bulk) consumer consume all data from a slice; using a bulk producer is more efficient.
 
-mod pipe_from_slice;
+// mod pipe_from_slice;
 mod slice_consumer;
 
 #[cfg(any(feature = "dev", doc))]
@@ -26,7 +26,7 @@ mod scramble;
 #[cfg(any(feature = "dev", doc))]
 mod test_consumer;
 
-pub use pipe_from_slice::*;
+// pub use pipe_from_slice::*;
 pub use slice_consumer::{SliceConsumer_ as SliceConsumer, SliceConsumerFullError};
 
 #[cfg(any(feature = "dev", doc))]

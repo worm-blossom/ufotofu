@@ -1,8 +1,13 @@
 use core::cmp::min;
 use core::mem::MaybeUninit;
 
-use either::Either;
+use either::{
+    Either,
+    Either::{Left, Right},
+};
 use thiserror::Error;
+
+use crate::common::errors::{ConsumeFullSliceError, OverwriteFullSliceError};
 
 pub mod consumer;
 pub mod producer;
@@ -41,6 +46,39 @@ pub trait Consumer {
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
     fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error>;
+
+    /// Try to consume (clones of) *all* items in the given slice.
+    /// Reports an error if the slice could not be consumed completely.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after `close` was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn consume_full_slice(
+        &mut self,
+        buf: &[Self::Item],
+    ) -> Result<(), ConsumeFullSliceError<Self::Error>>
+    where
+        Self::Item: Clone,
+    {
+        for i in 0..buf.len() {
+            let item = buf[i].clone();
+
+            if let Err(err) = self.consume(item) {
+                return Err(ConsumeFullSliceError {
+                    consumed: i,
+                    reason: err,
+                });
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// A `Consumer` that can delay performing side-effects when consuming items.
@@ -73,7 +111,7 @@ where
     Self::Item: Copy,
 {
     /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
-    /// 
+    ///
     /// Expose a non-empty slice of memory for the client code to fill with items that should
     /// be consumed.
     ///
@@ -90,7 +128,7 @@ where
     fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error>;
 
     /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
-    /// 
+    ///
     /// Instruct the consumer to consume the first `amount` many items of the slots
     /// it has most recently exposed. The semantics must be equivalent to those of `consume`
     /// being called `amount` many times with exactly those items.
@@ -138,6 +176,42 @@ where
 
         Ok(amount)
     }
+
+    /// Try to bulk-consume (copies of) *all* items in the given slice.
+    /// Reports an error if the slice could not be consumed completely.
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after `close` was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn bulk_consume_full_slice(
+        &mut self,
+        buf: &[Self::Item],
+    ) -> Result<(), ConsumeFullSliceError<Self::Error>> {
+        let mut consumed_so_far = 0;
+
+        while consumed_so_far < buf.len() {
+            match self.bulk_consume(buf) {
+                Ok(consumed_count) => consumed_so_far += consumed_count,
+                Err(err) => {
+                    return Err(ConsumeFullSliceError {
+                        consumed: consumed_so_far,
+                        reason: err,
+                    });
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// A `Producer` produces a potentially infinite sequence, one item at a time.
@@ -167,6 +241,96 @@ pub trait Producer {
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
+
+    /// Try to completely overwrite a slice with items from a producer.
+    /// Reports an error if the slice could not be overwritten completely.
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after `close` was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn overwrite_full_slice<'a>(
+        &mut self,
+        buf: &'a mut [Self::Item],
+    ) -> Result<(), OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>> {
+        for i in 0..buf.len() {
+            match self.produce() {
+                Ok(Left(item)) => buf[i] = item,
+                Ok(Right(fin)) => {
+                    return Err(OverwriteFullSliceError {
+                        filled: &buf[0..i],
+                        reason: Left(fin),
+                    })
+                }
+                Err(err) => {
+                    return Err(OverwriteFullSliceError {
+                        filled: &buf[0..i],
+                        reason: Right(err),
+                    })
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Try to completely fill an uninitialised slice with items from a producer.
+    /// Reports an error if the slice could not be filled completely.
+    ///
+    /// The `Ok` return value is a convenience that performs the converion of the input slice from possibly uninitialised memory to "normal" memory for you. It is guaranteed to point to the same memory as the input slice (and has the same length).
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after `close` was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn overwrite_full_slice_uninit<'a>(
+        &mut self,
+        buf: &'a mut [MaybeUninit<Self::Item>],
+    ) -> Result<
+        &'a mut [Self::Item],
+        OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>,
+    > {
+        for i in 0..buf.len() {
+            match self.produce() {
+                Ok(Left(item)) => {
+                    let _ = buf[i].write(item);
+                }
+                Ok(Right(fin)) => {
+                    return Err(OverwriteFullSliceError {
+                        // We can do this because we know the first `i` positions of `buf` have been written to in the previous i iterations of this loop.
+                        filled: unsafe { MaybeUninit::slice_assume_init_ref(&buf[0..i]) },
+                        reason: Left(fin),
+                    });
+                }
+                Err(err) => {
+                    return Err(OverwriteFullSliceError {
+                        // We can do this because we know the first `i` positions of `buf` have been written to in the previous i iterations of this loop.
+                        filled: unsafe { MaybeUninit::slice_assume_init_ref(&buf[0..i]) },
+                        reason: Right(err),
+                    });
+                }
+            }
+        }
+
+        // We can do this because we know that `buf`'s slots from index 0 to `buf.len()` have been written to in the preceding loop.
+        Ok(unsafe { MaybeUninit::slice_assume_init_mut(buf) })
+    }
 }
 
 /// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
@@ -192,7 +356,7 @@ where
     Self::Item: Copy,
 {
     /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
-    /// 
+    ///
     ///  Expose a non-empty slice of items to be produced (or the final value, or an error).
     /// The items in the slice must not have been emitted by `produce` before. If the sequence
     /// of items has not ended yet, but no item is available at the time of calling, the
@@ -213,7 +377,7 @@ where
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error>;
 
     /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_maybeuninit] instead.
-    /// 
+    ///
     ///  Mark `amount` many items as having been produced. Future calls to `produce` and to
     /// `expose_items` must act as if `produce` had been called `amount` many times.
     ///
@@ -291,6 +455,102 @@ where
             }
             Either::Right(final_value) => Ok(Either::Right(final_value)),
         }
+    }
+
+    /// Try to completely overwrite a slice with items from a bulk producer.
+    /// Reports an error if the slice could not be overwritten completely.
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after `close` was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn bulk_overwrite_full_slice<'a>(
+        &mut self,
+        buf: &'a mut [Self::Item],
+    ) -> Result<(), OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>> {
+        let mut produced_so_far = 0;
+
+        while produced_so_far < buf.len() {
+            match self.bulk_produce(buf) {
+                Ok(Left(count)) => produced_so_far += count,
+                Ok(Right(fin)) => {
+                    return Err(OverwriteFullSliceError {
+                        filled: &buf[0..produced_so_far],
+                        reason: Left(fin),
+                    });
+                }
+                Err(err) => {
+                    return Err(OverwriteFullSliceError {
+                        filled: &buf[0..produced_so_far],
+                        reason: Right(err),
+                    });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Try to completely overwrite an uninitialised slice with items from a bulk producer.
+    /// Reports an error if the slice could not be overwritten completely.
+    ///
+    /// The `Ok` return value is a convenience that performs the converion of the input slice from possibly uninitialised memory to "normal" memory for you. It is guaranteed to point to the same memory as the input slice (and has the same length).
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after `close` was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn bulk_overwrite_full_slice_uninit<'a>(
+        &mut self,
+        buf: &'a mut [MaybeUninit<Self::Item>],
+    ) -> Result<
+        &'a mut [Self::Item],
+        OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>,
+    > {
+        let mut produced_so_far = 0;
+
+        while produced_so_far < buf.len() {
+            match self.bulk_produce_maybeuninit(buf) {
+                Ok(Left(count)) => produced_so_far += count,
+                Ok(Right(fin)) => {
+                    return Err(OverwriteFullSliceError {
+                        // We can do this because we know that `buf`'s slots from index 0 to `produced_so_far` have been written to in the preceding iterations of this loop.
+                        filled: unsafe {
+                            MaybeUninit::slice_assume_init_ref(&buf[0..produced_so_far])
+                        },
+                        reason: Left(fin),
+                    });
+                }
+                Err(err) => {
+                    return Err(OverwriteFullSliceError {
+                        // We can do this because we know that `buf`'s slots from index 0 to `produced_so_far` have been written to in the preceding iterations of this loop.
+                        filled: unsafe {
+                            MaybeUninit::slice_assume_init_ref(&buf[0..produced_so_far])
+                        },
+                        reason: Right(err),
+                    });
+                }
+            }
+        }
+
+        // We can do this because we know that `buf`'s slots from index 0 to `produced_so_far` have been written to in the preceding loop.
+        Ok(unsafe { MaybeUninit::slice_assume_init_mut(&mut buf[0..produced_so_far]) })
     }
 }
 

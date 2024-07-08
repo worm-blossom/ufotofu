@@ -17,13 +17,13 @@
 
 mod invariant;
 mod invariant_noop;
-mod pipe_into_slice;
+// mod pipe_into_slice;
 mod slice_producer;
 
 #[cfg(any(feature = "dev", doc))]
 mod scramble;
 
-pub use pipe_into_slice::*;
+// pub use pipe_into_slice::*;
 pub use slice_producer::SliceProducer_ as SliceProducer;
 
 #[cfg(any(feature = "dev", doc))]
