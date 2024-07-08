@@ -227,7 +227,7 @@ mod tests {
             }
 
             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            let _ = prod.bulk_produceuninit(&mut buf);
+            let _ = prod.bulk_produce_uninit(&mut buf);
         });
     }
 

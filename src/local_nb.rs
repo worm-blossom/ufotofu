@@ -385,7 +385,7 @@ pub trait BulkProducer: BufferedProducer
 where
     Self::Item: Copy,
 {
-    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produceuninit] instead.
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_uninit] instead.
     ///
     ///  Expose a non-empty slice of items to be produced (or the final value, or an error).
     /// The items in the slice must not have been emitted by `produce` before. If the sequence
@@ -409,7 +409,7 @@ where
     where
         Self::Item: 'a;
 
-    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produceuninit] instead.
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_uninit] instead.
     ///
     ///  Mark `amount` many items as having been produced. Future calls to `produce` and to
     /// `expose_items` must act as if `produce` had been called `amount` many times.
@@ -477,7 +477,7 @@ where
     /// The default implementation orchestrates `expose_items` and `consider_produced` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
-    fn bulk_produceuninit(
+    fn bulk_produce_uninit(
         &mut self,
         buf: &mut [MaybeUninit<Self::Item>],
     ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {
@@ -571,7 +571,7 @@ where
             let mut produced_so_far = 0;
 
             while produced_so_far < buf.len() {
-                match self.bulk_produceuninit(buf).await {
+                match self.bulk_produce_uninit(buf).await {
                     Ok(Left(count)) => produced_so_far += count,
                     Ok(Right(fin)) => {
                         return Err(OverwriteFullSliceError {
