@@ -218,7 +218,7 @@ where
             let mut consumed_so_far = 0;
 
             while consumed_so_far < buf.len() {
-                match self.bulk_consume(buf).await {
+                match self.bulk_consume(&buf[consumed_so_far..]).await {
                     Ok(consumed_count) => consumed_so_far += consumed_count,
                     Err(err) => {
                         return Err(ConsumeFullSliceError {
