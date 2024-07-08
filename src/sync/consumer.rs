@@ -18,13 +18,6 @@
 //!
 //! The [pipe_from_slice] and [bulk_pipe_from_slice] functions try make a (bulk) consumer consume all data from a slice; using a bulk producer is more efficient.
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-mod into_vec;
-#[cfg(any(feature = "std", feature = "alloc"))]
-mod into_vec_fallible;
-
-mod invariant;
-mod invariant_noop;
 mod pipe_from_slice;
 mod slice_consumer;
 
@@ -32,11 +25,6 @@ mod slice_consumer;
 mod scramble;
 #[cfg(any(feature = "dev", doc))]
 mod test_consumer;
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use into_vec::IntoVec_ as IntoVec;
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use into_vec_fallible::{IntoVecError, IntoVecFallible_ as IntoVecFallible};
 
 pub use pipe_from_slice::*;
 pub use slice_consumer::{SliceConsumer_ as SliceConsumer, SliceConsumerFullError};
@@ -46,9 +34,10 @@ pub use scramble::{ConsumeOperations, Scramble};
 #[cfg(any(feature = "dev", doc))]
 pub use test_consumer::TestConsumer;
 
-// During testing we use a wrapper which panics on invariant transgressions.
-// The no-op version of the wrapper is used for production code compilation.
-#[cfg(test)]
-pub use invariant::Invariant;
-#[cfg(not(test))]
-pub use invariant_noop::Invariant;
+
+
+
+pub use crate::common::consumer::Invariant;
+
+#[cfg(feature = "alloc")]
+pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};

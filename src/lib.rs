@@ -75,6 +75,7 @@ use core::mem::MaybeUninit;
 ///
 /// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](local_nb::producer) and [`consumer`](local_nb::consumer) modules respectively.
 pub mod local_nb;
+
 /// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *multi-threaded* executors.
 ///
 /// For an introduction and high-level overview, see the [toplevel documentation](crate).
@@ -85,6 +86,7 @@ pub mod local_nb;
 /// - Traits for consuming sequences: [`Consumer`](nb::Consumer), [`BufferedConsumer`](nb::BufferedConsumer), and [`BulkConsumer`](nb::BulkConsumer).
 /// - Piping data: [`pipe`](nb::pipe) and [`bulk_pipe`](nb::bulk_pipe).
 pub mod nb;
+
 /// Synchronous, blocking versions of the ufotofu APIs.
 ///
 /// For an introduction and high-level overview, see the [toplevel documentation](crate).
@@ -97,6 +99,9 @@ pub mod nb;
 ///
 /// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](sync::producer) and [`consumer`](sync::consumer) modules respectively.
 pub mod sync;
+
+/// Functionality shared between several of the three core modules ([sync], [local_nb], and [nb]). You can safaely ignore this module, all functionality is exported amongst [sync], [local_nb], and [nb].
+pub mod common;
 
 pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
     let ptr = s.as_mut_ptr().cast::<MaybeUninit<T>>();

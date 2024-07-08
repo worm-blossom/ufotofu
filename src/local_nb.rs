@@ -42,7 +42,7 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after `close` was called.
-    fn close(&mut self, f: Self::Final) -> impl Future<Output = Result<(), Self::Error>>;
+    fn close(&mut self, fin: Self::Final) -> impl Future<Output = Result<(), Self::Error>>;
 }
 
 /// A `Consumer` that can delay performing side-effects when consuming items.
