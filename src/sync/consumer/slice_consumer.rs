@@ -30,6 +30,33 @@ impl<'a, T> SliceConsumer_<'a, T> {
 
         SliceConsumer_(invariant)
     }
+
+    /// Return the offset into the slice at which the next item consumed item will be written.
+    pub fn get_offset(&self) -> usize {
+        (self.0).as_ref().1
+    }
+
+    /// Return the subslice that has been overwritten with consumed items.
+    pub fn get_overwritten_so_far(&self) -> &[T] {
+        &(self.0).as_ref().0[..self.get_offset()]
+    }
+
+    /// Return the subslice of items that have not yet been overwritten with consumed items.
+    pub fn get_not_yet_overwritten(&self) -> &[T] {
+        &(self.0).as_ref().0[self.get_offset()..]
+    }
+
+    /// Return a mutable reference to the subslice that has been overwritten with consumed items.
+    pub fn get_overwritten_so_far_mut(&mut self) -> &mut [T] {
+        let offset = self.get_offset();
+        &mut (self.0).as_mut().0[..offset]
+    }
+
+    /// Return a mutable reference to the subslice of items that have not yet been overwritten with consumed items.
+    pub fn get_not_yet_overwritten_mut(&mut self) -> &mut [T] {
+        let offset = self.get_offset();
+        &mut (self.0).as_mut().0[offset..]
+    }
 }
 
 impl<'a, T> AsRef<[T]> for SliceConsumer_<'a, T> {

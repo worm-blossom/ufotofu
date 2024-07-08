@@ -23,6 +23,21 @@ impl<'a, T> SliceProducer<'a, T> {
 
         SliceProducer(SyncToLocalNb(slice_producer))
     }
+
+    /// Return the offset into the slice at which the next item will be produced.
+    pub fn get_offset(&self) -> usize {
+        (self.0).as_ref().get_offset()
+    }
+
+    /// Return the subslice of items that have been produced so far.
+    pub fn get_produced_so_far(&self) -> &[T] {
+        &(self.0).as_ref().get_produced_so_far()
+    }
+
+    /// Return the subslice of items that have not been produced yet.
+    pub fn get_not_yet_produced(&self) -> &[T] {
+        &(self.0).as_ref().get_not_yet_produced()
+    }
 }
 
 impl<'a, T> AsRef<[T]> for SliceProducer<'a, T> {

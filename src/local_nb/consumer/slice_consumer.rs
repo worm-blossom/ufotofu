@@ -28,6 +28,31 @@ impl<'a, T> SliceConsumer<'a, T> {
 
         SliceConsumer(SyncToLocalNb(slice_consumer))
     }
+
+    /// Return the offset into the slice at which the next item consumed item will be written.
+    pub fn get_offset(&self) -> usize {
+        (self.0).as_ref().get_offset()
+    }
+
+    /// Return the subslice that has been overwritten with consumed items.
+    pub fn get_overwritten_so_far(&self) -> &[T] {
+        (self.0).as_ref().get_overwritten_so_far()
+    }
+
+    /// Return the subslice of items that have not yet been overwritten with consumed items.
+    pub fn get_not_yet_overwritten(&self) -> &[T] {
+        (self.0).as_ref().get_not_yet_overwritten()
+    }
+
+    /// Return a mutable reference to the subslice that has been overwritten with consumed items.
+    pub fn get_overwritten_so_far_mut(&mut self) -> &mut [T] {
+        (self.0).as_mut().get_overwritten_so_far_mut()
+    }
+
+    /// Return a mutable reference to the subslice of items that have not yet been overwritten with consumed items.
+    pub fn get_not_yet_overwritten_mut(&mut self) -> &mut [T] {
+        (self.0).as_mut().get_not_yet_overwritten_mut()
+    }
 }
 
 impl<'a, T> AsRef<[T]> for SliceConsumer<'a, T> {
