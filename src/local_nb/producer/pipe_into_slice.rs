@@ -131,7 +131,7 @@ where
     let mut produced_so_far = 0;
 
     while produced_so_far < buf.len() {
-        match producer.bulk_produce_maybeuninit(buf).await {
+        match producer.bulk_produceuninit(buf).await {
             Ok(Left(count)) => produced_so_far += count,
             Ok(Right(fin)) => {
                 return Err(PipeIntoSliceError {

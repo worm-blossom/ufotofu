@@ -262,7 +262,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer.
-                let amount = self.buffer.bulk_dequeue_maybeuninit(available_slots);
+                let amount = self.buffer.bulk_dequeueuninit(available_slots);
 
                 // Report the amount of items consumed.
                 unsafe {
