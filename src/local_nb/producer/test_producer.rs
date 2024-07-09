@@ -16,12 +16,6 @@ impl<Item, Final, Error> TestProducer<Item, Final, Error> {
     pub fn peek_slice(&self) -> &[Item] {
         self.inner.as_ref().as_ref()
     }
-
-    /*
-    pub fn peek_termination(&self) -> Either<Final, Error> {
-
-    }
-    */
 }
 
 impl<Item, Final, Error> Producer for TestProducer<Item, Final, Error>
