@@ -16,9 +16,9 @@ pub struct ConsumeFullSliceError<E> {
 ///
 /// `'a` is the lifetime of the slice, `T` the type of items of the slice, `F` the `Final` type of the producer, and `E` the `Error` type of the producer.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OverwriteFullSliceError<'a, T, F, E> {
-    /// The prefix of the argument slice that *was* filled successfully. The length of this is guaranteed to be strictly less than the length of the original slice.
-    pub filled: &'a [T],
+pub struct OverwriteFullSliceError<F, E> {
+    /// How many items of the slice *were* overwritten successfully. Guaranteed to be strictly less than the length of the original slice.
+    pub overwritten: usize,
     /// Did completely filling the slice fail because the producer reached its final item, or because it yielded an error?
     pub reason: Either<F, E>,
 }

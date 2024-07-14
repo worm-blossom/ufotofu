@@ -288,22 +288,21 @@ where
     fn overwrite_full_slice<'a>(
         &mut self,
         buf: &'a mut [Self::Item],
-    ) -> impl Future<
-        Output = Result<(), OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>>,
-    > + Send {
+    ) -> impl Future<Output = Result<(), OverwriteFullSliceError<Self::Final, Self::Error>>> + Send
+    {
         async {
             for i in 0..buf.len() {
                 match self.produce().await {
                     Ok(Left(item)) => buf[i] = item,
                     Ok(Right(fin)) => {
                         return Err(OverwriteFullSliceError {
-                            filled: &buf[0..i],
+                            overwritten: i,
                             reason: Left(fin),
                         })
                     }
                     Err(err) => {
                         return Err(OverwriteFullSliceError {
-                            filled: &buf[0..i],
+                            overwritten: i,
                             reason: Right(err),
                         })
                     }
@@ -335,10 +334,7 @@ where
         &mut self,
         buf: &'a mut [MaybeUninit<Self::Item>],
     ) -> impl Future<
-        Output = Result<
-            &'a mut [Self::Item],
-            OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>,
-        >,
+        Output = Result<&'a mut [Self::Item], OverwriteFullSliceError<Self::Final, Self::Error>>,
     > + Send {
         async {
             for i in 0..buf.len() {
@@ -348,15 +344,13 @@ where
                     }
                     Ok(Right(fin)) => {
                         return Err(OverwriteFullSliceError {
-                            // We can do this because we know the first `i` positions of `buf` have been written to in the previous i iterations of this loop.
-                            filled: unsafe { MaybeUninit::slice_assume_init_ref(&buf[0..i]) },
+                            overwritten: i,
                             reason: Left(fin),
                         });
                     }
                     Err(err) => {
                         return Err(OverwriteFullSliceError {
-                            // We can do this because we know the first `i` positions of `buf` have been written to in the previous i iterations of this loop.
-                            filled: unsafe { MaybeUninit::slice_assume_init_ref(&buf[0..i]) },
+                            overwritten: i,
                             reason: Right(err),
                         });
                     }
@@ -518,9 +512,8 @@ where
     fn bulk_overwrite_full_slice<'a>(
         &mut self,
         buf: &'a mut [Self::Item],
-    ) -> impl Future<
-        Output = Result<(), OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>>,
-    > + Send {
+    ) -> impl Future<Output = Result<(), OverwriteFullSliceError<Self::Final, Self::Error>>> + Send
+    {
         async {
             let mut produced_so_far = 0;
 
@@ -529,13 +522,13 @@ where
                     Ok(Left(count)) => produced_so_far += count,
                     Ok(Right(fin)) => {
                         return Err(OverwriteFullSliceError {
-                            filled: &buf[0..produced_so_far],
+                            overwritten: produced_so_far,
                             reason: Left(fin),
                         });
                     }
                     Err(err) => {
                         return Err(OverwriteFullSliceError {
-                            filled: &buf[0..produced_so_far],
+                            overwritten: produced_so_far,
                             reason: Right(err),
                         });
                     }
@@ -567,10 +560,7 @@ where
         &mut self,
         buf: &'a mut [MaybeUninit<Self::Item>],
     ) -> impl Future<
-        Output = Result<
-            &'a mut [Self::Item],
-            OverwriteFullSliceError<'a, Self::Item, Self::Final, Self::Error>,
-        >,
+        Output = Result<&'a mut [Self::Item], OverwriteFullSliceError<Self::Final, Self::Error>>,
     > + Send {
         async {
             let mut produced_so_far = 0;
@@ -580,19 +570,13 @@ where
                     Ok(Left(count)) => produced_so_far += count,
                     Ok(Right(fin)) => {
                         return Err(OverwriteFullSliceError {
-                            // We can do this because we know that `buf`'s slots from index 0 to `produced_so_far` have been written to in the preceding iterations of this loop.
-                            filled: unsafe {
-                                MaybeUninit::slice_assume_init_ref(&buf[0..produced_so_far])
-                            },
+                            overwritten: produced_so_far,
                             reason: Left(fin),
                         });
                     }
                     Err(err) => {
                         return Err(OverwriteFullSliceError {
-                            // We can do this because we know that `buf`'s slots from index 0 to `produced_so_far` have been written to in the preceding iterations of this loop.
-                            filled: unsafe {
-                                MaybeUninit::slice_assume_init_ref(&buf[0..produced_so_far])
-                            },
+                            overwritten: produced_so_far,
                             reason: Right(err),
                         });
                     }
