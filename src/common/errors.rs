@@ -1,3 +1,5 @@
+use core::error::Error;
+use core::fmt::{Debug, Display};
 use either::Either;
 
 /// Information you get from the `consume_full_slice` family of methods when the consumer is unable to consume the complete slice.
@@ -10,7 +12,25 @@ pub struct ConsumeFullSliceError<E> {
     /// Why did the consumer stop accepting items?
     pub reason: E,
 }
-// TODO impl Error
+
+impl<E> Error for ConsumeFullSliceError<E>
+where
+    E: 'static + Error,
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.reason)
+    }
+}
+
+impl<E> Display for ConsumeFullSliceError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "The consumer failed to consume the complete slice, and only consumed {} items",
+            self.consumed
+        )
+    }
+}
 
 /// Information you get from the `pipe_into_slice` family of functions when the producer is unable to fill the complete slice.
 ///
@@ -22,4 +42,29 @@ pub struct OverwriteFullSliceError<F, E> {
     /// Did completely filling the slice fail because the producer reached its final item, or because it yielded an error?
     pub reason: Either<F, E>,
 }
-// TODO impl Error
+
+impl<F, E> Error for OverwriteFullSliceError<F, E>
+where
+    F: Debug,
+    E: 'static + Error,
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match &self.reason {
+            Either::Left(_) => None,
+            Either::Right(err) => Some(err),
+        }
+    }
+}
+
+impl<F, E> Display for OverwriteFullSliceError<F, E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.reason {
+            Either::Left(_) => {
+                write!(f, "The producer was unable to fill the whole slice due to being finalised, and stopped after overwriting {} items", self.overwritten)
+            }
+            Either::Right(_) => {
+                write!(f, "The producer was unable to fill the whole slice due to an error, and stopped after overwriting {} items", self.overwritten)
+            }
+        }
+    }
+}
