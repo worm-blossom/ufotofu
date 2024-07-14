@@ -24,6 +24,10 @@ impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
     pub fn as_ref(&self) -> &[Item] {
         self.inner.as_ref().as_ref()
     }
+
+    pub fn should_error(&self) -> bool {
+        self.error.is_some()
+    }
 }
 
 impl<Item, Final, Error> Wrapper<Vec<Item>> for TestConsumer<Item, Final, Error> {
