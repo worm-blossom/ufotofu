@@ -145,7 +145,7 @@ where
 
 impl<C, T, F, E> ConsumerLocalNb for Scramble_<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     type Item = T;
@@ -163,7 +163,7 @@ where
 
 impl<C, T, F, E> BufferedConsumerLocalNb for Scramble_<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
@@ -173,7 +173,7 @@ where
 
 impl<C, T, F, E> BulkConsumerLocalNb for Scramble_<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn expose_slots<'a>(
@@ -292,9 +292,7 @@ where
         }
 
         // Then close the inner consumer using the final value.
-        self.inner.close(final_val)?;
-
-        Ok(())
+        self.inner.close(final_val)
     }
 }
 
@@ -310,9 +308,7 @@ where
         }
 
         // Then flush the inner consumer.
-        self.inner.flush()?;
-
-        Ok(())
+        self.inner.flush()
     }
 }
 
@@ -356,7 +352,7 @@ where
 
 impl<C, T, F, E> ConsumerLocalNb for Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     type Item = T;
@@ -364,27 +360,55 @@ where
     type Error = E;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        Consumer::consume(self, item)
+        // Attempt to add an item to the queue.
+        //
+        // The item will be returned if the queue is full.
+        // In that case, perform operations until the queue is empty.
+        if self.buffer.enqueue(item).is_some() {
+            while self.buffer.len() > 0 {
+                self.perform_operation_local_nb().await?;
+            }
+
+            // Now that the queue has been emptied, enqueue the item.
+            //
+            // Return value should always be `None` in this context so we
+            // ignore it.
+            let _ = self.buffer.enqueue(item);
+        }
+
+        Ok(())
     }
 
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
-        Consumer::close(self, f)
+    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+        // Perform operations until the queue is empty.
+        while self.buffer.len() > 0 {
+            self.perform_operation_local_nb().await?;
+        }
+
+        // Then close the inner consumer using the final value.
+        self.inner.close(fin).await
     }
 }
 
 impl<C, T, F, E> BufferedConsumerLocalNb for Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumer::flush(self)
+        // Perform operations until the queue is empty.
+        while self.buffer.len() > 0 {
+            self.perform_operation_local_nb().await?;
+        }
+
+        // Then flush the inner consumer.
+        self.inner.flush().await
     }
 }
 
 impl<C, T, F, E> BulkConsumerLocalNb for Scramble<C, T, F, E>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
     async fn expose_slots<'a>(
@@ -393,11 +417,35 @@ where
     where
         Self::Item: 'a,
     {
-        BulkConsumer::expose_slots(self)
+        let amount = self.buffer.len();
+        let capacity = self.buffer.capacity();
+
+        // If the queue has available capacity, return writeable slots.
+        if amount < capacity {
+            let slots = self
+                .buffer
+                .expose_slots()
+                .expect("queue should have available capacity");
+            Ok(slots)
+        } else {
+            // Perform operations until the queue is empty.
+            while self.buffer.len() > 0 {
+                self.perform_operation_local_nb().await?;
+            }
+
+            // Return writeable slots.
+            let slots = self.buffer.expose_slots().expect(
+                "queue should have available capacity after being emptied by performing operations",
+            );
+
+            Ok(slots)
+        }
     }
 
     async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumer::consume_slots(self, amount)
+        self.buffer.consider_enqueued(amount);
+
+        Ok(())
     }
 }
 
@@ -443,6 +491,58 @@ where
             ConsumeOperation::Flush => {
                 // Flush the inner consumer.
                 self.inner.flush()?;
+            }
+        }
+
+        // Update the operations index.
+        self.advance_operations_index();
+
+        Ok(())
+    }
+}
+
+impl<C, T, F, E> Scramble<C, T, F, E>
+where
+    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
+    T: Copy,
+{
+    async fn perform_operation_local_nb(&mut self) -> Result<(), E> {
+        debug_assert!(self.buffer.len() > 0);
+
+        match self.operations[self.operations_index] {
+            ConsumeOperation::Consume => {
+                // Remove an item from the buffer.
+                let item = self
+                    .buffer
+                    .dequeue()
+                    .expect("queue should contain an item for consumption");
+
+                // Feed the item to the inner consumer.
+                self.inner.consume(item).await?;
+            }
+            ConsumeOperation::ConsumerSlots(n) => {
+                // Remove items from the queue in bulk and place them in the inner consumer slots.
+                //
+                // Request writeable slots from the inner consumer.
+                let slots = self.inner.expose_slots().await?;
+
+                // Set an upper bound on the slice of slots by comparing the number of available
+                // inner slots and the number provided by the `ConsumerSlots` operation and taking
+                // the lowest value.
+                let slots_len = slots.len();
+                let available_slots = &mut slots[..min(slots_len, n)];
+
+                // Dequeue items into the inner consumer.
+                let amount = self.buffer.bulk_dequeue_uninit(available_slots);
+
+                // Report the amount of items consumed.
+                unsafe {
+                    self.inner.consume_slots(amount).await?;
+                }
+            }
+            ConsumeOperation::Flush => {
+                // Flush the inner consumer.
+                self.inner.flush().await?;
             }
         }
 
