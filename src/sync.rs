@@ -619,13 +619,13 @@ mod tests {
     use super::*;
 
     use crate::sync::consumer::{IntoSlice, IntoVec};
-    use crate::sync::producer::SliceProducer;
+    use crate::sync::producer::FromSlice;
 
     #[test]
     fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
         let mut buf = [0; 3];
 
-        let mut o = SliceProducer::new(b"ufo");
+        let mut o = FromSlice::new(b"ufo");
         let mut i = IntoSlice::new(&mut buf);
 
         pipe(&mut o, &mut i)?;
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
-        let mut o = SliceProducer::new(b"tofu");
+        let mut o = FromSlice::new(b"tofu");
         let mut i = IntoVec::new();
 
         pipe(&mut o, &mut i)?;
@@ -653,7 +653,7 @@ mod tests {
     fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
         let mut buf = [0; 3];
 
-        let mut o = SliceProducer::new(b"ufo");
+        let mut o = FromSlice::new(b"ufo");
         let mut i = IntoSlice::new(&mut buf);
 
         bulk_pipe(&mut o, &mut i)?;
@@ -667,7 +667,7 @@ mod tests {
 
     #[test]
     fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
-        let mut o = SliceProducer::new(b"tofu");
+        let mut o = FromSlice::new(b"tofu");
         let mut i = IntoVec::new();
 
         bulk_pipe(&mut o, &mut i)?;

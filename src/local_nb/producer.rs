@@ -18,13 +18,10 @@
 //!
 //! The [pipe_into_slice] and [bulk_pipe_into_slice] functions try to fill a slice from a (bulk) producer; using a bulk producer is more efficient. The [pipe_into_slice_uninit] and [bulk_pipe_into_slice_uninit] variants do not require the slice to be initialised first.
 
-mod slice_producer;
 mod sync_to_local_nb;
 
 #[cfg(any(feature = "dev", doc))]
 mod scramble;
-
-pub use slice_producer::SliceProducer;
 
 pub use sync_to_local_nb::SyncToLocalNb;
 
@@ -44,4 +41,4 @@ pub use from_vec::*;
 
 
 
-pub use crate::common::producer::Invariant;
+pub use crate::common::producer::{Invariant, FromSlice};

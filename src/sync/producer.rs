@@ -15,13 +15,8 @@
 //!
 //! The [pipe_into_slice] and [bulk_pipe_into_slice] functions try to fill a slice from a (bulk) producer; using a bulk producer is more efficient. The [pipe_into_slice_uninit] and [bulk_pipe_into_slice_uninit] variants do not require the slice to be initialised first.
 
-mod slice_producer;
-
 #[cfg(any(feature = "dev", doc))]
 mod scramble;
-
-// pub use pipe_into_slice::*;
-pub use slice_producer::SliceProducer_ as SliceProducer;
 
 #[cfg(any(feature = "dev", doc))]
 pub use scramble::{ProduceOperations, Scramble};
@@ -38,4 +33,4 @@ pub use from_vec::FromVec_ as FromVec;
 
 
 
-pub use crate::common::producer::Invariant;
+pub use crate::common::producer::{Invariant, FromSlice};
