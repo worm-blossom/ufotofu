@@ -22,15 +22,10 @@
 mod slice_consumer;
 
 #[cfg(any(feature = "dev", doc))]
-mod scramble;
-#[cfg(any(feature = "dev", doc))]
 mod test_consumer;
 
-// pub use pipe_from_slice::*;
 pub use slice_consumer::{SliceConsumer_ as SliceConsumer, SliceConsumerFullError};
 
-#[cfg(any(feature = "dev", doc))]
-pub use scramble::{ConsumeOperations, Scramble};
 #[cfg(any(feature = "dev", doc))]
 pub use test_consumer::TestConsumer;
 
@@ -41,3 +36,6 @@ pub use crate::common::consumer::Invariant;
 
 #[cfg(feature = "alloc")]
 pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};
+
+#[cfg(feature = "dev")]
+pub use crate::common::consumer::{ConsumeOperations, Scramble};

@@ -16,3 +16,8 @@ mod invariant_noop;
 pub use invariant::Invariant;
 #[cfg(not(test))]
 pub use invariant_noop::Invariant;
+
+#[cfg(feature = "dev")]
+mod scramble;
+#[cfg(feature = "dev")]
+pub use scramble::{ConsumeOperations, Scramble};
