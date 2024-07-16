@@ -30,7 +30,6 @@ use crate::sync::{BufferedProducer, BulkProducer, Producer};
 /// - Must not call any of the prior functions after any of them had returned
 ///   an error.
 /// - Must not call `consider_produced` with an amount exceeding the number of available slots
-
 #[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "dev", derive(arbitrary::Arbitrary))]
 pub struct Invariant<P> {

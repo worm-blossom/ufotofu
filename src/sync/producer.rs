@@ -15,9 +15,6 @@
 //!
 //! The [pipe_into_slice] and [bulk_pipe_into_slice] functions try to fill a slice from a (bulk) producer; using a bulk producer is more efficient. The [pipe_into_slice_uninit] and [bulk_pipe_into_slice_uninit] variants do not require the slice to be initialised first.
 
-mod invariant;
-mod invariant_noop;
-// mod pipe_into_slice;
 mod slice_producer;
 
 #[cfg(any(feature = "dev", doc))]
@@ -29,13 +26,6 @@ pub use slice_producer::SliceProducer_ as SliceProducer;
 #[cfg(any(feature = "dev", doc))]
 pub use scramble::{ProduceOperations, Scramble};
 
-// During testing we use a wrapper which panics on invariant transgressions.
-// The no-op version of the wrapper is used for production code compilation.
-#[cfg(test)]
-pub use invariant::Invariant;
-#[cfg(not(test))]
-pub use invariant_noop::Invariant;
-
 #[cfg(any(feature = "dev", doc))]
 mod test_producer;
 #[cfg(any(feature = "dev", doc))]
@@ -43,3 +33,9 @@ pub use test_producer::*;
 
 mod from_vec;
 pub use from_vec::FromVec_ as FromVec;
+
+
+
+
+
+pub use crate::common::producer::Invariant;
