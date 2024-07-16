@@ -84,7 +84,7 @@ impl<T> Consumer for IntoVec_<T> {
     type Final = ();
     type Error = !;
 
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+    fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         Consumer::consume(&mut self.0, item)
     }
 

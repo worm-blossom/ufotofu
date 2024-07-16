@@ -18,13 +18,7 @@
 
 mod sync_to_local_nb;
 
-#[cfg(any(feature = "dev", doc))]
-mod test_consumer;
-
 pub use sync_to_local_nb::SyncToLocalNb;
-
-#[cfg(any(feature = "dev", doc))]
-pub use test_consumer::TestConsumer;
 
 
 
@@ -36,4 +30,4 @@ pub use crate::common::consumer::{Invariant, IntoSlice};
 pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};
 
 #[cfg(feature = "dev")]
-pub use crate::common::consumer::{ConsumeOperations, Scramble};
+pub use crate::common::consumer::{ConsumeOperations, Scramble, TestConsumer};

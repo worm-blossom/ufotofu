@@ -34,6 +34,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 /// - Must not call `consume_slots` for slots that had not been exposed by
 ///   slots before.
 #[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "dev", derive(arbitrary::Arbitrary))]
 pub struct Invariant<C> {
     /// An implementer of the `Consumer` traits.
     inner: C,

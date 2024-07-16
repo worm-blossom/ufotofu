@@ -18,19 +18,10 @@
 //!
 //! The [pipe_from_slice] and [bulk_pipe_from_slice] functions try make a (bulk) consumer consume all data from a slice; using a bulk producer is more efficient.
 
-#[cfg(any(feature = "dev", doc))]
-mod test_consumer;
-
-#[cfg(any(feature = "dev", doc))]
-pub use test_consumer::TestConsumer;
-
-
-
-
 pub use crate::common::consumer::{Invariant, IntoSlice};
 
 #[cfg(feature = "alloc")]
 pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};
 
 #[cfg(feature = "dev")]
-pub use crate::common::consumer::{ConsumeOperations, Scramble};
+pub use crate::common::consumer::{ConsumeOperations, Scramble, TestConsumer};
