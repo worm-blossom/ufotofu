@@ -156,27 +156,27 @@ where
 
     fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumer::flush(self.inner.as_mut());
+            let _ = BufferedConsumer::flush(&mut self.inner);
 
             return Err(self.error.take().expect(
                 "Do not call consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(Consumer::consume(self.inner.as_mut(), item).unwrap()); // may unwrap because Err<!>
+            return Ok(Consumer::consume(&mut self.inner, item).unwrap()); // may unwrap because Err<!>
         }
     }
 
     fn close(&mut self, _f: Self::Final) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumer::flush(self.inner.as_mut());
+            let _ = BufferedConsumer::flush(&mut self.inner);
 
             return Err(self.error.take().expect(
                 "Do not close consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(Consumer::close(self.inner.as_mut(), ()).unwrap()); // may unwrap because Err<!>
+            return Ok(Consumer::close(&mut self.inner, ()).unwrap()); // may unwrap because Err<!>
         }
     }
 }
@@ -187,14 +187,14 @@ where
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumer::flush(self.inner.as_mut());
+            let _ = BufferedConsumer::flush(&mut self.inner);
 
             return Err(self.error.take().expect(
                 "Do not call flush after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(BufferedConsumer::flush(self.inner.as_mut()).unwrap()); // may unwrap because Err<!>
+            return Ok(BufferedConsumer::flush(&mut self.inner).unwrap()); // may unwrap because Err<!>
         }
     }
 }
@@ -205,27 +205,27 @@ where
 {
     fn expose_slots(&mut self) -> Result<&mut [core::mem::MaybeUninit<Self::Item>], Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumer::flush(self.inner.as_mut());
+            let _ = BufferedConsumer::flush(&mut self.inner);
 
             return Err(self.error.take().expect(
                 "Do not call consumer_slots after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(BulkConsumer::expose_slots(self.inner.as_mut()).unwrap());
+            return Ok(BulkConsumer::expose_slots(&mut self.inner).unwrap());
             // may unwrap because Err<!>
         }
     }
 
     unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumer::flush(self.inner.as_mut());
+            let _ = BufferedConsumer::flush(&mut self.inner);
             return Err(self.error.take().expect(
                 "Do not call did_consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(BulkConsumer::consume_slots(self.inner.as_mut(), amount).unwrap());
+            return Ok(BulkConsumer::consume_slots(&mut self.inner, amount).unwrap());
             // may unwrap because Err<!>
         }
     }
@@ -241,14 +241,14 @@ where
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumerLocalNb::flush(self.inner.as_mut()).await;
+            let _ = BufferedConsumerLocalNb::flush(&mut self.inner).await;
 
             return Err(self.error.take().expect(
                 "Do not call consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(ConsumerLocalNb::consume(self.inner.as_mut(), item)
+            return Ok(ConsumerLocalNb::consume(&mut self.inner, item)
                 .await
                 .unwrap());
             // may unwrap because Err<!>
@@ -257,14 +257,14 @@ where
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumerLocalNb::flush(self.inner.as_mut()).await;
+            let _ = BufferedConsumerLocalNb::flush(&mut self.inner).await;
 
             return Err(self.error.take().expect(
                 "Do not close consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(ConsumerLocalNb::close(self.inner.as_mut(), ())
+            return Ok(ConsumerLocalNb::close(&mut self.inner, ())
                 .await
                 .unwrap());
             // may unwrap because Err<!>
@@ -278,14 +278,14 @@ where
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumerLocalNb::flush(self.inner.as_mut()).await;
+            let _ = BufferedConsumerLocalNb::flush(&mut self.inner).await;
 
             return Err(self.error.take().expect(
                 "Do not call flush after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(BufferedConsumerLocalNb::flush(self.inner.as_mut())
+            return Ok(BufferedConsumerLocalNb::flush(&mut self.inner)
                 .await
                 .unwrap());
             // may unwrap because Err<!>
@@ -304,14 +304,14 @@ where
         Self::Item: 'a,
     {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumerLocalNb::flush(self.inner.as_mut()).await;
+            let _ = BufferedConsumerLocalNb::flush(&mut self.inner).await;
 
             return Err(self.error.take().expect(
                 "Do not call consumer_slots after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(BulkConsumerLocalNb::expose_slots(self.inner.as_mut())
+            return Ok(BulkConsumerLocalNb::expose_slots(&mut self.inner)
                 .await
                 .unwrap());
             // may unwrap because Err<!>
@@ -320,14 +320,14 @@ where
 
     async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         if self.countdown_till_error == 0 {
-            let _ = BufferedConsumerLocalNb::flush(self.inner.as_mut()).await;
+            let _ = BufferedConsumerLocalNb::flush(&mut self.inner).await;
             return Err(self.error.take().expect(
                 "Do not call did_consume after close or after any trait function has caused an error.",
             ));
         } else {
             self.countdown_till_error -= 1;
             return Ok(
-                BulkConsumerLocalNb::consume_slots(self.inner.as_mut(), amount)
+                BulkConsumerLocalNb::consume_slots(&mut self.inner, amount)
                     .await
                     .unwrap(),
             );
