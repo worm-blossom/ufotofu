@@ -122,7 +122,7 @@ impl<'a, T> ConsumerLocalNb for IntoSlice_<'a, T> {
 }
 
 impl<'a, T> BufferedConsumerLocalNb for IntoSlice_<'a, T> {
-    async fn flush(&mut self) -> Result<Self::Final, Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         BufferedConsumerLocalNb::flush(&mut self.0).await
     }
 }
@@ -187,7 +187,7 @@ impl<'a, T> Consumer for IntoSlice<'a, T> {
 }
 
 impl<'a, T> BufferedConsumer for IntoSlice<'a, T> {
-    fn flush(&mut self) -> Result<Self::Final, Self::Error> {
+    fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
@@ -224,7 +224,7 @@ impl<'a, T> ConsumerLocalNb for IntoSlice<'a, T> {
 }
 
 impl<'a, T> BufferedConsumerLocalNb for IntoSlice<'a, T> {
-    async fn flush(&mut self) -> Result<Self::Final, Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         BufferedConsumer::flush(self)
     }
 }

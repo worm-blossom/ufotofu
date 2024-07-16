@@ -24,3 +24,8 @@ pub use invariant_noop::Invariant;
 mod scramble;
 #[cfg(feature = "dev")]
 pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
+
+#[cfg(feature = "dev")]
+mod test_consumer;
+#[cfg(feature = "dev")]
+pub use test_consumer::TestConsumer_ as TestConsumer;

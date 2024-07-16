@@ -124,7 +124,7 @@ impl<T> ConsumerLocalNb for IntoVec_<T> {
 }
 
 impl<T> BufferedConsumerLocalNb for IntoVec_<T> {
-    async fn flush(&mut self) -> Result<Self::Final, Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         BufferedConsumerLocalNb::flush(&mut self.0).await
     }
 }
@@ -182,7 +182,7 @@ impl<T> Consumer for IntoVec<T> {
 }
 
 impl<T> BufferedConsumer for IntoVec<T> {
-    fn flush(&mut self) -> Result<Self::Final, Self::Error> {
+    fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
@@ -231,7 +231,7 @@ impl<T> ConsumerLocalNb for IntoVec<T> {
 }
 
 impl<T> BufferedConsumerLocalNb for IntoVec<T> {
-    async fn flush(&mut self) -> Result<Self::Final, Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         BufferedConsumer::flush(self)
     }
 }
