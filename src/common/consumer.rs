@@ -1,3 +1,6 @@
+// mod into_slice;
+// pub use into_slice::IntoSlice_ as IntoSlice;
+
 #[cfg(feature = "alloc")]
 mod into_vec;
 #[cfg(feature = "alloc")]
@@ -20,4 +23,4 @@ pub use invariant_noop::Invariant;
 #[cfg(feature = "dev")]
 mod scramble;
 #[cfg(feature = "dev")]
-pub use scramble::{ConsumeOperations, Scramble};
+pub use scramble::{ConsumeOperations, Scramble_ as Scramble};

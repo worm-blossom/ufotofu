@@ -190,8 +190,7 @@ where
     }
 }
 
-/// A `Consumer` wrapper that scrambles the methods that get called on a wrapped consumer, without changing the observable semantics. Unless it uncovers buggy behavior on the wrapped consumer, that is.
-pub struct Scramble<C, T, F, E> {
+struct Scramble<C, T, F, E> {
     /// The `Consumer` that we wrap. All consumer operations on the `Scramble`
     /// will be transformed into semantically equivalent scrambled operations,
     /// and then forwarded to the `inner` consumer.
