@@ -92,13 +92,13 @@ impl<C> Wrapper<C> for Invariant<C> {
     }
 }
 
-impl<C, T, F, E> Consumer for Invariant<C>
+impl<C> Consumer for Invariant<C>
 where
-    C: Consumer<Item = T, Final = F, Error = E>,
+    C: Consumer,
 {
-    type Item = T;
-    type Final = F;
-    type Error = E;
+    type Item = C::Item;
+    type Final = C::Final;
+    type Error = C::Error;
 
     fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.check_inactive();
@@ -118,9 +118,9 @@ where
     }
 }
 
-impl<C, T, F, E> BufferedConsumer for Invariant<C>
+impl<C> BufferedConsumer for Invariant<C>
 where
-    C: BufferedConsumer<Item = T, Final = F, Error = E>,
+    C: BufferedConsumer,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_inactive();
@@ -131,10 +131,10 @@ where
     }
 }
 
-impl<C, T, F, E> BulkConsumer for Invariant<C>
+impl<C> BulkConsumer for Invariant<C>
 where
-    C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
+    C: BulkConsumer,
+    C::Item: Copy,
 {
     fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         self.check_inactive();

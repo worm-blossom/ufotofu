@@ -71,32 +71,32 @@ impl<P> Wrapper<P> for Invariant<P> {
     }
 }
 
-impl<P, T, F, E> Producer for Invariant<P>
+impl<P> Producer for Invariant<P>
 where
-    P: Producer<Item = T, Final = F, Error = E>,
+    P: Producer,
 {
-    type Item = T;
-    type Final = F;
-    type Error = E;
+    type Item = P::Item;
+    type Final = P::Final;
+    type Error = P::Error;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.inner.produce()
     }
 }
 
-impl<P, T, F, E> BufferedProducer for Invariant<P>
+impl<P> BufferedProducer for Invariant<P>
 where
-    P: BufferedProducer<Item = T, Final = F, Error = E>,
+    P: BufferedProducer,
 {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         self.inner.slurp()
     }
 }
 
-impl<P, T, F, E> BulkProducer for Invariant<P>
+impl<P> BulkProducer for Invariant<P>
 where
-    P: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
+    P: BulkProducer,
+    P::Item: Copy,
 {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         self.inner.expose_items()
