@@ -1,3 +1,6 @@
+mod from_slice;
+pub use from_slice::FromSlice_ as FromSlice;
+
 #[cfg(test)]
 mod invariant;
 #[cfg(not(test))]

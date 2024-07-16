@@ -2,6 +2,51 @@ use core::error::Error;
 use core::fmt::{Debug, Display};
 use either::Either;
 
+/// Everything that can go wrong when piping a `Producer` into a `Consumer`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PipeError<ProducerError, ConsumerError> {
+    /// The `Producer` emitted an error.
+    Producer(ProducerError),
+    /// The `Consumer` emitted an error when consuming an `Item`.
+    Consumer(ConsumerError),
+}
+
+impl<ProducerError, ConsumerError> Display for PipeError<ProducerError, ConsumerError> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PipeError::Producer(_) => {
+                write!(
+                    f,
+                    "Failed to pipe a producer into a consumer, because the producer emitted an error",
+                )
+            }
+            PipeError::Consumer(_) => {
+                write!(
+                    f,
+                    "Failed to pipe a producer into a consumer, because the consumer emitted an error",
+                )
+            }
+        }
+    }
+}
+
+impl<ProducerError, ConsumerError> Error for PipeError<ProducerError, ConsumerError>
+where
+    ProducerError: 'static + Error,
+    ConsumerError: 'static + Error,
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            PipeError::Producer(err) => {
+                Some(err)
+            }
+            PipeError::Consumer(err) => {
+                Some(err)
+            }
+        }
+    }
+}
+
 /// Information you get from the `consume_full_slice` family of methods when the consumer is unable to consume the complete slice.
 ///
 /// `E` is the `Error` type of the consumer.

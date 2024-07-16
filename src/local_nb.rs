@@ -6,7 +6,6 @@ use either::{
     Either,
     Either::{Left, Right},
 };
-use thiserror::Error;
 
 use crate::common::errors::{ConsumeFullSliceError, OverwriteFullSliceError};
 
@@ -584,14 +583,7 @@ where
     }
 }
 
-/// Everything that can go wrong when piping a `Producer` into a `Consumer`.
-#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
-pub enum PipeError<ProducerError, ConsumerError> {
-    /// The `Producer` emitted an error.
-    Producer(ProducerError),
-    /// The `Consumer` emitted an error when consuming an `Item`.
-    Consumer(ConsumerError),
-}
+pub use crate::common::errors::PipeError;
 
 /// Pipe as many items as possible from a producer into a consumer. Then call `close`
 /// on the consumer with the final value emitted by the producer.
