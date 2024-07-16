@@ -60,7 +60,7 @@ impl<F, E> Display for OverwriteFullSliceError<F, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.reason {
             Either::Left(_) => {
-                write!(f, "The producer was unable to fill the whole slice due to being finalised, and stopped after overwriting {} items", self.overwritten)
+                write!(f, "The producer was unable to fill the whole slice due to emitting its final item, and stopped after overwriting {} items", self.overwritten)
             }
             Either::Right(_) => {
                 write!(f, "The producer was unable to fill the whole slice due to an error, and stopped after overwriting {} items", self.overwritten)
