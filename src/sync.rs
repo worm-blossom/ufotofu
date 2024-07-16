@@ -626,16 +626,15 @@ where
 mod tests {
     use super::*;
 
-    use crate::sync::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
+    use crate::sync::consumer::{IntoSlice, IntoVec};
     use crate::sync::producer::SliceProducer;
 
     #[test]
-    fn pipes_from_slice_producer_to_slice_consumer(
-    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
+    fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
         let mut buf = [0; 3];
 
         let mut o = SliceProducer::new(b"ufo");
-        let mut i = SliceConsumer::new(&mut buf);
+        let mut i = IntoSlice::new(&mut buf);
 
         pipe(&mut o, &mut i)?;
 
@@ -659,12 +658,11 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_slice_producer_to_slice_consumer(
-    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
+    fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
         let mut buf = [0; 3];
 
         let mut o = SliceProducer::new(b"ufo");
-        let mut i = SliceConsumer::new(&mut buf);
+        let mut i = IntoSlice::new(&mut buf);
 
         bulk_pipe(&mut o, &mut i)?;
 

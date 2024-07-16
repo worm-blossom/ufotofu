@@ -18,11 +18,8 @@
 
 mod sync_to_local_nb;
 
-mod slice_consumer;
-
 #[cfg(any(feature = "dev", doc))]
 mod test_consumer;
-pub use slice_consumer::*;
 
 pub use sync_to_local_nb::SyncToLocalNb;
 
@@ -33,7 +30,7 @@ pub use test_consumer::TestConsumer;
 
 
 
-pub use crate::common::consumer::Invariant;
+pub use crate::common::consumer::{Invariant, IntoSlice};
 
 #[cfg(feature = "alloc")]
 pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};

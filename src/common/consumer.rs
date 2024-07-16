@@ -1,5 +1,5 @@
-// mod into_slice;
-// pub use into_slice::IntoSlice_ as IntoSlice;
+mod into_slice;
+pub use into_slice::IntoSlice_ as IntoSlice;
 
 #[cfg(feature = "alloc")]
 mod into_vec;

@@ -673,17 +673,16 @@ where
 mod tests {
     use super::*;
 
-    use crate::local_nb::consumer::{IntoVec, SliceConsumer, SliceConsumerFullError};
+    use crate::local_nb::consumer::{IntoSlice, IntoVec};
     use crate::local_nb::producer::SliceProducer;
 
     #[test]
-    fn pipes_from_slice_producer_to_slice_consumer(
-    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
+    fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
             let mut o = SliceProducer::new(b"ufo");
-            let mut i = SliceConsumer::new(&mut buf);
+            let mut i = IntoSlice::new(&mut buf);
 
             pipe(&mut o, &mut i).await?;
 
@@ -710,13 +709,12 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_slice_producer_to_slice_consumer(
-    ) -> Result<(), PipeError<!, SliceConsumerFullError>> {
+    fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
             let mut o = SliceProducer::new(b"ufo");
-            let mut i = SliceConsumer::new(&mut buf);
+            let mut i = IntoSlice::new(&mut buf);
 
             bulk_pipe(&mut o, &mut i).await?;
 
