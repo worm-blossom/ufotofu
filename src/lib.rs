@@ -1,6 +1,7 @@
-#![no_std]
+// #![no_std]
 #![feature(maybe_uninit_write_slice)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(maybe_uninit_slice)]
 #![feature(never_type)]
 #![feature(allocator_api)]
 #![feature(vec_push_within_capacity)]
@@ -30,7 +31,7 @@
 //!
 //! Consumers often buffer items in an internal queue before performing side-effects on data in larger chunks, such as writing data to the network only once a full packet can be filled. The [`BufferedConsumer`](sync::BufferedConsumer) trait extends the [`Consumer`](sync::Consumer) trait to allow client code to trigger effectful flushing of internal buffers. Dually, the [`BufferedProducer`](sync::BufferedProducer) trait extends the [`Producer`](sync::Producer) trait to allow client code to trigger effectful prefetching of data into internal buffers.
 //!
-//! Finally, the [`BulkProducer`](sync::BulkProducer) and [`BulkConsumer`](sync::BulkConsumer) traits extend [`BufferedProducer`](sync::BufferedProducer) and [`BufferedConsumer`](sync::BufferedConsumer) respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [bulk_pipe](sync::bulk_pipe) function leverages this ability to efficiently pipe data — unlike the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxilliary buffer.
+//! Finally, the [`BulkProducer`](sync::BulkProducer) and [`BulkConsumer`](sync::BulkConsumer) traits extend [`BufferedProducer`](sync::BufferedProducer) and [`BufferedConsumer`](sync::BufferedConsumer) respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [bulk_pipe](sync::bulk_pipe) function leverages this ability to efficiently pipe data — unlike the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxiliary buffer.
 //!
 //! ## Crate Organisation
 //!
@@ -53,14 +54,6 @@
 //! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default).
 //!
 //! All functionality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
-//!
-//! ## License
-//!
-//! Licensed under either of [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0) or
-//! [MIT license](http://opensource.org/licenses/MIT) at your option.  Unless you explicitly state
-//! otherwise, any contribution intentionally submitted for inclusion in this crate
-//! by you, as defined in the Apache-2.0 license, shall be dual licensed as above,
-//! without any additional terms or conditions.
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -82,6 +75,7 @@ use core::mem::MaybeUninit;
 ///
 /// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](local_nb::producer) and [`consumer`](local_nb::consumer) modules respectively.
 pub mod local_nb;
+
 /// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *multi-threaded* executors.
 ///
 /// For an introduction and high-level overview, see the [toplevel documentation](crate).
@@ -92,6 +86,7 @@ pub mod local_nb;
 /// - Traits for consuming sequences: [`Consumer`](nb::Consumer), [`BufferedConsumer`](nb::BufferedConsumer), and [`BulkConsumer`](nb::BulkConsumer).
 /// - Piping data: [`pipe`](nb::pipe) and [`bulk_pipe`](nb::bulk_pipe).
 pub mod nb;
+
 /// Synchronous, blocking versions of the ufotofu APIs.
 ///
 /// For an introduction and high-level overview, see the [toplevel documentation](crate).
@@ -104,6 +99,9 @@ pub mod nb;
 ///
 /// Beyond the core traits, ufotofu offers functionality for working with producers and consumers in the [`producer`](sync::producer) and [`consumer`](sync::consumer) modules respectively.
 pub mod sync;
+
+/// Functionality shared between several of the three core modules ([sync], [local_nb], and [nb]). You can safaely ignore this module, all functionality is exported amongst [sync], [local_nb], and [nb].
+pub mod common;
 
 pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
     let ptr = s.as_mut_ptr().cast::<MaybeUninit<T>>();

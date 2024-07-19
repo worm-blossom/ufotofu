@@ -7,8 +7,13 @@ use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
 use crate::sync;
 
 /// Turns a [`sync::Producer`](crate::sync::Producer) into a [`local_nb::Producer`](crate::local_nb::Producer). Only use this to wrap types that never block and do not perform time-intensive computations.
-#[derive(Debug)]
 pub struct SyncToLocalNb<P>(pub P);
+
+impl<P: core::fmt::Debug> core::fmt::Debug for SyncToLocalNb<P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<P> AsRef<P> for SyncToLocalNb<P> {
     fn as_ref(&self) -> &P {
@@ -48,23 +53,30 @@ impl<P: sync::BulkProducer> BulkProducer for SyncToLocalNb<P>
 where
     Self::Item: Copy,
 {
-    async fn producer_slots<'a>(
+    async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>
     where
         Self::Item: 'a,
     {
-        self.0.producer_slots()
+        self.0.expose_items()
     }
 
-    async fn did_produce(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_produce(amount)
+    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consider_produced(amount)
     }
 
     async fn bulk_produce(
         &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
+        buf: &mut [Self::Item],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
         self.0.bulk_produce(buf)
+    }
+
+    async fn bulk_produce_uninit(
+        &mut self,
+        buf: &mut [MaybeUninit<Self::Item>],
+    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        self.0.bulk_produce_uninit(buf)
     }
 }

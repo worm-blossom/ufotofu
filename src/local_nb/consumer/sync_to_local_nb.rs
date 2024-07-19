@@ -6,8 +6,13 @@ use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
 use crate::sync;
 
 /// Turns a [`sync::Consumer`](crate::sync::Consumer) into a [`local_nb::Consumer`](crate::local_nb::Consumer). Only use this to wrap types that never block and do not perform time-intensive computations.
-#[derive(Debug)]
 pub struct SyncToLocalNb<C>(pub C);
+
+impl<C: core::fmt::Debug> core::fmt::Debug for SyncToLocalNb<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl<C> AsRef<C> for SyncToLocalNb<C> {
     fn as_ref(&self) -> &C {
@@ -51,17 +56,17 @@ impl<C: sync::BulkConsumer> BulkConsumer for SyncToLocalNb<C>
 where
     Self::Item: Copy,
 {
-    async fn consumer_slots<'a>(
+    async fn expose_slots<'a>(
         &'a mut self,
     ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
     where
         Self::Item: 'a,
     {
-        self.0.consumer_slots()
+        self.0.expose_slots()
     }
 
-    async unsafe fn did_consume(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.0.did_consume(amount)
+    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.0.consume_slots(amount)
     }
 
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
