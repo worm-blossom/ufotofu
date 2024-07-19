@@ -11,14 +11,230 @@ use crate::local_nb::{
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-/// Consumes data into a mutable slice.
-pub struct IntoSlice_<'a, T>(Invariant<IntoSlice<'a, T>>);
+// Macro syntax for handling generic parameters: https://stackoverflow.com/a/61189128
 
-impl<'a, T: core::fmt::Debug> core::fmt::Debug for IntoSlice_<'a, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+macro_rules! invarianted_consumer_outer_type {
+    ($(#[$doc:meta])* $outer:ident $inner:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ) => {
+        $(#[$doc])*
+        pub struct $outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?(crate::common::consumer::Invariant<$inner $(< $( $lt ),+ >)?>);
     }
 }
+
+macro_rules! invarianted_consumer_impl_debug {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            core::fmt::Debug
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_as_ref {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?; $t:ty) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            core::convert::AsRef<$t>
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            fn as_ref(&self) -> &$t {
+                self.0.as_ref().as_ref()
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_as_mut {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?; $t:ty) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            core::convert::AsMut<$t>
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            fn as_mut(&mut self) -> &mut $t {
+                self.0.as_mut().as_mut()
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_wrapper {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?; $t:ty) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            wrapper::Wrapper<$t>
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            fn into_inner(self) -> $t {
+                self.0.into_inner().into_inner()
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_consumer {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? $(#[$doc_item:meta])? Item $t_item:ty; $(#[$doc_final:meta])? Final $t_final:ty; $(#[$doc_error:meta])? Error $t_error:ty) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            crate::sync::Consumer
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            $(#[$doc_item])*
+            type Item = $t_item;
+            $(#[$doc_final])*
+            type Final = $t_final;
+            $(#[$doc_error])*
+            type Error = $t_error;
+
+            fn consume(&mut self, item: T) -> Result<(), Self::Error> {
+                Consumer::consume(&mut self.0, item)
+            }
+
+            fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+                Consumer::close(&mut self.0, fin)
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_buffered_consumer {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            crate::sync::BufferedConsumer
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            fn flush(&mut self) -> Result<(), Self::Error> {
+                BufferedConsumer::flush(&mut self.0)
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_bulk_consumer {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            crate::sync::BulkConsumer
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+                BulkConsumer::expose_slots(&mut self.0)
+            }
+        
+            unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+                BulkConsumer::consume_slots(&mut self.0, amount)
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_consumer_local_nb {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? $(#[$doc_item:meta])? Item $t_item:ty; $(#[$doc_final:meta])? Final $t_final:ty; $(#[$doc_error:meta])? Error $t_error:ty) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            crate::local_nb::Consumer
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            $(#[$doc_item])*
+            type Item = $t_item;
+            $(#[$doc_final])*
+            type Final = $t_final;
+            $(#[$doc_error])*
+            type Error = $t_error;
+
+            async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+                ConsumerLocalNb::consume(&mut self.0, item).await
+            }
+
+            async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
+                ConsumerLocalNb::close(&mut self.0, f).await
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_buffered_consumer_local_nb {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            crate::local_nb::BufferedConsumer
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            async fn flush(&mut self) -> Result<(), Self::Error> {
+                BufferedConsumerLocalNb::flush(&mut self.0).await
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_bulk_consumer_local_nb {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
+        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+            crate::local_nb::BulkConsumer
+        for $outer
+            $(< $( $lt ),+ >)?
+        {
+            async fn expose_slots<'b>(
+                &'b mut self,
+            ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
+            where
+                Self::Item: 'b,
+            {
+                BulkConsumerLocalNb::expose_slots(&mut self.0).await
+            }
+
+            async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+                BulkConsumerLocalNb::consume_slots(&mut self.0, amount).await
+            }
+        }
+    }
+}
+
+macro_rules! invarianted_consumer_impl_consumer_sync_and_local_nb {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? $(#[$doc_item:meta])? Item $t_item:ty; $(#[$doc_final:meta])? Final $t_final:ty; $(#[$doc_error:meta])? Error $t_error:ty) => {
+        invarianted_consumer_impl_consumer!($outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $(#[$doc_item])? Item $t_item; $(#[$doc_final])? Final $t_final; $(#[$doc_error])? Error $t_error);
+        invarianted_consumer_impl_consumer_local_nb!($outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)? $(#[$doc_item])? Item $t_item; $(#[$doc_final])? Final $t_final; $(#[$doc_error])? Error $t_error);
+    }
+}
+
+macro_rules! invarianted_consumer_impl_buffered_consumer_sync_and_local_nb {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
+        invarianted_consumer_impl_buffered_consumer!($outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?);
+        invarianted_consumer_impl_buffered_consumer_local_nb!($outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?);
+    }
+}
+
+macro_rules! invarianted_consumer_impl_bulk_consumer_sync_and_local_nb {
+    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
+        invarianted_consumer_impl_bulk_consumer!($outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?);
+        invarianted_consumer_impl_bulk_consumer_local_nb!($outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?);
+    }
+}
+
+
+invarianted_consumer_outer_type!(
+    /// Consumes data into a mutable slice.
+    IntoSlice_ IntoSlice <'a, T>
+);
+
+use core::fmt::Debug;
+invarianted_consumer_impl_debug!(IntoSlice_<'a, T: Debug>);
+
+invarianted_consumer_impl_as_ref!(IntoSlice_<'a, T>; [T]);
+invarianted_consumer_impl_as_mut!(IntoSlice_<'a, T>; [T]);
+invarianted_consumer_impl_wrapper!(IntoSlice_<'a, T>; &'a [T]);
+
+invarianted_consumer_impl_consumer_sync_and_local_nb!(IntoSlice_<'a, T> Item T; Final ();
+    /// Emitted when the slice has been fully overwritten and an attempt to consume more items is made.
+    Error ()
+);
+invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(IntoSlice_<'a, T>);
+invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(IntoSlice_<'a, T: Copy>);
 
 /// Create a consumer which places consumed data into the given slice.
 impl<'a, T> IntoSlice_<'a, T> {
@@ -51,94 +267,6 @@ impl<'a, T> IntoSlice_<'a, T> {
     pub fn get_not_yet_overwritten_mut(&mut self) -> &mut [T] {
         let offset = self.get_offset();
         &mut (self.0).as_mut().0[offset..]
-    }
-}
-
-impl<'a, T> AsRef<[T]> for IntoSlice_<'a, T> {
-    fn as_ref(&self) -> &[T] {
-        let inner = self.0.as_ref();
-        inner.as_ref()
-    }
-}
-
-impl<'a, T> AsMut<[T]> for IntoSlice_<'a, T> {
-    fn as_mut(&mut self) -> &mut [T] {
-        let inner = self.0.as_mut();
-        inner.as_mut()
-    }
-}
-
-impl<'a, T> Wrapper<&'a [T]> for IntoSlice_<'a, T> {
-    fn into_inner(self) -> &'a [T] {
-        let inner = self.0.into_inner();
-        inner.into_inner()
-    }
-}
-
-impl<'a, T> Consumer for IntoSlice_<'a, T> {
-    type Item = T;
-    type Final = ();
-    /// Emitted when the slice has been fully overwritten and an attempt to consume more items is made.
-    type Error = ();
-
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
-        Consumer::consume(&mut self.0, item)
-    }
-
-    fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
-        Consumer::close(&mut self.0, fin)
-    }
-}
-
-impl<'a, T> BufferedConsumer for IntoSlice_<'a, T> {
-    fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumer::flush(&mut self.0)
-    }
-}
-
-impl<'a, T: Copy> BulkConsumer for IntoSlice_<'a, T> {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        BulkConsumer::expose_slots(&mut self.0)
-    }
-
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumer::consume_slots(&mut self.0, amount)
-    }
-}
-
-impl<'a, T> ConsumerLocalNb for IntoSlice_<'a, T> {
-    type Item = T;
-    type Final = ();
-    /// Emitted when the slice has been fully overwritten and an attempt to consume more items is made.
-    type Error = ();
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        ConsumerLocalNb::consume(&mut self.0, item).await
-    }
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
-        ConsumerLocalNb::close(&mut self.0, f).await
-    }
-}
-
-impl<'a, T> BufferedConsumerLocalNb for IntoSlice_<'a, T> {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumerLocalNb::flush(&mut self.0).await
-    }
-}
-
-impl<'a, T: Copy> BulkConsumerLocalNb for IntoSlice_<'a, T> {
-    async fn expose_slots<'b>(
-        &'b mut self,
-    ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        Self::Item: 'b,
-    {
-        BulkConsumerLocalNb::expose_slots(&mut self.0).await
-    }
-
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumerLocalNb::consume_slots(&mut self.0, amount).await
     }
 }
 
