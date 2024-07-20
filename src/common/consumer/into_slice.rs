@@ -5,10 +5,6 @@ use core::mem::MaybeUninit;
 use wrapper::Wrapper;
 
 use crate::common::consumer::Invariant;
-use crate::local_nb::{
-    BufferedConsumer as BufferedConsumerLocalNb, BulkConsumer as BulkConsumerLocalNb,
-    Consumer as ConsumerLocalNb,
-};
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 

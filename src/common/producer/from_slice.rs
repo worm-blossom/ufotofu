@@ -5,10 +5,6 @@ use either::Either;
 use wrapper::Wrapper;
 
 use crate::common::producer::Invariant;
-use crate::local_nb::{
-    BufferedProducer as BufferedProducerLocalNb, BulkProducer as BulkProducerLocalNb,
-    Producer as ProducerLocalNb,
-};
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
 invarianted_producer_outer_type!(
