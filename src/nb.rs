@@ -7,7 +7,7 @@ use either::{
     Either::{Left, Right},
 };
 
-use crate::common::errors::{ConsumeFullSliceError, OverwriteFullSliceError};
+pub use crate::common::errors::{ConsumeFullSliceError, OverwriteFullSliceError};
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///

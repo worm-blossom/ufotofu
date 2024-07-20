@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use core::mem::MaybeUninit;
 use core::slice;
 
@@ -33,13 +34,7 @@ pub struct IntoVecError(#[from] pub TryReserveError);
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 pub struct IntoVecFallible_<T, A: Allocator = Global>(Invariant<IntoVecFallible<T, A>>);
 
-impl<T: core::fmt::Debug, A: Allocator + core::fmt::Debug> core::fmt::Debug
-    for IntoVecFallible_<T, A>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
+invarianted_consumer_impl_debug!(IntoVecFallible_<T: Debug, A: Allocator + Debug>);
 
 impl<T> Default for IntoVecFallible_<T> {
     fn default() -> Self {
@@ -70,116 +65,38 @@ impl<T, A: Allocator> IntoVecFallible_<T, A> {
     }
 }
 
-impl<T> AsRef<Vec<T>> for IntoVecFallible_<T> {
-    fn as_ref(&self) -> &Vec<T> {
-        let inner = self.0.as_ref();
-        inner.as_ref()
-    }
-}
+invarianted_consumer_impl_as_ref!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
+invarianted_consumer_impl_as_mut!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
+invarianted_consumer_impl_wrapper!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
 
-impl<T> AsMut<Vec<T>> for IntoVecFallible_<T> {
-    fn as_mut(&mut self) -> &mut Vec<T> {
-        let inner = self.0.as_mut();
-        inner.as_mut()
-    }
-}
-
-impl<T> Wrapper<Vec<T>> for IntoVecFallible_<T> {
-    fn into_inner(self) -> Vec<T> {
-        let inner = self.0.into_inner();
-        inner.into_inner()
-    }
-}
-
-impl<T> Consumer for IntoVecFallible_<T> {
-    type Item = T;
-    type Final = ();
-    type Error = IntoVecError;
-
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
-        Consumer::consume(&mut self.0, item)
-    }
-
-    fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
-        Consumer::close(&mut self.0, fin)
-    }
-}
-
-impl<T> BufferedConsumer for IntoVecFallible_<T> {
-    fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumer::flush(&mut self.0)
-    }
-}
-
-impl<T: Copy> BulkConsumer for IntoVecFallible_<T> {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        BulkConsumer::expose_slots(&mut self.0)
-    }
-
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumer::consume_slots(&mut self.0, amount)
-    }
-}
-
-impl<T> ConsumerLocalNb for IntoVecFallible_<T> {
-    type Item = T;
-    type Final = ();
-    type Error = IntoVecError;
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        ConsumerLocalNb::consume(&mut self.0, item).await
-    }
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
-        ConsumerLocalNb::close(&mut self.0, f).await
-    }
-}
-
-impl<T> BufferedConsumerLocalNb for IntoVecFallible_<T> {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumerLocalNb::flush(&mut self.0).await
-    }
-}
-
-impl<T: Copy> BulkConsumerLocalNb for IntoVecFallible_<T> {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        Self::Item: 'a,
-    {
-        BulkConsumerLocalNb::expose_slots(&mut self.0).await
-    }
-
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumerLocalNb::consume_slots(&mut self.0, amount).await
-    }
-}
+invarianted_consumer_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator> Item T; Final (); Error IntoVecError);
+invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator>);
+invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy, A: Allocator>);
 
 #[derive(Debug)]
 struct IntoVecFallible<T, A: Allocator = Global> {
     v: Vec<T, A>,
 }
 
-impl<T> AsRef<Vec<T>> for IntoVecFallible<T> {
-    fn as_ref(&self) -> &Vec<T> {
+impl<T, A: Allocator> AsRef<Vec<T, A>> for IntoVecFallible<T, A> {
+    fn as_ref(&self) -> &Vec<T, A> {
         &self.v
     }
 }
 
-impl<T> AsMut<Vec<T>> for IntoVecFallible<T> {
-    fn as_mut(&mut self) -> &mut Vec<T> {
+impl<T, A: Allocator> AsMut<Vec<T, A>> for IntoVecFallible<T, A> {
+    fn as_mut(&mut self) -> &mut Vec<T, A> {
         &mut self.v
     }
 }
 
-impl<T> Wrapper<Vec<T>> for IntoVecFallible<T> {
-    fn into_inner(self) -> Vec<T> {
+impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVecFallible<T, A> {
+    fn into_inner(self) -> Vec<T, A> {
         self.v
     }
 }
 
-impl<T> Consumer for IntoVecFallible<T> {
+impl<T, A: Allocator> Consumer for IntoVecFallible<T, A> {
     type Item = T;
     type Final = ();
     type Error = IntoVecError;
@@ -200,13 +117,13 @@ impl<T> Consumer for IntoVecFallible<T> {
     }
 }
 
-impl<T> BufferedConsumer for IntoVecFallible<T> {
+impl<T, A: Allocator> BufferedConsumer for IntoVecFallible<T, A> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
-impl<T: Copy> BulkConsumer for IntoVecFallible<T> {
+impl<T: Copy, A: Allocator> BulkConsumer for IntoVecFallible<T, A> {
     fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
         // Allocate additional capacity to the vector if no empty slots are available.
         if self.v.capacity() == self.v.len() {
@@ -236,40 +153,9 @@ impl<T: Copy> BulkConsumer for IntoVecFallible<T> {
     }
 }
 
-impl<T> ConsumerLocalNb for IntoVecFallible<T> {
-    type Item = T;
-    type Final = ();
-    type Error = IntoVecError;
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        Consumer::consume(self, item)
-    }
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
-        Consumer::close(self, f)
-    }
-}
-
-impl<T> BufferedConsumerLocalNb for IntoVecFallible<T> {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumer::flush(self)
-    }
-}
-
-impl<T: Copy> BulkConsumerLocalNb for IntoVecFallible<T> {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        Self::Item: 'a,
-    {
-        BulkConsumer::expose_slots(self)
-    }
-
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumer::consume_slots(self, amount)
-    }
-}
+sync_consumer_as_local_nb!(IntoVecFallible<T, A: Allocator>);
+sync_buffered_consumer_as_local_nb!(IntoVecFallible<T, A: Allocator>);
+sync_bulk_consumer_as_local_nb!(IntoVecFallible<T: Copy, A: Allocator>);
 
 #[cfg(test)]
 mod tests {

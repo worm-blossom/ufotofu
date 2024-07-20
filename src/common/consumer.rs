@@ -1,3 +1,5 @@
+#[macro_use] mod macros;
+
 mod into_slice;
 pub use into_slice::IntoSlice_ as IntoSlice;
 

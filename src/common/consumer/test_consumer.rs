@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 
@@ -21,110 +22,14 @@ use super::ConsumeOperations;
 #[derive(Arbitrary)]
 pub struct TestConsumer_<Item, Final, Error>(Invariant<TestConsumer<Item, Final, Error>>);
 
-impl<Item: core::fmt::Debug, Final: core::fmt::Debug, Error: core::fmt::Debug> core::fmt::Debug
-    for TestConsumer_<Item, Final, Error>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
+invarianted_consumer_impl_debug!(TestConsumer_<Item: Debug, Final: Debug, Error: Debug>);
 
-impl<Item, Final, Error> AsRef<[Item]> for TestConsumer_<Item, Final, Error> {
-    fn as_ref(&self) -> &[Item] {
-        let inner = self.0.as_ref();
-        inner.as_ref()
-    }
-}
+invarianted_consumer_impl_as_ref!(TestConsumer_<Item, Final, Error>; [Item]);
+invarianted_consumer_impl_wrapper!(TestConsumer_<Item, Final, Error>; Vec<Item>);
 
-impl<Item, Final, Error> Wrapper<Vec<Item>> for TestConsumer_<Item, Final, Error> {
-    fn into_inner(self) -> Vec<Item> {
-        let inner = self.0.into_inner();
-        inner.into_inner()
-    }
-}
-
-impl<Item, Final, Error> Consumer for TestConsumer_<Item, Final, Error>
-where
-    Item: Copy,
-{
-    type Item = Item;
-    type Final = Final;
-    type Error = Error;
-
-    fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        Consumer::consume(&mut self.0, item)
-    }
-
-    fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
-        Consumer::close(&mut self.0, fin)
-    }
-}
-
-impl<Item, Final, Error> BufferedConsumer for TestConsumer_<Item, Final, Error>
-where
-    Item: Copy,
-{
-    fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumer::flush(&mut self.0)
-    }
-}
-
-impl<Item, Final, Error> BulkConsumer for TestConsumer_<Item, Final, Error>
-where
-    Item: Copy,
-{
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        BulkConsumer::expose_slots(&mut self.0)
-    }
-
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumer::consume_slots(&mut self.0, amount)
-    }
-}
-
-impl<Item, Final, Error> ConsumerLocalNb for TestConsumer_<Item, Final, Error>
-where
-    Item: Copy,
-{
-    type Item = Item;
-    type Final = Final;
-    type Error = Error;
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        ConsumerLocalNb::consume(&mut self.0, item).await
-    }
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
-        ConsumerLocalNb::close(&mut self.0, f).await
-    }
-}
-
-impl<Item, Final, Error> BufferedConsumerLocalNb for TestConsumer_<Item, Final, Error>
-where
-    Item: Copy,
-{
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumerLocalNb::flush(&mut self.0).await
-    }
-}
-
-impl<Item, Final, Error> BulkConsumerLocalNb for TestConsumer_<Item, Final, Error>
-where
-    Item: Copy,
-{
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        Self::Item: 'a,
-    {
-        BulkConsumerLocalNb::expose_slots(&mut self.0).await
-    }
-
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumerLocalNb::consume_slots(&mut self.0, amount).await
-    }
-}
+invarianted_consumer_impl_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error> Item Item; Final Final; Error Error);
+invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
+invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
 
 #[derive(Debug)]
 struct TestConsumer<Item, Final, Error> {
@@ -264,9 +169,7 @@ where
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(ConsumerLocalNb::close(&mut self.inner, ())
-                .await
-                .unwrap());
+            return Ok(ConsumerLocalNb::close(&mut self.inner, ()).await.unwrap());
             // may unwrap because Err<!>
         }
     }
@@ -326,11 +229,9 @@ where
             ));
         } else {
             self.countdown_till_error -= 1;
-            return Ok(
-                BulkConsumerLocalNb::consume_slots(&mut self.inner, amount)
-                    .await
-                    .unwrap(),
-            );
+            return Ok(BulkConsumerLocalNb::consume_slots(&mut self.inner, amount)
+                .await
+                .unwrap());
             // may unwrap because Err<!>
         }
     }

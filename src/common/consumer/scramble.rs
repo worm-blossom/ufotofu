@@ -70,11 +70,7 @@ impl<'a> Arbitrary<'a> for ConsumeOperations {
 /// To be used in fuzz testing: when you want to test a `Consumer` you implemented, test a scrambled version of that consumer instead, to exercise many different method call patterns even if the test itself only performs a simplistic method call pattern.
 pub struct Scramble_<C, T, F, E>(Invariant<Scramble<C, T, F, E>>);
 
-impl<C: core::fmt::Debug, T: core::fmt::Debug, F, E> core::fmt::Debug for Scramble_<C, T, F, E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
+invarianted_consumer_impl_debug!(Scramble_<C: Debug, T: Debug, F: Debug, E: Debug>);
 
 impl<C, T, F, E> Scramble_<C, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
@@ -110,13 +106,7 @@ where
     type Final = F;
     type Error = E;
 
-    fn consume(&mut self, item: T) -> Result<(), Self::Error> {
-        Consumer::consume(&mut self.0, item)
-    }
-
-    fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
-        Consumer::close(&mut self.0, fin)
-    }
+    invarianted_consumer_methods!();
 }
 
 impl<C, T, F, E> BufferedConsumer for Scramble_<C, T, F, E>
@@ -124,9 +114,7 @@ where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumer::flush(&mut self.0)
-    }
+    invarianted_buffered_consumer_methods!();
 }
 
 impl<C, T, F, E> BulkConsumer for Scramble_<C, T, F, E>
@@ -134,13 +122,7 @@ where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        BulkConsumer::expose_slots(&mut self.0)
-    }
-
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumer::consume_slots(&mut self.0, amount)
-    }
+    invarianted_bulk_consumer_methods!();
 }
 
 impl<C, T, F, E> ConsumerLocalNb for Scramble_<C, T, F, E>
@@ -152,13 +134,7 @@ where
     type Final = F;
     type Error = E;
 
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        ConsumerLocalNb::consume(&mut self.0, item).await
-    }
-
-    async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
-        ConsumerLocalNb::close(&mut self.0, f).await
-    }
+    invarianted_consumer_methods_local_nb!();
 }
 
 impl<C, T, F, E> BufferedConsumerLocalNb for Scramble_<C, T, F, E>
@@ -166,9 +142,7 @@ where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        BufferedConsumerLocalNb::flush(&mut self.0).await
-    }
+    invarianted_buffered_consumer_methods_local_nb!();
 }
 
 impl<C, T, F, E> BulkConsumerLocalNb for Scramble_<C, T, F, E>
@@ -176,18 +150,7 @@ where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
-    where
-        Self::Item: 'a,
-    {
-        BulkConsumerLocalNb::expose_slots(&mut self.0).await
-    }
-
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkConsumerLocalNb::consume_slots(&mut self.0, amount).await
-    }
+    invarianted_bulk_consumer_methods_local_nb!();
 }
 
 struct Scramble<C, T, F, E> {

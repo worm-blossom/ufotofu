@@ -61,6 +61,10 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+// This allows macros to use `ufotofu` instead of `crate`, which might become
+// convenient some day.
+extern crate self as ufotofu;
+
 use core::mem::MaybeUninit;
 
 /// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *single-threaded* executors.

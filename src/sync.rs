@@ -6,7 +6,7 @@ use either::{
     Either::{Left, Right},
 };
 
-use crate::common::errors::{ConsumeFullSliceError, OverwriteFullSliceError};
+pub use crate::common::errors::{ConsumeFullSliceError, OverwriteFullSliceError};
 
 pub mod consumer;
 pub mod producer;
