@@ -18,25 +18,12 @@
 
 mod sync_to_local_nb;
 
-#[cfg(any(feature = "dev", doc))]
-mod scramble;
-
 pub use sync_to_local_nb::SyncToLocalNb;
 
-#[cfg(any(feature = "dev", doc))]
-pub use scramble::{ProduceOperations, Scramble};
-
-#[cfg(any(feature = "dev", doc))]
-mod test_producer;
-#[cfg(any(feature = "dev", doc))]
-pub use test_producer::*;
-
-mod from_vec;
-pub use from_vec::*;
-
-
-
-
-
-
 pub use crate::common::producer::{Invariant, FromSlice};
+
+#[cfg(feature = "alloc")]
+pub use crate::common::producer::FromBoxedSlice;
+
+#[cfg(feature = "dev")]
+pub use crate::common::producer::{TestProducer, ProduceOperations, Scramble};

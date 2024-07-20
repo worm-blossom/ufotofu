@@ -1,20 +1,47 @@
+use core::fmt::Debug;
+
 use arbitrary::Arbitrary;
 use either::Either;
 use either::Either::Left;
 use either::Either::Right;
 
-use crate::sync::producer::{FromVec, ProduceOperations, Scramble};
+use crate::sync::producer::{FromBoxedSlice, ProduceOperations, Scramble};
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
-/// Create via its `Arbitrary` implementation. Proper constructions and documentation will be added in the next release =S
+invarianted_producer_outer_type!(
+    /// Create via its `Arbitrary` implementation. Proper constructors and documentation will be added in the next release =S
+    TestProducer_ TestProducer <Item, Final, Error>
+);
+
+invarianted_impl_debug!(TestProducer_<Item: Debug, Final: Debug, Error: Debug>);
+
+impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
+    pub fn peek_slice(&self) -> &[Item] {
+        self.0.as_ref().peek_slice()
+    }
+
+    /*
+    pub fn peek_termination(&self) -> Either<Final, Error> {
+
+    }
+    */
+}
+
+invarianted_impl_producer_sync_and_local_nb!(TestProducer_<Item: Copy, Final, Error> Item Item;
+    Final Final;
+    Error Error
+);
+invarianted_impl_buffered_producer_sync_and_local_nb!(TestProducer_<Item: Copy, Final, Error>);
+invarianted_impl_bulk_producer_sync_and_local_nb!(TestProducer_<Item: Copy, Final, Error>);
+
 #[derive(Debug)]
-pub struct TestProducer<Item, Final, Error> {
-    inner: Scramble<FromVec<Item>, Item, (), !>,
+struct TestProducer<Item, Final, Error> {
+    inner: Scramble<FromBoxedSlice<Item>, Item, (), !>,
     termination: Option<Either<Final, Error>>,
 }
 
 impl<Item, Final, Error> TestProducer<Item, Final, Error> {
-    pub fn peek_slice(&self) -> &[Item] {
+    fn peek_slice(&self) -> &[Item] {
         self.inner.as_ref().as_ref()
     }
 
@@ -78,6 +105,10 @@ where
     }
 }
 
+sync_producer_as_local_nb!(TestProducer<Item: Copy, Final, Error>);
+sync_buffered_producer_as_local_nb!(TestProducer<Item: Copy, Final, Error>);
+sync_bulk_producer_as_local_nb!(TestProducer<Item: Copy, Final, Error>);
+
 impl<'a, Item, Final, Error> Arbitrary<'a> for TestProducer<Item, Final, Error>
 where
     Item: Copy + Arbitrary<'a>,
@@ -85,7 +116,7 @@ where
     Error: Arbitrary<'a>,
 {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        let p: FromVec<Item> = FromVec::new(Arbitrary::arbitrary(u)?);
+        let p: FromBoxedSlice<Item> = FromBoxedSlice::new(Arbitrary::arbitrary(u)?);
         let ops: ProduceOperations = Arbitrary::arbitrary(u)?;
         let capacity: usize = Arbitrary::arbitrary(u)?;
 

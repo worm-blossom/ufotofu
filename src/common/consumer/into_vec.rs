@@ -26,7 +26,7 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 /// Collects data and can at any point be converted into a `Vec<T>`.
 pub struct IntoVec_<T, A: Allocator = Global>(Invariant<IntoVec<T, A>>);
 
-invarianted_consumer_impl_debug!(IntoVec_<T: Debug, A: Allocator + Debug>);
+invarianted_impl_debug!(IntoVec_<T: Debug, A: Allocator + Debug>);
 
 impl<T> Default for IntoVec_<T> {
     fn default() -> Self {
@@ -55,13 +55,13 @@ impl<T, A: Allocator> IntoVec_<T, A> {
     }
 }
 
-invarianted_consumer_impl_as_ref!(IntoVec_<T, A: Allocator>; Vec<T, A>);
-invarianted_consumer_impl_as_mut!(IntoVec_<T, A: Allocator>; Vec<T, A>);
-invarianted_consumer_impl_wrapper!(IntoVec_<T, A: Allocator>; Vec<T, A>);
+invarianted_impl_as_ref!(IntoVec_<T, A: Allocator>; Vec<T, A>);
+invarianted_impl_as_mut!(IntoVec_<T, A: Allocator>; Vec<T, A>);
+invarianted_impl_wrapper!(IntoVec_<T, A: Allocator>; Vec<T, A>);
 
-invarianted_consumer_impl_consumer_sync_and_local_nb!(IntoVec_<T, A: Allocator> Item T; Final (); Error !);
-invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(IntoVec_<T, A: Allocator>);
-invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(IntoVec_<T: Copy, A: Allocator>);
+invarianted_impl_consumer_sync_and_local_nb!(IntoVec_<T, A: Allocator> Item T; Final (); Error !);
+invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVec_<T, A: Allocator>);
+invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVec_<T: Copy, A: Allocator>);
 
 #[derive(Debug)]
 struct IntoVec<T, A: Allocator = Global>(Vec<T, A>);

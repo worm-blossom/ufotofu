@@ -70,7 +70,7 @@ impl<'a> Arbitrary<'a> for ConsumeOperations {
 /// To be used in fuzz testing: when you want to test a `Consumer` you implemented, test a scrambled version of that consumer instead, to exercise many different method call patterns even if the test itself only performs a simplistic method call pattern.
 pub struct Scramble_<C, T, F, E>(Invariant<Scramble<C, T, F, E>>);
 
-invarianted_consumer_impl_debug!(Scramble_<C: Debug, T: Debug, F: Debug, E: Debug>);
+invarianted_impl_debug!(Scramble_<C: Debug, T: Debug, F: Debug, E: Debug>);
 
 impl<C, T, F, E> Scramble_<C, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
@@ -79,23 +79,9 @@ impl<C, T, F, E> Scramble_<C, T, F, E> {
     }
 }
 
-impl<C, T, F, E> AsRef<C> for Scramble_<C, T, F, E> {
-    fn as_ref(&self) -> &C {
-        self.0.as_ref().as_ref()
-    }
-}
-
-impl<C, T, F, E> AsMut<C> for Scramble_<C, T, F, E> {
-    fn as_mut(&mut self) -> &mut C {
-        self.0.as_mut().as_mut()
-    }
-}
-
-impl<C, T, F, E> Wrapper<C> for Scramble_<C, T, F, E> {
-    fn into_inner(self) -> C {
-        self.0.into_inner().into_inner()
-    }
-}
+invarianted_impl_as_ref!(Scramble_<C, T, F, E>; C);
+invarianted_impl_as_mut!(Scramble_<C, T, F, E>; C);
+invarianted_impl_wrapper!(Scramble_<C, T, F, E>; C);
 
 impl<C, T, F, E> Consumer for Scramble_<C, T, F, E>
 where

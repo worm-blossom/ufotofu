@@ -34,7 +34,7 @@ pub struct IntoVecError(#[from] pub TryReserveError);
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 pub struct IntoVecFallible_<T, A: Allocator = Global>(Invariant<IntoVecFallible<T, A>>);
 
-invarianted_consumer_impl_debug!(IntoVecFallible_<T: Debug, A: Allocator + Debug>);
+invarianted_impl_debug!(IntoVecFallible_<T: Debug, A: Allocator + Debug>);
 
 impl<T> Default for IntoVecFallible_<T> {
     fn default() -> Self {
@@ -65,13 +65,13 @@ impl<T, A: Allocator> IntoVecFallible_<T, A> {
     }
 }
 
-invarianted_consumer_impl_as_ref!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
-invarianted_consumer_impl_as_mut!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
-invarianted_consumer_impl_wrapper!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
+invarianted_impl_as_ref!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
+invarianted_impl_as_mut!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
+invarianted_impl_wrapper!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
 
-invarianted_consumer_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator> Item T; Final (); Error IntoVecError);
-invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator>);
-invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy, A: Allocator>);
+invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator> Item T; Final (); Error IntoVecError);
+invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator>);
+invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy, A: Allocator>);
 
 #[derive(Debug)]
 struct IntoVecFallible<T, A: Allocator = Global> {

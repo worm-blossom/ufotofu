@@ -12,18 +12,10 @@
 //!
 //! The [TestProducer] exists for testing code that interacts with a producer; it provides customisable behavior of which items to emit, when to emit the final item or an error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 
-#[cfg(any(feature = "dev", doc))]
-mod scramble;
-
-#[cfg(any(feature = "dev", doc))]
-pub use scramble::{ProduceOperations, Scramble};
-
-#[cfg(any(feature = "dev", doc))]
-mod test_producer;
-#[cfg(any(feature = "dev", doc))]
-pub use test_producer::*;
-
-mod from_vec;
-pub use from_vec::FromVec_ as FromVec;
-
 pub use crate::common::producer::{FromSlice, Invariant};
+
+#[cfg(feature = "alloc")]
+pub use crate::common::producer::FromBoxedSlice;
+
+#[cfg(feature = "dev")]
+pub use crate::common::producer::{TestProducer, ProduceOperations, Scramble};

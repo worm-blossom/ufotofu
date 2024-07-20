@@ -22,14 +22,14 @@ use super::ConsumeOperations;
 #[derive(Arbitrary)]
 pub struct TestConsumer_<Item, Final, Error>(Invariant<TestConsumer<Item, Final, Error>>);
 
-invarianted_consumer_impl_debug!(TestConsumer_<Item: Debug, Final: Debug, Error: Debug>);
+invarianted_impl_debug!(TestConsumer_<Item: Debug, Final: Debug, Error: Debug>);
 
-invarianted_consumer_impl_as_ref!(TestConsumer_<Item, Final, Error>; [Item]);
-invarianted_consumer_impl_wrapper!(TestConsumer_<Item, Final, Error>; Vec<Item>);
+invarianted_impl_as_ref!(TestConsumer_<Item, Final, Error>; [Item]);
+invarianted_impl_wrapper!(TestConsumer_<Item, Final, Error>; Vec<Item>);
 
-invarianted_consumer_impl_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error> Item Item; Final Final; Error Error);
-invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
-invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
+invarianted_impl_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error> Item Item; Final Final; Error Error);
+invarianted_impl_buffered_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
+invarianted_impl_bulk_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
 
 #[derive(Debug)]
 struct TestConsumer<Item, Final, Error> {

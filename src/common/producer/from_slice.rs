@@ -1,4 +1,5 @@
 use core::convert::AsRef;
+use core::fmt::Debug;
 
 use either::Either;
 use wrapper::Wrapper;
@@ -10,14 +11,12 @@ use crate::local_nb::{
 };
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
-/// Produces data from a slice.
-pub struct FromSlice_<'a, T>(Invariant<FromSlice<'a, T>>);
+invarianted_producer_outer_type!(
+    /// Produces data from a slice.
+    FromSlice_ FromSlice <'a, T>
+);
 
-impl<'a, T: core::fmt::Debug> core::fmt::Debug for FromSlice_<'a, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
+invarianted_impl_debug!(FromSlice_<'a, T: Debug>);
 
 impl<'a, T> FromSlice_<'a, T> {
     /// Create a producer which produces the data in the given slice.
@@ -44,78 +43,16 @@ impl<'a, T> FromSlice_<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<[T]> for FromSlice_<'a, T> {
-    fn as_ref(&self) -> &[T] {
-        let inner = self.0.as_ref();
-        inner.as_ref()
-    }
-}
+invarianted_impl_as_ref!(FromSlice_<'a, T>; [T]);
+invarianted_impl_wrapper!(FromSlice_<'a, T>; &'a [T]);
 
-impl<'a, T> Wrapper<&'a [T]> for FromSlice_<'a, T> {
-    fn into_inner(self) -> &'a [T] {
-        let inner = self.0.into_inner();
-        inner.into_inner()
-    }
-}
-
-impl<'a, T: Clone> Producer for FromSlice_<'a, T> {
-    type Item = T;
+invarianted_impl_producer_sync_and_local_nb!(FromSlice_<'a, T: Clone> Item T;
     /// Emitted once the end of the slice has been reached.
-    type Final = ();
-    type Error = !;
-
-    fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
-        Producer::produce(&mut self.0)
-    }
-}
-
-impl<'a, T: Copy> BufferedProducer for FromSlice_<'a, T> {
-    fn slurp(&mut self) -> Result<(), Self::Error> {
-        BufferedProducer::slurp(&mut self.0)
-    }
-}
-
-impl<'a, T: Copy> BulkProducer for FromSlice_<'a, T> {
-    fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
-        BulkProducer::expose_items(&mut self.0)
-    }
-
-    fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkProducer::consider_produced(&mut self.0, amount)
-    }
-}
-
-impl<'a, T: Clone> ProducerLocalNb for FromSlice_<'a, T> {
-    type Item = T;
-    /// Emitted once the end of the slice has been reached.
-    type Final = ();
-    type Error = !;
-
-    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
-        ProducerLocalNb::produce(&mut self.0).await
-    }
-}
-
-impl<'a, T: Copy> BufferedProducerLocalNb for FromSlice_<'a, T> {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        BufferedProducerLocalNb::slurp(&mut self.0).await
-    }
-}
-
-impl<'a, T: Copy> BulkProducerLocalNb for FromSlice_<'a, T> {
-    async fn expose_items<'b>(
-        &'b mut self,
-    ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>
-    where
-        Self::Item: 'b,
-    {
-        BulkProducerLocalNb::expose_items(&mut self.0).await
-    }
-
-    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkProducerLocalNb::consider_produced(&mut self.0, amount).await
-    }
-}
+    Final ();
+    Error !
+);
+invarianted_impl_buffered_producer_sync_and_local_nb!(FromSlice_<'a, T: Clone>);
+invarianted_impl_bulk_producer_sync_and_local_nb!(FromSlice_<'a, T: Copy>);
 
 #[derive(Debug)]
 struct FromSlice<'a, T>(&'a [T], usize);
@@ -149,7 +86,7 @@ impl<'a, T: Clone> Producer for FromSlice<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferedProducer for FromSlice<'a, T> {
+impl<'a, T: Clone> BufferedProducer for FromSlice<'a, T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         // There are no effects to perform so we simply return.
         Ok(())
@@ -173,36 +110,9 @@ impl<'a, T: Copy> BulkProducer for FromSlice<'a, T> {
     }
 }
 
-impl<'a, T: Clone> ProducerLocalNb for FromSlice<'a, T> {
-    type Item = T;
-    type Final = ();
-    type Error = !;
-
-    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
-        Producer::produce(self)
-    }
-}
-
-impl<'a, T: Copy> BufferedProducerLocalNb for FromSlice<'a, T> {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        BufferedProducer::slurp(self)
-    }
-}
-
-impl<'a, T: Copy> BulkProducerLocalNb for FromSlice<'a, T> {
-    async fn expose_items<'b>(
-        &'b mut self,
-    ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>
-    where
-        Self::Item: 'b,
-    {
-        BulkProducer::expose_items(self)
-    }
-
-    async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
-        BulkProducer::consider_produced(self, amount)
-    }
-}
+sync_producer_as_local_nb!(FromSlice<'a, T: Clone>);
+sync_buffered_producer_as_local_nb!(FromSlice<'a, T: Clone>);
+sync_bulk_producer_as_local_nb!(FromSlice<'a, T: Copy>);
 
 #[cfg(test)]
 mod tests {

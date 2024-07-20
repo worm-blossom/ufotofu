@@ -17,18 +17,18 @@ invarianted_consumer_outer_type!(
     IntoSlice_ IntoSlice <'a, T>
 );
 
-invarianted_consumer_impl_debug!(IntoSlice_<'a, T: Debug>);
+invarianted_impl_debug!(IntoSlice_<'a, T: Debug>);
 
-invarianted_consumer_impl_as_ref!(IntoSlice_<'a, T>; [T]);
-invarianted_consumer_impl_as_mut!(IntoSlice_<'a, T>; [T]);
-invarianted_consumer_impl_wrapper!(IntoSlice_<'a, T>; &'a [T]);
+invarianted_impl_as_ref!(IntoSlice_<'a, T>; [T]);
+invarianted_impl_as_mut!(IntoSlice_<'a, T>; [T]);
+invarianted_impl_wrapper!(IntoSlice_<'a, T>; &'a [T]);
 
-invarianted_consumer_impl_consumer_sync_and_local_nb!(IntoSlice_<'a, T> Item T; Final ();
+invarianted_impl_consumer_sync_and_local_nb!(IntoSlice_<'a, T> Item T; Final ();
     /// Emitted when the slice has been fully overwritten and an attempt to consume more items is made.
     Error ()
 );
-invarianted_consumer_impl_buffered_consumer_sync_and_local_nb!(IntoSlice_<'a, T>);
-invarianted_consumer_impl_bulk_consumer_sync_and_local_nb!(IntoSlice_<'a, T: Copy>);
+invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoSlice_<'a, T>);
+invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoSlice_<'a, T: Copy>);
 
 /// Create a consumer which places consumed data into the given slice.
 impl<'a, T> IntoSlice_<'a, T> {
