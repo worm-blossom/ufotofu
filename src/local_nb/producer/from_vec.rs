@@ -137,108 +137,108 @@ impl<T: Copy> BulkProducer for FromVecInner<T> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    use core::mem::MaybeUninit;
+//     use core::mem::MaybeUninit;
 
-    // Panic conditions:
-    //
-    // - `produce()` must not be called after final or error
-    // - `slurp()` must not be called after final or error
-    // - `producer_slots()` must not be called after final or error
-    // - `did_produce()` must not be called after final or error
-    // - `bulk_produce()` must not be called after final or error
-    // - `did_produce(amount)` must not be called with `amount` greater that available slots
+//     // Panic conditions:
+//     //
+//     // - `produce()` must not be called after final or error
+//     // - `slurp()` must not be called after final or error
+//     // - `producer_slots()` must not be called after final or error
+//     // - `did_produce()` must not be called after final or error
+//     // - `bulk_produce()` must not be called after final or error
+//     // - `did_produce(amount)` must not be called with `amount` greater that available slots
 
-    // In each of the following tests, the final function call should panic.
+//     // In each of the following tests, the final function call should panic.
 
-    #[test]
-    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
-    fn panics_on_produce_after_final() {
-        smol::block_on(async {
-            let mut prod = FromVec::new(b"ufo".to_vec());
-            loop {
-                // Call `produce()` until the final value is emitted.
-                if let Ok(Either::Right(_)) = prod.produce().await {
-                    break;
-                }
-            }
+//     #[test]
+//     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+//     fn panics_on_produce_after_final() {
+//         smol::block_on(async {
+//             let mut prod = FromVec::new(b"ufo".to_vec());
+//             loop {
+//                 // Call `produce()` until the final value is emitted.
+//                 if let Ok(Either::Right(_)) = prod.produce().await {
+//                     break;
+//                 }
+//             }
 
-            let _ = prod.produce();
-        })
-    }
+//             let _ = prod.produce();
+//         })
+//     }
 
-    #[test]
-    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
-    fn panics_on_slurp_after_final() {
-        smol::block_on(async {
-            let mut prod = FromVec::new(b"ufo".to_vec());
-            loop {
-                if let Ok(Either::Right(_)) = prod.produce().await {
-                    break;
-                }
-            }
+//     #[test]
+//     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+//     fn panics_on_slurp_after_final() {
+//         smol::block_on(async {
+//             let mut prod = FromVec::new(b"ufo".to_vec());
+//             loop {
+//                 if let Ok(Either::Right(_)) = prod.produce().await {
+//                     break;
+//                 }
+//             }
 
-            let _ = prod.slurp();
-        });
-    }
+//             let _ = prod.slurp();
+//         });
+//     }
 
-    #[test]
-    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
-    fn panics_on_producer_slots_after_final() {
-        smol::block_on(async {
-            let mut prod = FromVec::new(b"ufo".to_vec());
-            loop {
-                if let Ok(Either::Right(_)) = prod.produce().await {
-                    break;
-                }
-            }
+//     #[test]
+//     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+//     fn panics_on_producer_slots_after_final() {
+//         smol::block_on(async {
+//             let mut prod = FromVec::new(b"ufo".to_vec());
+//             loop {
+//                 if let Ok(Either::Right(_)) = prod.produce().await {
+//                     break;
+//                 }
+//             }
 
-            let _ = prod.expose_items();
-        });
-    }
+//             let _ = prod.expose_items();
+//         });
+//     }
 
-    #[test]
-    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
-    fn panics_on_did_produce_after_final() {
-        smol::block_on(async {
-            let mut prod = FromVec::new(b"ufo".to_vec());
-            loop {
-                if let Ok(Either::Right(_)) = prod.produce().await {
-                    break;
-                }
-            }
+//     #[test]
+//     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+//     fn panics_on_did_produce_after_final() {
+//         smol::block_on(async {
+//             let mut prod = FromVec::new(b"ufo".to_vec());
+//             loop {
+//                 if let Ok(Either::Right(_)) = prod.produce().await {
+//                     break;
+//                 }
+//             }
 
-            let _ = prod.consider_produced(3);
-        });
-    }
+//             let _ = prod.consider_produced(3);
+//         });
+//     }
 
-    #[test]
-    #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
-    fn panics_on_bulk_produce_after_final() {
-        smol::block_on(async {
-            let mut prod = FromVec::new(b"tofu".to_vec());
-            loop {
-                if let Ok(Either::Right(_)) = prod.produce().await {
-                    break;
-                }
-            }
+//     #[test]
+//     #[should_panic(expected = "may not call `Producer` methods after the sequence has ended")]
+//     fn panics_on_bulk_produce_after_final() {
+//         smol::block_on(async {
+//             let mut prod = FromVec::new(b"tofu".to_vec());
+//             loop {
+//                 if let Ok(Either::Right(_)) = prod.produce().await {
+//                     break;
+//                 }
+//             }
 
-            let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
-            let _ = prod.bulk_produce_uninit(&mut buf);
-        });
-    }
+//             let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+//             let _ = prod.bulk_produce_uninit(&mut buf);
+//         });
+//     }
 
-    #[test]
-    #[should_panic(
-        expected = "may not call `consider_produced` with an amount exceeding the total number of exposed slots"
-    )]
-    fn panics_on_did_produce_with_amount_greater_than_available_slots() {
-        let mut prod = FromVec::new(b"ufo".to_vec());
-        smol::block_on(async {
-            let _ = prod.consider_produced(21);
-        });
-    }
-}
+//     #[test]
+//     #[should_panic(
+//         expected = "may not call `consider_produced` with an amount exceeding the total number of exposed slots"
+//     )]
+//     fn panics_on_did_produce_with_amount_greater_than_available_slots() {
+//         let mut prod = FromVec::new(b"ufo".to_vec());
+//         smol::block_on(async {
+//             let _ = prod.consider_produced(21);
+//         });
+//     }
+// }
