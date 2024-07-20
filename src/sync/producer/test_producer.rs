@@ -6,6 +6,7 @@ use either::Either::Right;
 use crate::sync::producer::{FromVec, ProduceOperations, Scramble};
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
+/// Create via its `Arbitrary` implementation. Proper constructions and documentation will be added in the next release =S
 #[derive(Debug)]
 pub struct TestProducer<Item, Final, Error> {
     inner: Scramble<FromVec<Item>, Item, (), !>,

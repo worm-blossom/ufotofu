@@ -2,7 +2,7 @@
 //!
 //! ## Obtaining Consumers
 //!
-//! The [SliceConsumer] consumes items into a given mutable slice.
+//! The [IntoSlice] consumes items into a given mutable slice.
 //!
 //! The [IntoVec] consumer consumes items into a `Vec` that grows to fit an arbitrary number of items. The [IntoVecFallible] consumer does the same, but reports memory allocation errors instead of panicking.
 //!

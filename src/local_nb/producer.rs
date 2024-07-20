@@ -2,7 +2,7 @@
 //!
 //! ## Obtaining Producers
 //!
-//! The [SliceProducer] produces items from a given slice.
+//! The [FromSlice] producer produces items from a given slice.
 //!
 //! ## Adaptors
 //!
@@ -14,9 +14,7 @@
 //!
 //! The [Scramble] adaptor exists for testing purposes only; it turns a "sensible" pattern of `produce`, `bulk_produce` and `slurp` calls into a much wilder (but still valid) pattern of method calls on the wrapped producer. This is useful for testing corner-cases (you'd rarely write test code that slurps multiple times in succession by hand, for example). To generate the method call patterns, we recommend using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 //! 
-//! ## Reading from Producers
-//!
-//! The [pipe_into_slice] and [bulk_pipe_into_slice] functions try to fill a slice from a (bulk) producer; using a bulk producer is more efficient. The [pipe_into_slice_uninit] and [bulk_pipe_into_slice_uninit] variants do not require the slice to be initialised first.
+//! The [TestProducer] exists for testing code that interacts with a producer; it provides customisable behavior of which items to emit, when to emit the final item or an error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 
 mod sync_to_local_nb;
 
