@@ -337,23 +337,26 @@ where
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
             // Attempt to expose slots from the inner producer.
-            ProduceOperation::ProducerSlots(n) => match self.inner.expose_items()? {
-                Either::Left(slots) => {
-                    // Set an upper bound on the slice of slots by comparing the number of available
-                    // inner slots and the number provided by the `ProducerSlots` operation and taking
-                    // the lowest value.
-                    let slots_len = slots.len();
-                    let available_slots = &slots[..min(slots_len, n)];
+            ProduceOperation::ProducerSlots(n) => {
+                let n = if n == 0 { 1 } else { n }; // TODO make `n` a NonZeroUsize instead
+                match self.inner.expose_items()? {
+                    Either::Left(slots) => {
+                        // Set an upper bound on the slice of slots by comparing the number of available
+                        // inner slots and the number provided by the `ProducerSlots` operation and taking
+                        // the lowest value.
+                        let slots_len = slots.len();
+                        let available_slots = &slots[..min(slots_len, n)];
 
-                    // Enqueue items into the inner producer.
-                    let amount = self.buffer.bulk_enqueue(available_slots);
+                        // Enqueue items into the inner producer.
+                        let amount = self.buffer.bulk_enqueue(available_slots);
 
-                    // Report the amount of items produced.
-                    self.inner.consider_produced(amount)?;
+                        // Report the amount of items produced.
+                        self.inner.consider_produced(amount)?;
+                    }
+                    // If the final value was produced, return it.
+                    Either::Right(final_val) => return Ok(Some(final_val)),
                 }
-                // If the final value was produced, return it.
-                Either::Right(final_val) => return Ok(Some(final_val)),
-            },
+            }
             ProduceOperation::Slurp => {
                 // Slurp the inner producer.
                 self.inner.slurp()?;
@@ -496,23 +499,26 @@ where
                 Either::Right(final_val) => return Ok(Some(final_val)),
             },
             // Attempt to expose slots from the inner producer.
-            ProduceOperation::ProducerSlots(n) => match self.inner.expose_items().await? {
-                Either::Left(slots) => {
-                    // Set an upper bound on the slice of slots by comparing the number of available
-                    // inner slots and the number provided by the `ProducerSlots` operation and taking
-                    // the lowest value.
-                    let slots_len = slots.len();
-                    let available_slots = &slots[..min(slots_len, n)];
+            ProduceOperation::ProducerSlots(n) => {
+                let n = if n == 0 { 1 } else { n }; // TODO make `n` a NonZeroUsize instead
+                match self.inner.expose_items().await? {
+                    Either::Left(slots) => {
+                        // Set an upper bound on the slice of slots by comparing the number of available
+                        // inner slots and the number provided by the `ProducerSlots` operation and taking
+                        // the lowest value.
+                        let slots_len = slots.len();
+                        let available_slots = &slots[..min(slots_len, n)];
 
-                    // Enqueue items into the inner producer.
-                    let amount = self.buffer.bulk_enqueue(available_slots);
+                        // Enqueue items into the inner producer.
+                        let amount = self.buffer.bulk_enqueue(available_slots);
 
-                    // Report the amount of items produced.
-                    self.inner.consider_produced(amount).await?;
+                        // Report the amount of items produced.
+                        self.inner.consider_produced(amount).await?;
+                    }
+                    // If the final value was produced, return it.
+                    Either::Right(final_val) => return Ok(Some(final_val)),
                 }
-                // If the final value was produced, return it.
-                Either::Right(final_val) => return Ok(Some(final_val)),
-            },
+            }
             ProduceOperation::Slurp => {
                 // Slurp the inner producer.
                 self.inner.slurp().await?;

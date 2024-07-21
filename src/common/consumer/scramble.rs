@@ -418,6 +418,7 @@ where
                 self.inner.consume(item)?;
             }
             ConsumeOperation::ConsumerSlots(n) => {
+                let n = if n == 0 { 1 } else { n };
                 // Remove items from the queue in bulk and place them in the inner consumer slots.
                 //
                 // Request writeable slots from the inner consumer.
@@ -470,6 +471,7 @@ where
                 self.inner.consume(item).await?;
             }
             ConsumeOperation::ConsumerSlots(n) => {
+                let n = if n == 0 { 1 } else { n }; // TODO make `n` a NonZeroUsize instead
                 // Remove items from the queue in bulk and place them in the inner consumer slots.
                 //
                 // Request writeable slots from the inner consumer.
