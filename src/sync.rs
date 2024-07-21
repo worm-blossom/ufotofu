@@ -256,9 +256,9 @@ pub trait Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn overwrite_full_slice<'a>(
+    fn overwrite_full_slice(
         &mut self,
-        buf: &'a mut [Self::Item],
+        buf: &mut [Self::Item],
     ) -> Result<(), OverwriteFullSliceError<Self::Final, Self::Error>> {
         for i in 0..buf.len() {
             match self.produce() {
@@ -466,9 +466,9 @@ where
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn bulk_overwrite_full_slice<'a>(
+    fn bulk_overwrite_full_slice(
         &mut self,
-        buf: &'a mut [Self::Item],
+        buf: &mut [Self::Item],
     ) -> Result<(), OverwriteFullSliceError<Self::Final, Self::Error>> {
         let mut produced_so_far = 0;
 
