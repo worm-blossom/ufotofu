@@ -24,17 +24,17 @@ impl TestYielder {
             pat.extend_from_slice(&pattern);
             pat.push(false);
 
-            return TestYielder {
+            TestYielder {
                 pattern: pat.into_boxed_slice(),
                 index: 0,
-            };
+            }
         } else {
-            return TestYielder { pattern, index: 0 };
+            TestYielder { pattern, index: 0 }
         }
     }
 
     #[inline]
-    pub async fn maybe_yield(&mut self) -> () {
+    pub async fn maybe_yield(&mut self) {
         MaybeYield(self).await
     }
 }

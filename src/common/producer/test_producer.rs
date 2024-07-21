@@ -101,7 +101,8 @@ where
 
     fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         // Unwrapping is okay because the error is of never.
-        Ok(self.inner.consider_produced(amount).unwrap())
+        self.inner.consider_produced(amount).unwrap();
+        Ok(())
     }
 }
 

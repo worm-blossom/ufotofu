@@ -186,7 +186,7 @@ impl<Error> TestConsumerBuilder<Error> {
     /// ```
     pub fn new(error: Error, operations_until_error: usize) -> TestConsumerBuilder<Error> {
         TestConsumerBuilder {
-            error: error,
+            error,
             operations_until_error,
             exposed_slot_sizes: None,
             yield_pattern: None,
@@ -258,7 +258,7 @@ impl<Error> TestConsumerBuilder<Error> {
             error: Some(self.error),
             operations_until_error: self.operations_until_error,
             exposed_slot_sizes: self.exposed_slot_sizes.map(|sizes| (sizes, 0)),
-            yielder: self.yield_pattern.map(|pat| TestYielder::new(pat)),
+            yielder: self.yield_pattern.map(TestYielder::new),
             phantom: PhantomData,
         }))
     }
@@ -298,14 +298,14 @@ impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
 
     fn check_error(&mut self) -> Result<(), Error> {
         if self.operations_until_error == 0 {
-            return Err(self.error.take().unwrap()); // Can unwrap because the invariant wrapper panics before unwrapping can be reached.
+            Err(self.error.take().unwrap())// Can unwrap because the invariant wrapper panics before unwrapping can be reached.
         } else {
             self.operations_until_error -= 1;
-            return Ok(());
+            Ok(())
         }
     }
 
-    async fn maybe_yield(&mut self) -> () {
+    async fn maybe_yield(&mut self) {
         match &mut self.yielder {
             None => (),
             Some(yielder) => yielder.maybe_yield().await,
@@ -335,14 +335,20 @@ impl<Item, Final, Error> Consumer for TestConsumer<Item, Final, Error> {
     fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.check_error()?;
 
-        return Ok(Consumer::consume(&mut self.inner, item).unwrap()); // may unwrap because Err<!>
+        {
+            Consumer::consume(&mut self.inner, item).unwrap();
+            Ok(())
+        }// may unwrap because Err<!>
     }
 
     fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
         self.check_error()?;
         self.fin = Some(fin);
 
-        return Ok(Consumer::close(&mut self.inner, ()).unwrap()); // may unwrap because Err<!>
+        {
+            Consumer::close(&mut self.inner, ()).unwrap();
+            Ok(())
+        }// may unwrap because Err<!>
     }
 }
 
@@ -350,7 +356,10 @@ impl<Item, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_error()?;
 
-        return Ok(BufferedConsumer::flush(&mut self.inner).unwrap()); // may unwrap because Err<!>
+        {
+            BufferedConsumer::flush(&mut self.inner).unwrap();
+            Ok(())
+        }// may unwrap because Err<!>
     }
 }
 
@@ -375,7 +384,7 @@ where
                 let inner_slots = BulkConsumer::expose_slots(&mut self.inner).unwrap(); // may unwrap because Err<!>
                 let actual_len = min(inner_slots.len(), max_len);
 
-                return Ok(&mut inner_slots[..actual_len]);
+                Ok(&mut inner_slots[..actual_len])
             }
         }
     }
@@ -383,7 +392,10 @@ where
     unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_error()?;
 
-        return Ok(BulkConsumer::consume_slots(&mut self.inner, amount).unwrap());
+        {
+            BulkConsumer::consume_slots(&mut self.inner, amount).unwrap();
+            Ok(())
+        }
         // may unwrap because Err<!>
     }
 }
