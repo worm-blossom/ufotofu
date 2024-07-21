@@ -31,4 +31,4 @@ pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_consumer;
 #[cfg(all(feature = "dev", feature = "alloc"))]
-pub use test_consumer::{TestConsumer_ as TestConsumer, TestConsumerBuilder};
+pub use test_consumer::{TestConsumerBuilder, TestConsumer_ as TestConsumer};

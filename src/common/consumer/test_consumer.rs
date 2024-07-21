@@ -298,7 +298,7 @@ impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
 
     fn check_error(&mut self) -> Result<(), Error> {
         if self.operations_until_error == 0 {
-            Err(self.error.take().unwrap())// Can unwrap because the invariant wrapper panics before unwrapping can be reached.
+            Err(self.error.take().unwrap()) // Can unwrap because the invariant wrapper panics before unwrapping can be reached.
         } else {
             self.operations_until_error -= 1;
             Ok(())
@@ -338,7 +338,7 @@ impl<Item, Final, Error> Consumer for TestConsumer<Item, Final, Error> {
         {
             Consumer::consume(&mut self.inner, item).unwrap();
             Ok(())
-        }// may unwrap because Err<!>
+        } // may unwrap because Err<!>
     }
 
     fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
@@ -348,7 +348,7 @@ impl<Item, Final, Error> Consumer for TestConsumer<Item, Final, Error> {
         {
             Consumer::close(&mut self.inner, ()).unwrap();
             Ok(())
-        }// may unwrap because Err<!>
+        } // may unwrap because Err<!>
     }
 }
 
@@ -359,7 +359,7 @@ impl<Item, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error> {
         {
             BufferedConsumer::flush(&mut self.inner).unwrap();
             Ok(())
-        }// may unwrap because Err<!>
+        } // may unwrap because Err<!>
     }
 }
 

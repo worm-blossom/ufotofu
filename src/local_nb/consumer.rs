@@ -11,7 +11,7 @@
 //! The [SyncToLocalNb] adaptor allows you to use a [`sync::Consumer`](crate::sync::Consumer) as a [`local_nb::Consumer`](crate::local_nb::Consumer).
 //!
 //! ## Development Helpers
-//! 
+//!
 //! Use the [TestConsumer] for testing code that interacts with arbitrary consumers.
 //!
 //! The [Invariant] adaptor wraps any consumer and makes it panic during tests when some client code violates the API contracts imposed by the consumer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom consumers; all consumers in the ufotofu crate use this wrapper internally as well.
