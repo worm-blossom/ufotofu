@@ -31,15 +31,27 @@ impl<T> Default for IntoVec_<T> {
 }
 
 impl<T> IntoVec_<T> {
+    /// Create a new consumer that collects data into a Vec.
     pub fn new() -> IntoVec_<T> {
         let invariant = Invariant::new(IntoVec(Vec::new()));
 
         IntoVec_(invariant)
     }
 
+    /// Convert `self` into the vector of all consumed items.
     pub fn into_vec(self) -> Vec<T> {
         let inner = self.0.into_inner();
         inner.into_inner()
+    }
+
+    /// Return the remaining capacity of the vector, i.e., how many more items it can consume without reallocating.
+    pub fn remaining_capacity(&self) -> usize {
+        self.0.as_ref().remaining_capacity()
+    }
+
+    /// Allocate capacity for at least `additional` more items. See [`std::vec::Vec::reserve`].
+    pub fn reserve(&mut self, additional: usize) {
+        self.0.as_mut().reserve(additional)
     }
 }
 
@@ -61,6 +73,16 @@ invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVec_<T: Copy, A: Allocator
 
 #[derive(Debug)]
 struct IntoVec<T, A: Allocator = Global>(Vec<T, A>);
+
+impl<T, A: Allocator> IntoVec<T, A> {
+    fn remaining_capacity(&self) -> usize {
+        self.0.capacity() - self.0.len()
+    }
+
+    fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional)
+    }
+}
 
 impl<T, A: Allocator> AsRef<Vec<T, A>> for IntoVec<T, A> {
     fn as_ref(&self) -> &Vec<T, A> {

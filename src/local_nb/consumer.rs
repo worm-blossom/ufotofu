@@ -26,4 +26,7 @@ pub use crate::common::consumer::{IntoSlice, Invariant};
 pub use crate::common::consumer::{IntoVec, IntoVecFallible};
 
 #[cfg(feature = "dev")]
-pub use crate::common::consumer::{ConsumeOperations, Scramble, TestConsumer};
+pub use crate::common::consumer::{ConsumeOperations, Scramble};
+
+#[cfg(all(feature = "dev", feature = "alloc"))]
+pub use crate::common::consumer::TestConsumer;

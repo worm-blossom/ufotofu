@@ -28,7 +28,7 @@ mod scramble;
 #[cfg(feature = "dev")]
 pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_consumer;
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", feature = "alloc"))]
 pub use test_consumer::TestConsumer_ as TestConsumer;
