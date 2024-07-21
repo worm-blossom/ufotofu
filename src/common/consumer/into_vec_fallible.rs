@@ -15,17 +15,11 @@ use std::{
     vec::Vec,
 };
 
-use thiserror::Error;
 use wrapper::Wrapper;
 
 use crate::common::consumer::Invariant;
 use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
-
-#[derive(Clone, Debug, Error, Eq, PartialEq)]
-#[error(transparent)]
-/// Error to indicate that consuming data into a `Vec` failed because allocating more memory for the `Vec` failed.
-pub struct IntoVecError(#[from] pub TryReserveError);
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 pub struct IntoVecFallible_<T, A: Allocator = Global>(Invariant<IntoVecFallible<T, A>>);
@@ -65,7 +59,7 @@ invarianted_impl_as_ref!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
 invarianted_impl_as_mut!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
 invarianted_impl_wrapper!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
 
-invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator> Item T; Final (); Error IntoVecError);
+invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator> Item T; Final (); Error TryReserveError);
 invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T, A: Allocator>);
 invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy, A: Allocator>);
 
@@ -95,11 +89,11 @@ impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVecFallible<T, A> {
 impl<T, A: Allocator> Consumer for IntoVecFallible<T, A> {
     type Item = T;
     type Final = ();
-    type Error = IntoVecError;
+    type Error = TryReserveError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         if let Err(value) = self.v.push_within_capacity(item) {
-            self.v.try_reserve(1)?;
+            self.v.try_reserve((self.v.capacity() * 2) + 1)?;
             // This cannot fail; the previous line either returned or added
             // at least 1 free slot.
             let _ = self.v.push_within_capacity(value);

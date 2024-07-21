@@ -11,7 +11,7 @@ pub use into_vec::IntoVec_ as IntoVec;
 #[cfg(feature = "alloc")]
 mod into_vec_fallible;
 #[cfg(feature = "alloc")]
-pub use into_vec_fallible::{IntoVecError, IntoVecFallible_ as IntoVecFallible};
+pub use into_vec_fallible::IntoVecFallible_ as IntoVecFallible;
 
 #[cfg(test)]
 mod invariant;

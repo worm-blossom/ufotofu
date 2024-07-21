@@ -27,7 +27,7 @@ pub use sync_to_local_nb::SyncToLocalNb;
 pub use crate::common::consumer::{Invariant, IntoSlice};
 
 #[cfg(feature = "alloc")]
-pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};
+pub use crate::common::consumer::{IntoVec, IntoVecFallible};
 
 #[cfg(feature = "dev")]
 pub use crate::common::consumer::{ConsumeOperations, Scramble, TestConsumer};

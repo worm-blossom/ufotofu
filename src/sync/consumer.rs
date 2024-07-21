@@ -14,10 +14,10 @@
 //!
 //! The [TestConsumer] exists for fuzz testing purposes only. It consumes items until randomly emitting an error.
 
-pub use crate::common::consumer::{Invariant, IntoSlice};
+pub use crate::common::consumer::{IntoSlice, Invariant};
 
 #[cfg(feature = "alloc")]
-pub use crate::common::consumer::{IntoVec, IntoVecError, IntoVecFallible};
+pub use crate::common::consumer::{IntoVec, IntoVecFallible};
 
 #[cfg(feature = "dev")]
 pub use crate::common::consumer::{ConsumeOperations, Scramble, TestConsumer};
