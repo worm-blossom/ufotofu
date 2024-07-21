@@ -23,41 +23,96 @@ use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// If you need to test code that works with arbitrary consumers, use this consumer. You can control the sequence of items it produces, the size of the slices it presents with `expose_slots`, and the error it emits. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
 ///
-/// Create new [`TestConsumer`]s either via a [`TestConsumerBuilder`] or via the implementation of [`Arbitrary`].
-// #[derive(Arbitrary)]
+/// Create new [`TestConsumer`](crate::common::consumer::TestConsumer)s either via a [`TestConsumerBuilder`] or via the implementation of [`Arbitrary`].
+///
+/// ```
+/// use ufotofu::sync::consumer::*;
+/// use ufotofu::sync::*;
+///
+/// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
+/// assert_eq!(Ok(()), con.consume(4));
+/// assert_eq!(Ok(()), con.consume(7));
+/// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
+/// assert_eq!(&[4, 7], con.consumed());
+/// ```
 pub struct TestConsumer_<Item, Final, Error>(Invariant<TestConsumer<Item, Final, Error>>);
 
 impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
-    /// Create a new [`TestConsumerBuilder`].
-    ///
-    /// The resulting consumer will succesfully perform `operations_until_error` many operations (i.e., calls to non-provided consumer trait methods) before emitting the error `error`.
-    ///
-    /// For more configuration options, see the methods of [`TestConsumerBuilder`].
-    pub fn builder(error: Error, operations_until_error: usize) -> TestConsumerBuilder<Error> {
-        TestConsumerBuilder::new(error, operations_until_error)
-    }
-
     /// Obtain a slice of all items that have been consumed so far.
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(Ok(()), con.consume(7));
+    /// assert_eq!(&[4, 7], con.consumed());
+    /// ```
     pub fn consumed(&self) -> &[Item] {
         self.0.as_ref().consumed()
     }
 
     /// Obtain a reference to the final item that was consumed, or `None` if the consumer had not been closed so far.
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, u8, ()> = TestConsumerBuilder::new((), 999).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(None, con.final_consumed());
+    /// assert_eq!(Ok(()), con.close(17));
+    /// assert_eq!(Some(&17), con.final_consumed());
+    /// ```
     pub fn final_consumed(&self) -> Option<&Final> {
         self.0.as_ref().final_consumed()
     }
 
-    /// Consume the [`TestConsumer`] and obtain ownership of all items that were consumed.
+    /// Consume the [`TestConsumer`](crate::common::consumer::TestConsumer) and obtain ownership of all items that were consumed, including the final one (if any).
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, u8, ()> = TestConsumerBuilder::new((), 999).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(None, con.final_consumed());
+    /// assert_eq!(Ok(()), con.close(17));
+    /// assert_eq!((vec![4], Some(17)), con.into_consumed());
+    /// ```
     pub fn into_consumed(self) -> (Vec<Item>, Option<Final>) {
         self.0.into_inner().into_consumed()
     }
 
     /// Obtain a reference to the error that this will eventually emit, or `None` if the error was already emitted.
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 1).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(Some(&404), con.peek_error());
+    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after one operation.
+    /// assert_eq!(None, con.peek_error());
+    /// ```
     pub fn peek_error(&self) -> Option<&Error> {
         self.0.as_ref().peek_error()
     }
 
     /// Return whether an error was already emitted.
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 1).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(false, con.did_error());
+    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after one operation.
+    /// assert_eq!(true, con.did_error());
+    /// ```
     pub fn did_error(&self) -> bool {
         self.0.as_ref().did_error()
     }
@@ -95,6 +150,18 @@ impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitr
     }
 }
 
+/// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestConsumer`](crate::common::consumer::TestConsumer).
+///
+/// ```
+/// use ufotofu::sync::consumer::*;
+/// use ufotofu::sync::*;
+///
+/// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
+/// assert_eq!(Ok(()), con.consume(4));
+/// assert_eq!(Ok(()), con.consume(7));
+/// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
+/// assert_eq!(&[4, 7], con.consumed());
+/// ```
 pub struct TestConsumerBuilder<Error> {
     error: Error,
     operations_until_error: usize,
@@ -107,7 +174,16 @@ impl<Error> TestConsumerBuilder<Error> {
     ///
     /// The resulting consumer will succesfully perform `operations_until_error` many operations (i.e., calls to non-provided consumer trait methods) before emitting the error `error`.
     ///
-    /// For more configuration options, see the methods of [`TestConsumerBuilder`].
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(Ok(()), con.consume(7));
+    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
+    /// assert_eq!(&[4, 7], con.consumed());
+    /// ```
     pub fn new(error: Error, operations_until_error: usize) -> TestConsumerBuilder<Error> {
         TestConsumerBuilder {
             error: error,
@@ -122,6 +198,18 @@ impl<Error> TestConsumerBuilder<Error> {
     /// An empty slice will be ignored.
     ///
     /// Will be ignored by non-bulk consumers.
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999)
+    ///     .exposed_slot_sizes(vec![76.try_into().unwrap(), 1.try_into().unwrap()].into())
+    ///     .build();
+    /// assert_eq!(76, con.expose_slots().unwrap().len());
+    /// assert_eq!(1, con.expose_slots().unwrap().len());
+    /// assert_eq!(76, con.expose_slots().unwrap().len());
+    /// ```
     pub fn exposed_slot_sizes(mut self, sizes: Box<[NonZeroUsize]>) -> Self {
         if sizes.len() > 0 {
             self.exposed_slot_sizes = Some(sizes);
@@ -151,7 +239,18 @@ impl<Error> TestConsumerBuilder<Error> {
         self
     }
 
-    /// Create a fully configured [`TestConsumer`].
+    /// Create a fully configured [`TestConsumer`](crate::common::consumer::TestConsumer).
+    ///
+    /// ```
+    /// use ufotofu::sync::consumer::*;
+    /// use ufotofu::sync::*;
+    ///
+    /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
+    /// assert_eq!(Ok(()), con.consume(4));
+    /// assert_eq!(Ok(()), con.consume(7));
+    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
+    /// assert_eq!(&[4, 7], con.consumed());
+    /// ```
     pub fn build<Item, Final>(self) -> TestConsumer_<Item, Final, Error> {
         TestConsumer_(Invariant::new(TestConsumer {
             inner: IntoVec::new(),
