@@ -140,6 +140,8 @@ mod tests {
     use super::super::*;
     use crate::sync::*;
 
+    use std::format;
+
     // The debug output hides the internals of using semantically transparent wrappers.
     #[test]
     fn debug_output_hides_transparent_wrappers() {

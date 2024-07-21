@@ -1,10 +1,12 @@
-// #![no_std]
+#![no_std]
 #![feature(maybe_uninit_write_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_slice)]
 #![feature(never_type)]
 #![feature(allocator_api)]
 #![feature(vec_push_within_capacity)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::type_complexity)]
 
 //! # UFOTOFU
 //!
