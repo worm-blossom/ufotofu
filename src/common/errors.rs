@@ -37,12 +37,8 @@ where
 {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            PipeError::Producer(err) => {
-                Some(err)
-            }
-            PipeError::Consumer(err) => {
-                Some(err)
-            }
+            PipeError::Producer(err) => Some(err),
+            PipeError::Consumer(err) => Some(err),
         }
     }
 }

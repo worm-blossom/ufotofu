@@ -1,4 +1,5 @@
-#[macro_use] mod macros;
+#[macro_use]
+mod macros;
 
 mod from_slice;
 pub use from_slice::FromSlice_ as FromSlice;

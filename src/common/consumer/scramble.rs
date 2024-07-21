@@ -472,9 +472,9 @@ where
             }
             ConsumeOperation::ConsumerSlots(n) => {
                 let n = if n == 0 { 1 } else { n }; // TODO make `n` a NonZeroUsize instead
-                // Remove items from the queue in bulk and place them in the inner consumer slots.
-                //
-                // Request writeable slots from the inner consumer.
+                                                    // Remove items from the queue in bulk and place them in the inner consumer slots.
+                                                    //
+                                                    // Request writeable slots from the inner consumer.
                 let slots = self.inner.expose_slots().await?;
 
                 // Set an upper bound on the slice of slots by comparing the number of available

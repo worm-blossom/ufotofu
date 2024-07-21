@@ -211,7 +211,8 @@ where
         self.check_inactive();
 
         self.inner
-            .expose_slots().await
+            .expose_slots()
+            .await
             .inspect(|slots| {
                 self.exposed_slots = slots.len();
             })

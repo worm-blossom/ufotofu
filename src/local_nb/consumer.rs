@@ -20,11 +20,7 @@ mod sync_to_local_nb;
 
 pub use sync_to_local_nb::SyncToLocalNb;
 
-
-
-
-
-pub use crate::common::consumer::{Invariant, IntoSlice};
+pub use crate::common::consumer::{IntoSlice, Invariant};
 
 #[cfg(feature = "alloc")]
 pub use crate::common::consumer::{IntoVec, IntoVecFallible};
