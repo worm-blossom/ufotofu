@@ -264,7 +264,6 @@ impl<Error> TestConsumerBuilder<Error> {
     }
 }
 
-// #[derive(Debug)]
 struct TestConsumer<Item, Final, Error> {
     inner: IntoVec<Item>,
     fin: Option<Final>,
