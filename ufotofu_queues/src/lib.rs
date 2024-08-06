@@ -1,10 +1,8 @@
 #![no_std]
 #![feature(allocator_api)]
-#![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_uninit_array)]
-#![feature(maybe_uninit_write_slice)]
-#![feature(new_uninit)]
-#![feature(debug_closure_helpers)]
+#![cfg_attr(feature = "nightly", feature(new_uninit))]
+#![cfg_attr(feature = "nightly", feature(maybe_uninit_slice))]
+#![cfg_attr(feature = "nightly", feature(maybe_uninit_write_slice))]
 
 //! A [trait](Queue) and implementations of non-blocking, infallible [FIFO queues](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) that support bulk enqueueing and bulk dequeueing via APIs inspired by [ufotofu](https://crates.io/crates/ufotofu).
 //!
@@ -16,6 +14,12 @@
 //! - [`Static`], which works exactly like [`Fixed`], but is backed by an array of static capacity. It requires no allocations.
 //!
 //! Future plans include an elastic queue that grows and shrinks its capacity within certain parameters, to free up memory under low load.
+//!
+//! ## Features
+//!
+//! The `std` and `alloc` features control functionality that relies on the standard library or dynamic memory allocation respectively.
+//!
+//! The `nightly` features enables allocator-aware APIs and some optimisations that rely on nightly APIs.
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -106,7 +110,7 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                MaybeUninit::copy_from_slice(&mut slots[..amount], &buffer[..amount]);
+                copy_from_slice(&mut slots[..amount], &buffer[..amount]);
                 unsafe {
                     self.consider_enqueued(amount);
                 }
@@ -182,11 +186,57 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                MaybeUninit::copy_from_slice(&mut buffer[..amount], &slots[..amount]);
+                copy_from_slice(&mut buffer[..amount], &slots[..amount]);
                 self.consider_dequeued(amount);
 
                 amount
             }
         }
     }
+}
+
+#[cfg(not(feature = "nightly"))]
+#[inline(always)]
+pub(crate) const unsafe fn slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
+    // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
+    // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
+    // The pointer obtained is valid since it refers to memory owned by `slice` which is a
+    // reference and thus guaranteed to be valid for reads.
+    unsafe { &*(slice as *const [MaybeUninit<T>] as *const [T]) }
+}
+
+#[cfg(feature = "nightly")]
+#[inline(always)]
+pub(crate) const unsafe fn slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
+    MaybeUninit::slice_assume_init_ref(slice)
+}
+
+#[cfg(not(feature = "nightly"))]
+#[inline(always)]
+unsafe fn slice_assume_init_mut<T>(slice: &mut [MaybeUninit<T>]) -> &mut [T] {
+    // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
+    // mutable reference which is also guaranteed to be valid for writes.
+    unsafe { &mut *(slice as *mut [MaybeUninit<T>] as *mut [T]) }
+}
+
+#[cfg(not(feature = "nightly"))]
+pub(crate) fn copy_from_slice<'a, T>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+where
+    T: Copy,
+{
+    // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+    let uninit_src: &[MaybeUninit<T>] = unsafe { core::mem::transmute(src) };
+
+    this.copy_from_slice(uninit_src);
+
+    // SAFETY: Valid elements have just been copied into `this` so it is initialized
+    unsafe { slice_assume_init_mut(this) }
+}
+
+#[cfg(feature = "nightly")]
+pub(crate) fn copy_from_slice<'a, T>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+where
+    T: Copy,
+{
+    MaybeUninit::copy_from_slice(this, src)
 }

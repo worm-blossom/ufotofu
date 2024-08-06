@@ -20,3 +20,6 @@ std = []
 
 # Provide functionality that relies on dynamic memory allocation. Enabling `std` automatically enables all `alloc` features.
 alloc = []
+
+# Enable functionality that requires nightly Rust, such as allocator-aware APIs.
+nightly = []

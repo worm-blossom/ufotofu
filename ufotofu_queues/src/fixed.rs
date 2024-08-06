@@ -3,6 +3,9 @@ extern crate alloc;
 use alloc::alloc::{Allocator, Global};
 use alloc::boxed::Box;
 
+#[cfg(not(feature = "nightly"))]
+use alloc::vec::Vec;
+
 use core::fmt;
 use core::mem::MaybeUninit;
 
@@ -22,6 +25,7 @@ pub struct Fixed<T, A: Allocator = Global> {
 }
 
 impl<T> Fixed<T> {
+    #[cfg(feature = "nightly")]
     /// Create a fixed-capacity queue. Panic if the initial memory allocation fails.
     pub fn new(capacity: usize) -> Self {
         Fixed {
@@ -38,6 +42,21 @@ impl<T> Fixed<T> {
             read: 0,
             amount: 0,
         })
+    }
+}
+
+#[cfg(not(feature = "nightly"))]
+impl<T: Default> Fixed<T> {
+    /// Create a fixed-capacity queue. Panic if the initial memory allocation fails.
+    pub fn new(capacity: usize) -> Self {
+        let mut v = Vec::with_capacity(capacity);
+        v.resize_with(capacity, || MaybeUninit::uninit());
+
+        Fixed {
+            data: v.into_boxed_slice(),
+            read: 0,
+            amount: 0,
+        }
     }
 }
 
@@ -171,7 +190,7 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
         if self.amount == 0 {
             None
         } else {
-            Some(unsafe { MaybeUninit::slice_assume_init_ref(self.readable_slice()) })
+            Some(unsafe { crate::slice_assume_init_ref(self.readable_slice()) })
         }
     }
 
@@ -192,34 +211,38 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Fixed<T, A> {
         f.debug_struct("Fixed")
             .field("capacity", &self.capacity())
             .field("len", &self.amount)
-            .field_with("data", |f| {
-                let mut list = f.debug_list();
-
-                if self.is_data_contiguous() {
-                    for item in unsafe {
-                        MaybeUninit::slice_assume_init_ref(&self.data[self.read..self.write_to()])
-                    } {
-                        list.entry(item);
-                    }
-                } else {
-                    for item in
-                        unsafe { MaybeUninit::slice_assume_init_ref(&self.data[self.read..]) }
-                    {
-                        list.entry(item);
-                    }
-
-                    for item in unsafe {
-                        MaybeUninit::slice_assume_init_ref(
-                            &self.data[0..(self.amount - self.data[self.read..].len())],
-                        )
-                    } {
-                        list.entry(item);
-                    }
-                }
-
-                list.finish()
-            })
+            .field("data", &DataDebugger(&self))
             .finish()
+    }
+}
+
+pub struct DataDebugger<'q, T, A: Allocator = Global>(&'q Fixed<T, A>);
+
+impl<'q, T: fmt::Debug, A: Allocator> fmt::Debug for DataDebugger<'q, T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut list = f.debug_list();
+
+        if self.0.is_data_contiguous() {
+            for item in
+                unsafe { crate::slice_assume_init_ref(&self.0.data[self.0.read..self.0.write_to()]) }
+            {
+                list.entry(item);
+            }
+        } else {
+            for item in unsafe { crate::slice_assume_init_ref(&self.0.data[self.0.read..]) } {
+                list.entry(item);
+            }
+
+            for item in unsafe {
+                crate::slice_assume_init_ref(
+                    &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())],
+                )
+            } {
+                list.entry(item);
+            }
+        }
+
+        list.finish()
     }
 }
 
@@ -249,7 +272,7 @@ mod tests {
     #[test]
     fn bulk_enqueues_and_dequeues_with_correct_amount() {
         let mut queue: Fixed<u8> = Fixed::new(4);
-        let mut buf: [MaybeUninit<u8>; 4] = MaybeUninit::uninit_array();
+        let mut buf: [MaybeUninit<u8>; 4] = [MaybeUninit::uninit(); 4];
 
         let enqueue_amount = queue.bulk_enqueue(b"ufo");
         let dequeue_amount = queue.bulk_dequeue_uninit(&mut buf);
@@ -286,14 +309,14 @@ mod tests {
         // Copy data to two of the available slots and call `consider_queued`.
         let data = b"tofu";
         let slots = queue.expose_slots().unwrap();
-        MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
+        crate::copy_from_slice(&mut slots[0..2], &data[0..2]);
         unsafe {
             queue.consider_enqueued(2);
         }
 
         // Copy data to two of the available slots and call `consider_queued`.
         let slots = queue.expose_slots().unwrap();
-        MaybeUninit::copy_from_slice(&mut slots[0..2], &data[0..2]);
+        crate::copy_from_slice(&mut slots[0..2], &data[0..2]);
         unsafe {
             queue.consider_enqueued(2);
         }
