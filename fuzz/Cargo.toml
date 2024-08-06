@@ -140,9 +140,9 @@ either = "1.10.0"
 # doc = false
 # bench = false
 
-# [[bin]]
-# name = "local_nb_bulk_pipe_into_slice_uninit"
-# path = "fuzz_targets/local_nb/bulk_pipe_into_slice_uninit.rs"
-# test = false
-# doc = false
-# bench = false
+[[bin]]
+name = "local_nb_bulk_pipe_into_slice_uninit"
+path = "fuzz_targets/local_nb/bulk_pipe_into_slice_uninit.rs"
+test = false
+doc = false
+bench = false
