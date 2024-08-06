@@ -479,8 +479,6 @@ dependencies = [
 [[package]]
 name = "ufotofu_queues"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57eb67569d0473b820d7a29c9e6aa923500109cdf2b03e7bab01882dff48d3b9"
 
 [[package]]
 name = "unicode-ident"
