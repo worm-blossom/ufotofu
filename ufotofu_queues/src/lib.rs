@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(allocator_api)]
+#![cfg_attr(feature = "nightly", feature(allocator_api))]
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
 #![cfg_attr(feature = "nightly", feature(maybe_uninit_slice))]
 #![cfg_attr(feature = "nightly", feature(maybe_uninit_write_slice))]
