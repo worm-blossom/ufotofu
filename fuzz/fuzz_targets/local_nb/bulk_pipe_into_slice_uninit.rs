@@ -2,7 +2,7 @@
 
 // use core::mem::MaybeUninit;
 // use either::{Left, Right};
-// use libfuzzer_sys::fuzz_target;
+use libfuzzer_sys::fuzz_target;
 // use ufotofu::local_nb::producer::{bulk_pipe_into_slice_uninit, TestProducer};
 
 fuzz_target!(|data: u64| {
