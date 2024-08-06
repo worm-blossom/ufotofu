@@ -157,7 +157,7 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for Static<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Static")
             .field("len", &self.amount)
-            .field("data", &DataDebugger(&self))
+            .field("data", &DataDebugger(self))
             .finish()
     }
 }

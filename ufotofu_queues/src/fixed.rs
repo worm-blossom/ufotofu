@@ -361,7 +361,7 @@ impl<T: fmt::Debug> fmt::Debug for Fixed<T> {
         f.debug_struct("Fixed")
             .field("capacity", &self.capacity())
             .field("len", &self.amount)
-            .field("data", &DataDebugger(&self))
+            .field("data", &DataDebugger(self))
             .finish()
     }
 }
