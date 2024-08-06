@@ -169,9 +169,9 @@ impl<'q, T: fmt::Debug, const N: usize> fmt::Debug for DataDebugger<'q, T, N> {
         let mut list = f.debug_list();
 
         if self.0.is_data_contiguous() {
-            for item in
-                unsafe { crate::slice_assume_init_ref(&self.0.data[self.0.read..self.0.write_to()]) }
-            {
+            for item in unsafe {
+                crate::slice_assume_init_ref(&self.0.data[self.0.read..self.0.write_to()])
+            } {
                 list.entry(item);
             }
         } else {
