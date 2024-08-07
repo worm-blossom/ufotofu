@@ -115,7 +115,6 @@ mod tests {
     use super::super::*;
     use crate::sync::*;
 
-    use core::mem::MaybeUninit;
     use either::Either;
 
     // Panic conditions:

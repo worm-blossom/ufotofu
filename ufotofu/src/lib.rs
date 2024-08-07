@@ -66,8 +66,6 @@ extern crate alloc;
 // convenient some day.
 extern crate self as ufotofu;
 
-use core::mem::MaybeUninit;
-
 /// [`Future`](core::future::Future)-based, non-blocking versions of the ufotofu APIs, for *single-threaded* executors.
 ///
 /// For an introduction and high-level overview, see the [toplevel documentation](crate).
