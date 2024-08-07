@@ -1,7 +1,6 @@
 use core::cmp::min;
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::mem::MaybeUninit;
 use core::num::NonZeroUsize;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -120,9 +119,9 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
 
 invarianted_impl_debug!(TestConsumer_<Item: Debug, Final: Debug, Error: Debug>);
 
-invarianted_impl_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error> Item Item; Final Final; Error Error);
-invarianted_impl_buffered_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
-invarianted_impl_bulk_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy, Final, Error>);
+invarianted_impl_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy + Default, Final, Error> Item Item; Final Final; Error Error);
+invarianted_impl_buffered_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy + Default, Final, Error>);
+invarianted_impl_bulk_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy + Default, Final, Error>);
 
 impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitrary<'a>
     for TestConsumer_<Item, Final, Error>
@@ -326,7 +325,7 @@ impl<Item: Debug, Final: Debug, Error: Debug> Debug for TestConsumer<Item, Final
     }
 }
 
-impl<Item, Final, Error> Consumer for TestConsumer<Item, Final, Error> {
+impl<Item: Default, Final, Error> Consumer for TestConsumer<Item, Final, Error> {
     type Item = Item;
     type Final = Final;
     type Error = Error;
@@ -351,7 +350,7 @@ impl<Item, Final, Error> Consumer for TestConsumer<Item, Final, Error> {
     }
 }
 
-impl<Item, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error> {
+impl<Item: Default, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_error()?;
 
@@ -364,9 +363,9 @@ impl<Item, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error> {
 
 impl<Item, Final, Error> BulkConsumer for TestConsumer<Item, Final, Error>
 where
-    Item: Copy,
+    Item: Copy + Default,
 {
-    fn expose_slots(&mut self) -> Result<&mut [core::mem::MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         self.check_error()?;
 
         match self.exposed_slot_sizes {
@@ -376,8 +375,9 @@ where
                 *index = (*index + 1) % exposed_slot_sizes.len();
 
                 let min_len = min(max_len, 2048);
-                if self.inner.remaining_capacity() < min_len {
-                    self.inner.reserve(min_len); // This may be too much, but no harm no foul.
+
+                while self.inner.remaining_slots() < min_len {
+                    self.inner.make_space_if_needed();
                 }
 
                 let inner_slots = BulkConsumer::expose_slots(&mut self.inner).unwrap(); // may unwrap because Err<!>
@@ -401,7 +401,7 @@ where
 
 impl<Item, Final, Error> ConsumerLocalNb for TestConsumer<Item, Final, Error>
 where
-    Item: Copy,
+    Item: Default,
 {
     type Item = Item;
     type Final = Final;
@@ -420,7 +420,7 @@ where
 
 impl<Item, Final, Error> BufferedConsumerLocalNb for TestConsumer<Item, Final, Error>
 where
-    Item: Copy,
+    Item: Default,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.maybe_yield().await;
@@ -430,11 +430,9 @@ where
 
 impl<Item, Final, Error> BulkConsumerLocalNb for TestConsumer<Item, Final, Error>
 where
-    Item: Copy,
+    Item: Copy + Default,
 {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [Self::Item], Self::Error>
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,
     {

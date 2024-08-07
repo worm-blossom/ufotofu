@@ -1,7 +1,6 @@
 use core::cmp::min;
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::mem::MaybeUninit;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::boxed::Box;
@@ -72,7 +71,7 @@ pub struct Scramble_<C, T, F, E>(Invariant<Scramble<C, T, F, E>>);
 
 invarianted_impl_debug!(Scramble_<C: Debug, T: Debug, F: Debug, E: Debug>);
 
-impl<C, T, F, E> Scramble_<C, T, F, E> {
+impl<C, T: Default, F, E> Scramble_<C, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
     pub fn new(inner: C, operations: ConsumeOperations, capacity: usize) -> Self {
         Scramble_(Invariant::new(Scramble::new(inner, operations, capacity)))
@@ -170,7 +169,7 @@ impl<C: core::fmt::Debug, T: core::fmt::Debug, F, E> core::fmt::Debug for Scramb
     }
 }
 
-impl<C, T, F, E> Scramble<C, T, F, E> {
+impl<C, T: Default, F, E> Scramble<C, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
     pub fn new(inner: C, operations: ConsumeOperations, capacity: usize) -> Self {
         Scramble::<C, T, F, E> {
@@ -181,7 +180,9 @@ impl<C, T, F, E> Scramble<C, T, F, E> {
             phantom: PhantomData,
         }
     }
+}
 
+impl<C, T, F, E> Scramble<C, T, F, E> {
     fn advance_operations_index(&mut self) {
         self.operations_index = (self.operations_index + 1) % self.operations.len();
     }
@@ -266,7 +267,7 @@ where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         let amount = self.buffer.len();
         let capacity = self.buffer.capacity();
 
@@ -360,9 +361,7 @@ where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
     T: Copy,
 {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,
     {
@@ -434,9 +433,7 @@ where
                 let amount = self.buffer.bulk_dequeue_uninit(available_slots);
 
                 // Report the amount of items consumed.
-                unsafe {
-                    self.inner.consume_slots(amount)?;
-                }
+                self.inner.consume_slots(amount)?;
             }
             ConsumeOperation::Flush => {
                 // Flush the inner consumer.
@@ -487,9 +484,7 @@ where
                 let amount = self.buffer.bulk_dequeue_uninit(available_slots);
 
                 // Report the amount of items consumed.
-                unsafe {
-                    self.inner.consume_slots(amount).await?;
-                }
+                self.inner.consume_slots(amount).await?;
             }
             ConsumeOperation::Flush => {
                 // Flush the inner consumer.

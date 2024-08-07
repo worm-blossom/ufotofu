@@ -72,6 +72,16 @@ impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVec<T, A> {
     }
 }
 
+impl<T: Default, A: Allocator> IntoVec<T, A> {
+    pub(crate) fn remaining_slots(&self) -> usize {
+        self.0.remaining_slots()
+    }
+
+    pub(crate) fn make_space_if_needed(&mut self) {
+        self.0.make_space_if_needed().expect("Out of memory")
+    }
+}
+
 impl<T: Default, A: Allocator> Consumer for IntoVec<T, A> {
     type Item = T;
     type Final = ();

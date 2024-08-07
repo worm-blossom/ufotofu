@@ -1,5 +1,3 @@
-use core::mem::MaybeUninit;
-
 use wrapper::Wrapper;
 
 use crate::local_nb::{
@@ -136,7 +134,7 @@ where
     C: BulkConsumer,
     C::Item: Copy,
 {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         self.check_inactive();
 
         self.inner
@@ -202,9 +200,7 @@ impl<C: BulkConsumerLocalNb> BulkConsumerLocalNb for Invariant<C>
 where
     C::Item: Copy,
 {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,
     {
