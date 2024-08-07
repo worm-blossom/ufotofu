@@ -1,8 +1,5 @@
 #![no_std]
 #![cfg_attr(feature = "nightly", feature(allocator_api))]
-#![cfg_attr(feature = "nightly", feature(new_uninit))]
-#![cfg_attr(feature = "nightly", feature(maybe_uninit_slice))]
-#![cfg_attr(feature = "nightly", feature(maybe_uninit_write_slice))]
 
 //! A [trait](Queue) and implementations of non-blocking, infallible [FIFO queues](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) that support bulk enqueueing and bulk dequeueing via APIs inspired by [ufotofu](https://crates.io/crates/ufotofu).
 //!
@@ -36,7 +33,6 @@ mod static_;
 pub use static_::Static;
 
 use core::cmp::min;
-use core::mem::MaybeUninit;
 
 /// A first-in-first-out queue. Provides methods for bulk transfer of items similar to [ufotofu](https://crates.io/crates/ufotofu) [`BulkProducer`](https://docs.rs/ufotofu/0.1.0/ufotofu/sync/trait.BulkProducer.html)s and [`BulkConsumer`](https://docs.rs/ufotofu/0.1.0/ufotofu/sync/trait.BulkConsumer.html)s.
 pub trait Queue {
@@ -64,7 +60,7 @@ pub trait Queue {
     /// be enqueued. To be used together with [Queue::consider_enqueued].
     ///
     /// Will return `None` if the queue is full at the time of calling.
-    fn expose_slots(&mut self) -> Option<&mut [MaybeUninit<Self::Item>]>;
+    fn expose_slots(&mut self) -> Option<&mut [Self::Item]>;
 
     /// A low-level method for enqueueing multiple items at a time. If you are only *working* with
     /// queues (rather than implementing them yourself), you will probably want to ignore this method
@@ -82,18 +78,7 @@ pub trait Queue {
     ///
     /// Calles must not have modified any `expose_slots` other than the first `amount` many.
     /// Failure to uphold this invariant may cause undefined behavior.
-    ///
-    /// #### Safety
-    ///
-    /// The queue implementation may assume the first `amount` many `expose_slots` that were most recently
-    /// exposed to contain initialized memory after this call, even if the memory it exposed was
-    /// originally uninitialized. Violating the invariants can cause the queue to read undefined
-    /// memory, which triggers undefined behavior.
-    ///
-    /// Further, the queue implementation my assume any `expose_slots` slots beyond the first `amount` many
-    /// to remain unchanged. In particular, the implementation may assume that those slots have *not*
-    /// been set to [`MaybeUninit::uninit`].
-    unsafe fn consider_enqueued(&mut self, amount: usize);
+    fn consider_enqueued(&mut self, amount: usize);
 
     /// Enqueue a non-zero number of items by reading them from a given buffer and returning how
     /// many items were enqueued.
@@ -110,10 +95,8 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                copy_from_slice(&mut slots[..amount], &buffer[..amount]);
-                unsafe {
-                    self.consider_enqueued(amount);
-                }
+                &mut slots[..amount].copy_from_slice(&buffer[..amount]);
+                self.consider_enqueued(amount);
 
                 amount
             }
@@ -181,62 +164,16 @@ pub trait Queue {
     /// The default implementation orchestrates `expose_items` and `consider_dequeued` in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
-    fn bulk_dequeue_uninit(&mut self, buffer: &mut [MaybeUninit<Self::Item>]) -> usize {
+    fn bulk_dequeue_uninit(&mut self, buffer: &mut [Self::Item]) -> usize {
         match self.expose_items() {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                copy_from_slice(&mut buffer[..amount], &slots[..amount]);
+                &mut buffer[..amount].copy_from_slice(&slots[..amount]);
                 self.consider_dequeued(amount);
 
                 amount
             }
         }
     }
-}
-
-#[cfg(not(feature = "nightly"))]
-#[inline(always)]
-pub(crate) const unsafe fn slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
-    // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
-    // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
-    // The pointer obtained is valid since it refers to memory owned by `slice` which is a
-    // reference and thus guaranteed to be valid for reads.
-    unsafe { &*(slice as *const [MaybeUninit<T>] as *const [T]) }
-}
-
-#[cfg(feature = "nightly")]
-#[inline(always)]
-pub(crate) const unsafe fn slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
-    MaybeUninit::slice_assume_init_ref(slice)
-}
-
-#[cfg(not(feature = "nightly"))]
-#[inline(always)]
-unsafe fn slice_assume_init_mut<T>(slice: &mut [MaybeUninit<T>]) -> &mut [T] {
-    // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
-    // mutable reference which is also guaranteed to be valid for writes.
-    unsafe { &mut *(slice as *mut [MaybeUninit<T>] as *mut [T]) }
-}
-
-#[cfg(not(feature = "nightly"))]
-pub(crate) fn copy_from_slice<'a, T>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
-where
-    T: Copy,
-{
-    // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
-    let uninit_src: &[MaybeUninit<T>] = unsafe { core::mem::transmute(src) };
-
-    this.copy_from_slice(uninit_src);
-
-    // SAFETY: Valid elements have just been copied into `this` so it is initialized
-    unsafe { slice_assume_init_mut(this) }
-}
-
-#[cfg(feature = "nightly")]
-pub(crate) fn copy_from_slice<'a, T>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
-where
-    T: Copy,
-{
-    MaybeUninit::copy_from_slice(this, src)
 }
