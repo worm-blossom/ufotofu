@@ -8,11 +8,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
-    alloc::{Allocator, Global},
-    boxed::Box,
-    vec::Vec,
-};
+use std::{boxed::Box, vec::Vec};
 
 use either::Either;
 use wrapper::Wrapper;
@@ -21,53 +17,53 @@ use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
 /// Produces data from a boxed slice.
-pub struct FromBoxedSlice_<T, A: Allocator = Global>(Invariant<FromBoxedSlice<T, A>>);
+pub struct FromBoxedSlice_<T>(Invariant<FromBoxedSlice<T>>);
 
-invarianted_impl_debug!(FromBoxedSlice_<T: Debug, A: Allocator + Debug>);
+invarianted_impl_debug!(FromBoxedSlice_<T: Debug>);
 
-impl<T, A: Allocator> FromBoxedSlice_<T, A> {
+impl<T> FromBoxedSlice_<T> {
     /// Create a producer which produces the data in the given boxed slice.
-    pub fn new(v: Box<[T], A>) -> FromBoxedSlice_<T, A> {
+    pub fn new(v: Box<[T]>) -> FromBoxedSlice_<T> {
         let invariant = Invariant::new(FromBoxedSlice(v, 0));
 
         FromBoxedSlice_(invariant)
     }
 
     /// Create a producer which produces the data in the given vector.
-    pub fn from_vec(v: Vec<T, A>) -> FromBoxedSlice_<T, A> {
+    pub fn from_vec(v: Vec<T>) -> FromBoxedSlice_<T> {
         let invariant = Invariant::new(FromBoxedSlice(v.into_boxed_slice(), 0));
 
         FromBoxedSlice_(invariant)
     }
 }
 
-invarianted_impl_as_ref!(FromBoxedSlice_<T, A: Allocator>; [T]);
-invarianted_impl_wrapper!(FromBoxedSlice_<T, A: Allocator>; Box<[T], A>);
+invarianted_impl_as_ref!(FromBoxedSlice_<T>; [T]);
+invarianted_impl_wrapper!(FromBoxedSlice_<T>; Box<[T]>);
 
-invarianted_impl_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone, A: Allocator> Item T;
+invarianted_impl_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone> Item T;
     /// Emitted once the end of the boxed slice has been reached.
     Final ();
     Error Infallible
 );
-invarianted_impl_buffered_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone, A: Allocator>);
-invarianted_impl_bulk_producer_sync_and_local_nb!(FromBoxedSlice_<T: Copy, A: Allocator>);
+invarianted_impl_buffered_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone>);
+invarianted_impl_bulk_producer_sync_and_local_nb!(FromBoxedSlice_<T: Copy>);
 
 #[derive(Debug)]
-struct FromBoxedSlice<T, A: Allocator = Global>(Box<[T], A>, usize);
+struct FromBoxedSlice<T>(Box<[T]>, usize);
 
-impl<T, A: Allocator> AsRef<[T]> for FromBoxedSlice<T, A> {
+impl<T> AsRef<[T]> for FromBoxedSlice<T> {
     fn as_ref(&self) -> &[T] {
         self.0.as_ref()
     }
 }
 
-impl<T, A: Allocator> Wrapper<Box<[T], A>> for FromBoxedSlice<T, A> {
-    fn into_inner(self) -> Box<[T], A> {
+impl<T> Wrapper<Box<[T]>> for FromBoxedSlice<T> {
+    fn into_inner(self) -> Box<[T]> {
         self.0
     }
 }
 
-impl<T: Clone, A: Allocator> Producer for FromBoxedSlice<T, A> {
+impl<T: Clone> Producer for FromBoxedSlice<T> {
     /// The type of the items to be produced.
     type Item = T;
     /// The final value emitted once the end of the slice has been reached.
@@ -87,14 +83,14 @@ impl<T: Clone, A: Allocator> Producer for FromBoxedSlice<T, A> {
     }
 }
 
-impl<T: Clone, A: Allocator> BufferedProducer for FromBoxedSlice<T, A> {
+impl<T: Clone> BufferedProducer for FromBoxedSlice<T> {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         // There are no effects to perform so we simply return.
         Ok(())
     }
 }
 
-impl<T: Copy, A: Allocator> BulkProducer for FromBoxedSlice<T, A> {
+impl<T: Copy> BulkProducer for FromBoxedSlice<T> {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         let slice = &self.0[self.1..];
         if slice.is_empty() {
@@ -111,9 +107,9 @@ impl<T: Copy, A: Allocator> BulkProducer for FromBoxedSlice<T, A> {
     }
 }
 
-sync_producer_as_local_nb!(FromBoxedSlice<T: Clone, A: Allocator>);
-sync_buffered_producer_as_local_nb!(FromBoxedSlice<T: Clone, A: Allocator>);
-sync_bulk_producer_as_local_nb!(FromBoxedSlice<T: Copy, A: Allocator>);
+sync_producer_as_local_nb!(FromBoxedSlice<T: Clone>);
+sync_buffered_producer_as_local_nb!(FromBoxedSlice<T: Clone>);
+sync_bulk_producer_as_local_nb!(FromBoxedSlice<T: Copy>);
 
 // #[cfg(test)]
 // mod tests {

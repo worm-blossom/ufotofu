@@ -7,10 +7,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
-    alloc::{Allocator, Global},
-    vec::Vec,
-};
+use std::vec::Vec;
 
 use wrapper::Wrapper;
 
@@ -23,9 +20,9 @@ use crate::local_nb::{
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
-pub struct IntoVec<T, A: Allocator = Global>(IntoVecFallible<T, A>);
+pub struct IntoVec<T>(IntoVecFallible<T>);
 
-impl<T: Debug, A: Allocator + Debug> core::fmt::Debug for IntoVec<T, A> {
+impl<T: Debug> core::fmt::Debug for IntoVec<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.0.fmt(f)
     }
@@ -49,31 +46,25 @@ impl<T> IntoVec<T> {
     }
 }
 
-impl<T, A: Allocator> IntoVec<T, A> {
-    pub fn new_in(alloc: A) -> IntoVec<T, A> {
-        IntoVec(IntoVecFallible::new_in(alloc))
-    }
-}
-
-impl<T, A: Allocator> AsRef<Vec<T, A>> for IntoVec<T, A> {
-    fn as_ref(&self) -> &Vec<T, A> {
+impl<T> AsRef<Vec<T>> for IntoVec<T> {
+    fn as_ref(&self) -> &Vec<T> {
         self.0.as_ref()
     }
 }
 
-impl<T, A: Allocator> AsMut<Vec<T, A>> for IntoVec<T, A> {
-    fn as_mut(&mut self) -> &mut Vec<T, A> {
+impl<T> AsMut<Vec<T>> for IntoVec<T> {
+    fn as_mut(&mut self) -> &mut Vec<T> {
         self.0.as_mut()
     }
 }
 
-impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVec<T, A> {
-    fn into_inner(self) -> Vec<T, A> {
+impl<T> Wrapper<Vec<T>> for IntoVec<T> {
+    fn into_inner(self) -> Vec<T> {
         self.0.into_inner()
     }
 }
 
-impl<T: Default, A: Allocator> IntoVec<T, A> {
+impl<T: Default> IntoVec<T> {
     pub(crate) fn remaining_slots(&self) -> usize {
         self.0.remaining_slots()
     }
@@ -83,7 +74,7 @@ impl<T: Default, A: Allocator> IntoVec<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> Consumer for IntoVec<T, A> {
+impl<T: Default> Consumer for IntoVec<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -97,13 +88,13 @@ impl<T: Default, A: Allocator> Consumer for IntoVec<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> BufferedConsumer for IntoVec<T, A> {
+impl<T: Default> BufferedConsumer for IntoVec<T> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(BufferedConsumer::flush(&mut self.0).expect("Out of memory"))
     }
 }
 
-impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVec<T, A> {
+impl<T: Default + Copy> BulkConsumer for IntoVec<T> {
     fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         Ok(BulkConsumer::expose_slots(&mut self.0).expect("Out of memory"))
     }
@@ -113,7 +104,7 @@ impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVec<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> ConsumerLocalNb for IntoVec<T, A> {
+impl<T: Default> ConsumerLocalNb for IntoVec<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -131,7 +122,7 @@ impl<T: Default, A: Allocator> ConsumerLocalNb for IntoVec<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> BufferedConsumerLocalNb for IntoVec<T, A> {
+impl<T: Default> BufferedConsumerLocalNb for IntoVec<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(BufferedConsumerLocalNb::flush(&mut self.0)
             .await
@@ -139,7 +130,7 @@ impl<T: Default, A: Allocator> BufferedConsumerLocalNb for IntoVec<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> BulkConsumerLocalNb for IntoVec<T, A>
+impl<T: Default> BulkConsumerLocalNb for IntoVec<T>
 where
     T: Copy,
 {

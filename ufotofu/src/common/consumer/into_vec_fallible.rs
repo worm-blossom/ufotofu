@@ -7,11 +7,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
-    alloc::{Allocator, Global},
-    collections::TryReserveError,
-    vec::Vec,
-};
+use std::{collections::TryReserveError, vec::Vec};
 
 use wrapper::Wrapper;
 
@@ -19,9 +15,9 @@ use crate::common::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
-pub struct IntoVecFallible_<T, A: Allocator = Global>(Invariant<IntoVecFallible<T, A>>);
+pub struct IntoVecFallible_<T>(Invariant<IntoVecFallible<T>>);
 
-invarianted_impl_debug!(IntoVecFallible_<T: Debug, A: Allocator + Debug>);
+invarianted_impl_debug!(IntoVecFallible_<T: Debug>);
 
 impl<T> Default for IntoVecFallible_<T> {
     fn default() -> Self {
@@ -45,7 +41,7 @@ impl<T> IntoVecFallible_<T> {
     }
 }
 
-impl<T: Default, A: Allocator> IntoVecFallible_<T, A> {
+impl<T: Default> IntoVecFallible_<T> {
     pub(crate) fn make_space_if_needed(&mut self) -> Result<(), TryReserveError> {
         self.0.as_mut().make_space_if_needed()
     }
@@ -55,50 +51,39 @@ impl<T: Default, A: Allocator> IntoVecFallible_<T, A> {
     }
 }
 
-impl<T, A: Allocator> IntoVecFallible_<T, A> {
-    pub fn new_in(alloc: A) -> IntoVecFallible_<T, A> {
-        let invariant = Invariant::new(IntoVecFallible {
-            v: Vec::new_in(alloc),
-            consumed: 0,
-        });
+invarianted_impl_as_ref!(IntoVecFallible_<T>; Vec<T>);
+invarianted_impl_as_mut!(IntoVecFallible_<T>; Vec<T>);
+invarianted_impl_wrapper!(IntoVecFallible_<T>; Vec<T>);
 
-        IntoVecFallible_(invariant)
-    }
-}
-
-invarianted_impl_as_ref!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
-invarianted_impl_as_mut!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
-invarianted_impl_wrapper!(IntoVecFallible_<T, A: Allocator>; Vec<T, A>);
-
-invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default, A: Allocator> Item T; Final (); Error TryReserveError);
-invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default, A: Allocator>);
-invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy + Default, A: Allocator>);
+invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default> Item T; Final (); Error TryReserveError);
+invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default>);
+invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy + Default>);
 
 #[derive(Debug)]
-struct IntoVecFallible<T, A: Allocator = Global> {
-    v: Vec<T, A>,
+struct IntoVecFallible<T> {
+    v: Vec<T>,
     consumed: usize,
 }
 
-impl<T, A: Allocator> AsRef<Vec<T, A>> for IntoVecFallible<T, A> {
-    fn as_ref(&self) -> &Vec<T, A> {
+impl<T> AsRef<Vec<T>> for IntoVecFallible<T> {
+    fn as_ref(&self) -> &Vec<T> {
         &self.v
     }
 }
 
-impl<T, A: Allocator> AsMut<Vec<T, A>> for IntoVecFallible<T, A> {
-    fn as_mut(&mut self) -> &mut Vec<T, A> {
+impl<T> AsMut<Vec<T>> for IntoVecFallible<T> {
+    fn as_mut(&mut self) -> &mut Vec<T> {
         &mut self.v
     }
 }
 
-impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVecFallible<T, A> {
-    fn into_inner(self) -> Vec<T, A> {
+impl<T> Wrapper<Vec<T>> for IntoVecFallible<T> {
+    fn into_inner(self) -> Vec<T> {
         self.v
     }
 }
 
-impl<T: Default, A: Allocator> IntoVecFallible<T, A> {
+impl<T: Default> IntoVecFallible<T> {
     fn make_space_if_needed(&mut self) -> Result<(), TryReserveError> {
         // Allocate additional capacity to the vector if no empty slots are available.
         if self.consumed == self.v.len() {
@@ -115,7 +100,7 @@ impl<T: Default, A: Allocator> IntoVecFallible<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> Consumer for IntoVecFallible<T, A> {
+impl<T: Default> Consumer for IntoVecFallible<T> {
     type Item = T;
     type Final = ();
     type Error = TryReserveError;
@@ -135,13 +120,13 @@ impl<T: Default, A: Allocator> Consumer for IntoVecFallible<T, A> {
     }
 }
 
-impl<T: Default, A: Allocator> BufferedConsumer for IntoVecFallible<T, A> {
+impl<T: Default> BufferedConsumer for IntoVecFallible<T> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
-impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVecFallible<T, A> {
+impl<T: Default + Copy> BulkConsumer for IntoVecFallible<T> {
     fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         // Allocate additional capacity to the vector if no empty slots are available.
         self.make_space_if_needed()?;
@@ -156,9 +141,9 @@ impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVecFallible<T, A> {
     }
 }
 
-sync_consumer_as_local_nb!(IntoVecFallible<T: Default, A: Allocator>);
-sync_buffered_consumer_as_local_nb!(IntoVecFallible<T: Default, A: Allocator>);
-sync_bulk_consumer_as_local_nb!(IntoVecFallible<T: Copy + Default, A: Allocator>);
+sync_consumer_as_local_nb!(IntoVecFallible<T: Default>);
+sync_buffered_consumer_as_local_nb!(IntoVecFallible<T: Default>);
+sync_bulk_consumer_as_local_nb!(IntoVecFallible<T: Copy + Default>);
 
 #[cfg(test)]
 mod tests {

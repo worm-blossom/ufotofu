@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(allocator_api)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::type_complexity)]
 
