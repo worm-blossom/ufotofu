@@ -1,7 +1,6 @@
 extern crate alloc;
 
 use core::fmt;
-use core::mem::MaybeUninit;
 
 use crate::Queue;
 
@@ -10,35 +9,37 @@ use crate::Queue;
 /// Use the methods of the [Queue] trait implementation to interact with the contents of the queue.
 pub struct Static<T, const N: usize> {
     /// Buffer of memory, used as a ring-buffer.
-    data: [MaybeUninit<T>; N],
+    data: [T; N],
     /// Read index.
     read: usize,
     /// Amount of valid data.
     amount: usize,
 }
 
-impl<T, const N: usize> Default for Static<T, N> {
+impl<T: Default + Copy, const N: usize> Default for Static<T, N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T, const N: usize> Static<T, N> {
+impl<T: Default + Copy, const N: usize> Static<T, N> {
     /// Create a fixed-capacity queue.
     pub fn new() -> Self {
         Static {
-            data: [const { MaybeUninit::uninit() }; N],
+            data: [T::default(); N],
             read: 0,
             amount: 0,
         }
     }
+}
 
+impl<T, const N: usize> Static<T, N> {
     fn is_data_contiguous(&self) -> bool {
         self.read + self.amount < N
     }
 
     /// Return a slice containing the next items that should be read.
-    fn readable_slice(&mut self) -> &[MaybeUninit<T>] {
+    fn readable_slice(&mut self) -> &[T] {
         if self.is_data_contiguous() {
             &self.data[self.read..self.write_to()]
         } else {
@@ -47,7 +48,7 @@ impl<T, const N: usize> Static<T, N> {
     }
 
     /// Return a slice containing the next slots that should be written to.
-    fn writeable_slice(&mut self) -> &mut [MaybeUninit<T>] {
+    fn writeable_slice(&mut self) -> &mut [T] {
         let capacity = N;
         let write_to = self.write_to();
         if self.is_data_contiguous() {
@@ -77,7 +78,7 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
         if self.amount == N {
             Some(item)
         } else {
-            self.data[self.write_to()].write(item);
+            self.data[self.write_to()] = item;
             self.amount += 1;
 
             None
@@ -88,7 +89,7 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
     /// be enqueued.
     ///
     /// Will return `None` if the queue is full at the time of calling.
-    fn expose_slots(&mut self) -> Option<&mut [MaybeUninit<T>]> {
+    fn expose_slots(&mut self) -> Option<&mut [T]> {
         if self.amount == N {
             None
         } else {
@@ -110,7 +111,7 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
     /// exposed to contain initialized memory after this call, even if the memory it exposed was
     /// originally uninitialized. Violating the invariants will cause the queue to read undefined
     /// memory, which triggers undefined behavior.
-    unsafe fn consider_enqueued(&mut self, amount: usize) {
+    fn consider_enqueued(&mut self, amount: usize) {
         self.amount += amount;
     }
 
@@ -126,7 +127,7 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
             self.read = (self.read + 1) % N;
             self.amount -= 1;
 
-            Some(unsafe { self.data[previous_read].assume_init() })
+            Some(self.data[previous_read])
         }
     }
 
@@ -137,7 +138,7 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
         if self.amount == 0 {
             None
         } else {
-            Some(unsafe { crate::slice_assume_init_ref(self.readable_slice()) })
+            Some(self.readable_slice())
         }
     }
 
@@ -169,21 +170,15 @@ impl<'q, T: fmt::Debug, const N: usize> fmt::Debug for DataDebugger<'q, T, N> {
         let mut list = f.debug_list();
 
         if self.0.is_data_contiguous() {
-            for item in unsafe {
-                crate::slice_assume_init_ref(&self.0.data[self.0.read..self.0.write_to()])
-            } {
+            for item in &self.0.data[self.0.read..self.0.write_to()] {
                 list.entry(item);
             }
         } else {
-            for item in unsafe { crate::slice_assume_init_ref(&self.0.data[self.0.read..]) } {
+            for item in &self.0.data[self.0.read..] {
                 list.entry(item);
             }
 
-            for item in unsafe {
-                crate::slice_assume_init_ref(
-                    &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())],
-                )
-            } {
+            for item in &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())] {
                 list.entry(item);
             }
         }
@@ -218,7 +213,7 @@ mod tests {
     #[test]
     fn bulk_enqueues_and_dequeues_with_correct_amount() {
         let mut queue: Static<u8, 4> = Static::new();
-        let mut buf: [MaybeUninit<u8>; 4] = [MaybeUninit::uninit(); 4];
+        let mut buf = [0; 4];
 
         let enqueue_amount = queue.bulk_enqueue(b"ufo");
         let dequeue_amount = queue.bulk_dequeue_uninit(&mut buf);
@@ -255,17 +250,13 @@ mod tests {
         // Copy data to two of the available slots and call `consider_queued`.
         let data = b"tofu";
         let slots = queue.expose_slots().unwrap();
-        crate::copy_from_slice(&mut slots[0..2], &data[0..2]);
-        unsafe {
-            queue.consider_enqueued(2);
-        }
+        slots[0..2].copy_from_slice(&data[0..2]);
+        queue.consider_enqueued(2);
 
         // Copy data to two of the available slots and call `consider_queued`.
         let slots = queue.expose_slots().unwrap();
-        crate::copy_from_slice(&mut slots[0..2], &data[0..2]);
-        unsafe {
-            queue.consider_enqueued(2);
-        }
+        slots[0..2].copy_from_slice(&data[0..2]);
+        queue.consider_enqueued(2);
 
         // Make a third call to `expose_slots` after all available slots have been used.
         assert!(queue.expose_slots().is_none());

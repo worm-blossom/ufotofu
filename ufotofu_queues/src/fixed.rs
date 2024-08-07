@@ -4,11 +4,9 @@ use alloc::boxed::Box;
 #[cfg(feature = "nightly")]
 use alloc::alloc::{Allocator, Global};
 
-#[cfg(not(feature = "nightly"))]
 use alloc::vec::Vec;
 
 use core::fmt;
-use core::mem::MaybeUninit;
 
 use crate::Queue;
 
@@ -19,7 +17,7 @@ use crate::Queue;
 /// Use the methods of the [Queue] trait implementation to interact with the contents of the queue.
 pub struct Fixed<T> {
     /// Slice of memory, used as a ring-buffer.
-    data: Box<[MaybeUninit<T>]>,
+    data: Box<[T]>,
     /// Read index.
     read: usize,
     /// Amount of valid data.
@@ -33,19 +31,21 @@ pub struct Fixed<T> {
 /// Use the methods of the [Queue] trait implementation to interact with the contents of the queue.
 pub struct Fixed<T, A: Allocator = Global> {
     /// Slice of memory, used as a ring-buffer.
-    data: Box<[MaybeUninit<T>], A>,
+    data: Box<[T], A>,
     /// Read index.
     read: usize,
     /// Amount of valid data.
     amount: usize,
 }
 
-impl<T> Fixed<T> {
-    #[cfg(feature = "nightly")]
+impl<T: Default> Fixed<T> {
     /// Create a fixed-capacity queue. Panic if the initial memory allocation fails.
     pub fn new(capacity: usize) -> Self {
+        let mut v = Vec::with_capacity(capacity);
+        v.resize_with(capacity, Default::default);
+
         Fixed {
-            data: Box::new_uninit_slice(capacity),
+            data: v.into_boxed_slice(),
             read: 0,
             amount: 0,
         }
@@ -54,26 +54,14 @@ impl<T> Fixed<T> {
     #[cfg(feature = "nightly")]
     /// Try to create a fixed-capacity queue. If the initial memory allocation fails, return `None` instead.
     pub fn try_new(capacity: usize) -> Option<Self> {
+        let mut v = Vec::try_with_capacity(capacity).ok()?;
+        v.resize_with(capacity, Default::default);
+
         Some(Fixed {
-            data: Box::try_new_uninit_slice(capacity).ok()?,
-            read: 0,
-            amount: 0,
-        })
-    }
-}
-
-#[cfg(not(feature = "nightly"))]
-impl<T: Default> Fixed<T> {
-    /// Create a fixed-capacity queue. Panic if the initial memory allocation fails.
-    pub fn new(capacity: usize) -> Self {
-        let mut v = Vec::with_capacity(capacity);
-        v.resize_with(capacity, || MaybeUninit::uninit());
-
-        Fixed {
             data: v.into_boxed_slice(),
             read: 0,
             amount: 0,
-        }
+        })
     }
 }
 
@@ -116,31 +104,40 @@ impl<T> Fixed<T> {
 }
 
 #[cfg(feature = "nightly")]
-impl<T, A: Allocator> Fixed<T, A> {
+impl<T: Default, A: Allocator> Fixed<T, A> {
     /// Create a fixed-capacity queue with a given memory allocator. Panic if the initial memory allocation fails.
     pub fn new_in(capacity: usize, alloc: A) -> Self {
+        let mut v = Vec::with_capacity_in(capacity, alloc);
+        v.resize_with(capacity, Default::default);
+
         Fixed {
-            data: Box::new_uninit_slice_in(capacity, alloc),
+            data: v.into_boxed_slice(),
             read: 0,
             amount: 0,
         }
     }
 
-    // /// Try to create a fixed-capacity queue with a given memory allocator. If the initial memory allocation fails, return `None` instead.
-    // pub fn try_new_in(capacity: usize, alloc: A) -> Option<Self> {
-    //     Some(Fixed {
-    //         data: Box::try_new_uninit_slice_in(capacity, alloc)?,
-    //         read: 0,
-    //         amount: 0,
-    //     })
-    // }
+    /// Try to create a fixed-capacity queue. If the initial memory allocation fails, return `None` instead.
+    pub fn try_new_in(capacity: usize, alloc: A) -> Option<Self> {
+        let mut v = Vec::try_with_capacity_in(capacity, alloc).ok()?;
+        v.resize_with(capacity, Default::default);
 
+        Some(Fixed {
+            data: v.into_boxed_slice(),
+            read: 0,
+            amount: 0,
+        })
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<T, A: Allocator> Fixed<T, A> {
     fn is_data_contiguous(&self) -> bool {
         self.read + self.amount < self.capacity()
     }
 
     /// Return a slice containing the next items that should be read.
-    fn readable_slice(&mut self) -> &[MaybeUninit<T>] {
+    fn readable_slice(&mut self) -> &[T] {
         if self.is_data_contiguous() {
             &self.data[self.read..self.write_to()]
         } else {
@@ -149,7 +146,7 @@ impl<T, A: Allocator> Fixed<T, A> {
     }
 
     /// Return a slice containing the next slots that should be written to.
-    fn writeable_slice(&mut self) -> &mut [MaybeUninit<T>] {
+    fn writeable_slice(&mut self) -> &mut [T] {
         let capacity = self.capacity();
         let write_to = self.write_to();
         if self.is_data_contiguous() {
@@ -187,7 +184,7 @@ impl<T: Copy> Queue for Fixed<T> {
         if self.amount == self.capacity() {
             Some(item)
         } else {
-            self.data[self.write_to()].write(item);
+            self.data[self.write_to()] = item;
             self.amount += 1;
 
             None
@@ -198,7 +195,7 @@ impl<T: Copy> Queue for Fixed<T> {
     /// be enqueued.
     ///
     /// Will return `None` if the queue is full at the time of calling.
-    fn expose_slots(&mut self) -> Option<&mut [MaybeUninit<T>]> {
+    fn expose_slots(&mut self) -> Option<&mut [T]> {
         if self.amount == self.capacity() {
             None
         } else {
@@ -279,7 +276,7 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
         if self.amount == self.capacity() {
             Some(item)
         } else {
-            self.data[self.write_to()].write(item);
+            self.data[self.write_to()] = item;
             self.amount += 1;
 
             None
@@ -290,7 +287,7 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
     /// be enqueued.
     ///
     /// Will return `None` if the queue is full at the time of calling.
-    fn expose_slots(&mut self) -> Option<&mut [MaybeUninit<T>]> {
+    fn expose_slots(&mut self) -> Option<&mut [T]> {
         if self.amount == self.capacity() {
             None
         } else {
@@ -312,7 +309,7 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
     /// exposed to contain initialized memory after this call, even if the memory it exposed was
     /// originally uninitialized. Violating the invariants will cause the queue to read undefined
     /// memory, which triggers undefined behavior.
-    unsafe fn consider_enqueued(&mut self, amount: usize) {
+    fn consider_enqueued(&mut self, amount: usize) {
         self.amount += amount;
     }
 
@@ -328,7 +325,7 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
             self.read = (self.read + 1) % self.capacity();
             self.amount -= 1;
 
-            Some(unsafe { self.data[previous_read].assume_init() })
+            Some(self.data[previous_read])
         }
     }
 
@@ -339,7 +336,7 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
         if self.amount == 0 {
             None
         } else {
-            Some(unsafe { crate::slice_assume_init_ref(self.readable_slice()) })
+            Some(self.readable_slice())
         }
     }
 
@@ -375,21 +372,15 @@ impl<'q, T: fmt::Debug> fmt::Debug for DataDebugger<'q, T> {
         let mut list = f.debug_list();
 
         if self.0.is_data_contiguous() {
-            for item in unsafe {
-                crate::slice_assume_init_ref(&self.0.data[self.0.read..self.0.write_to()])
-            } {
+            for item in &self.0.data[self.0.read..self.0.write_to()] {
                 list.entry(item);
             }
         } else {
-            for item in unsafe { crate::slice_assume_init_ref(&self.0.data[self.0.read..]) } {
+            for item in &self.0.data[self.0.read..] {
                 list.entry(item);
             }
 
-            for item in unsafe {
-                crate::slice_assume_init_ref(
-                    &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())],
-                )
-            } {
+            for item in &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())] {
                 list.entry(item);
             }
         }
@@ -418,21 +409,15 @@ impl<'q, T: fmt::Debug, A: Allocator> fmt::Debug for DataDebugger<'q, T, A> {
         let mut list = f.debug_list();
 
         if self.0.is_data_contiguous() {
-            for item in unsafe {
-                crate::slice_assume_init_ref(&self.0.data[self.0.read..self.0.write_to()])
-            } {
+            for item in &self.0.data[self.0.read..self.0.write_to()] {
                 list.entry(item);
             }
         } else {
-            for item in unsafe { crate::slice_assume_init_ref(&self.0.data[self.0.read..]) } {
+            for item in &self.0.data[self.0.read..] {
                 list.entry(item);
             }
 
-            for item in unsafe {
-                crate::slice_assume_init_ref(
-                    &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())],
-                )
-            } {
+            for item in &self.0.data[0..(self.0.amount - self.0.data[self.0.read..].len())] {
                 list.entry(item);
             }
         }
@@ -467,7 +452,7 @@ mod tests {
     #[test]
     fn bulk_enqueues_and_dequeues_with_correct_amount() {
         let mut queue: Fixed<u8> = Fixed::new(4);
-        let mut buf: [MaybeUninit<u8>; 4] = [MaybeUninit::uninit(); 4];
+        let mut buf = [0; 4];
 
         let enqueue_amount = queue.bulk_enqueue(b"ufo");
         let dequeue_amount = queue.bulk_dequeue_uninit(&mut buf);
@@ -504,17 +489,13 @@ mod tests {
         // Copy data to two of the available slots and call `consider_queued`.
         let data = b"tofu";
         let slots = queue.expose_slots().unwrap();
-        crate::copy_from_slice(&mut slots[0..2], &data[0..2]);
-        unsafe {
-            queue.consider_enqueued(2);
-        }
+        &mut slots[0..2].copy_from_slice(&data[0..2]);
+        queue.consider_enqueued(2);
 
         // Copy data to two of the available slots and call `consider_queued`.
         let slots = queue.expose_slots().unwrap();
-        crate::copy_from_slice(&mut slots[0..2], &data[0..2]);
-        unsafe {
-            queue.consider_enqueued(2);
-        }
+        &mut slots[0..2].copy_from_slice(&data[0..2]);
+        queue.consider_enqueued(2);
 
         // Make a third call to `expose_slots` after all available slots have been used.
         assert!(queue.expose_slots().is_none());
