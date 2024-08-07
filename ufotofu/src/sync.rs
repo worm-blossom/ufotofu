@@ -1,5 +1,4 @@
 use core::cmp::min;
-use core::mem::MaybeUninit;
 
 use either::{
     Either,
@@ -15,7 +14,7 @@ pub mod producer;
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
 /// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
+/// [`Infallible`](core::convert::Infallible) for `Self::Final`.
 ///
 /// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
 pub trait Consumer {
@@ -208,7 +207,7 @@ where
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
 /// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
+/// [`Infallible`](core::convert::Infallible) for `Self::Final`.
 ///
 /// A producer can also signal an error of type `Self::Error` instead of producing an item.
 pub trait Producer {

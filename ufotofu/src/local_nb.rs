@@ -15,7 +15,7 @@ pub mod producer;
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
 /// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
+/// [`Infallible`](core::convert::Infallible) for `Self::Final`.
 ///
 /// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
 pub trait Consumer {
@@ -224,7 +224,7 @@ where
 ///
 /// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
 /// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// the [never type](https://doc.rust-lang.org/reference/types/never.html) `!` for `Self::Final`.
+/// [`Infallible`](core::convert::Infallible) for `Self::Final`.
 ///
 /// A producer can also signal an error of type `Self::Error` instead of producing an item.
 pub trait Producer {
@@ -517,11 +517,13 @@ where
 mod tests {
     use super::*;
 
+    use core::convert::Infallible;
+
     use crate::local_nb::consumer::{IntoSlice, IntoVec};
     use crate::local_nb::producer::FromSlice;
 
     #[test]
-    fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
+    fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
@@ -539,7 +541,8 @@ mod tests {
     }
 
     #[test]
-    fn pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
+    fn pipes_from_slice_producer_to_consumer_into_vec(
+    ) -> Result<(), PipeError<Infallible, Infallible>> {
         smol::block_on(async {
             let mut o = FromSlice::new(b"tofu");
             let mut i = IntoVec::new();
@@ -553,7 +556,7 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<!, ()>> {
+    fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
         smol::block_on(async {
             let mut buf = [0; 3];
 
@@ -571,7 +574,8 @@ mod tests {
     }
 
     #[test]
-    fn bulk_pipes_from_slice_producer_to_consumer_into_vec() -> Result<(), PipeError<!, !>> {
+    fn bulk_pipes_from_slice_producer_to_consumer_into_vec(
+    ) -> Result<(), PipeError<Infallible, Infallible>> {
         smol::block_on(async {
             let mut o = FromSlice::new(b"tofu");
             let mut i = IntoVec::new();

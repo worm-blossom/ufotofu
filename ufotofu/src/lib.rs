@@ -1,7 +1,5 @@
 #![no_std]
-#![feature(never_type)]
 #![feature(allocator_api)]
-#![feature(vec_push_within_capacity)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::type_complexity)]
 
@@ -22,7 +20,7 @@
 //!
 //! Ufotofu is built around a small hierarchy of traits that describe how to produce or consume a sequence item by item.
 //!
-//! A [`Producer`](sync::Producer) provides the items of a sequence to some client code, similar to the [`futures::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html) or the [`core::iter::Iterator`] traits. Client code can repeatedly request the next item, and receives either another item, an error, or a dedicated *final* item which may be of a different type than the repeated items. An *iterator* of `T`s corresponds to a *producer* of `T`s with final item type `()` and error type `!`.
+//! A [`Producer`](sync::Producer) provides the items of a sequence to some client code, similar to the [`futures::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html) or the [`core::iter::Iterator`] traits. Client code can repeatedly request the next item, and receives either another item, an error, or a dedicated *final* item which may be of a different type than the repeated items. An *iterator* of `T`s corresponds to a *producer* of `T`s with final item type `()` and error type [`Infallible`](core::convert::Infallible).
 //!
 //! A [`Consumer`](sync::Consumer) accepts the items of a sequence from some client code, similar to the [`futures::Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html) traits. Client code can repeatedly add new items to the sequence, until it adds a single *final* item which may be of a different type than the repeated items. A final item type of `()` makes adding the final item equivalent to calling a conventional [`close`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html#tymethod.poll_close) method.
 //!

@@ -1,4 +1,4 @@
-use core::convert::AsRef;
+use core::convert::{AsRef, Infallible};
 use core::fmt::Debug;
 
 use either::Either;
@@ -45,7 +45,7 @@ invarianted_impl_wrapper!(FromSlice_<'a, T>; &'a [T]);
 invarianted_impl_producer_sync_and_local_nb!(FromSlice_<'a, T: Clone> Item T;
     /// Emitted once the end of the slice has been reached.
     Final ();
-    Error !
+    Error Infallible
 );
 invarianted_impl_buffered_producer_sync_and_local_nb!(FromSlice_<'a, T: Clone>);
 invarianted_impl_bulk_producer_sync_and_local_nb!(FromSlice_<'a, T: Copy>);
@@ -68,7 +68,7 @@ impl<'a, T> Wrapper<&'a [T]> for FromSlice<'a, T> {
 impl<'a, T: Clone> Producer for FromSlice<'a, T> {
     type Item = T;
     type Final = ();
-    type Error = !;
+    type Error = Infallible;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         if self.0.len() == self.1 {

@@ -1,4 +1,4 @@
-use core::convert::AsRef;
+use core::convert::{AsRef, Infallible};
 use core::fmt::Debug;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -47,7 +47,7 @@ invarianted_impl_wrapper!(FromBoxedSlice_<T, A: Allocator>; Box<[T], A>);
 invarianted_impl_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone, A: Allocator> Item T;
     /// Emitted once the end of the boxed slice has been reached.
     Final ();
-    Error !
+    Error Infallible
 );
 invarianted_impl_buffered_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone, A: Allocator>);
 invarianted_impl_bulk_producer_sync_and_local_nb!(FromBoxedSlice_<T: Copy, A: Allocator>);
@@ -73,7 +73,7 @@ impl<T: Clone, A: Allocator> Producer for FromBoxedSlice<T, A> {
     /// The final value emitted once the end of the slice has been reached.
     type Final = ();
     /// The producer can never error.
-    type Error = !;
+    type Error = Infallible;
 
     fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         if self.0.len() == self.1 {

@@ -1,3 +1,4 @@
+use core::convert::Infallible;
 use core::fmt::Debug;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -85,7 +86,7 @@ impl<T: Default, A: Allocator> IntoVec<T, A> {
 impl<T: Default, A: Allocator> Consumer for IntoVec<T, A> {
     type Item = T;
     type Final = ();
-    type Error = !;
+    type Error = Infallible;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         Ok(Consumer::consume(&mut self.0, item).expect("Out of memory"))
@@ -115,7 +116,7 @@ impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVec<T, A> {
 impl<T: Default, A: Allocator> ConsumerLocalNb for IntoVec<T, A> {
     type Item = T;
     type Final = ();
-    type Error = !;
+    type Error = Infallible;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         Ok(ConsumerLocalNb::consume(&mut self.0, item)

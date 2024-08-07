@@ -1,3 +1,4 @@
+use core::convert::Infallible;
 use core::fmt::Debug;
 
 use arbitrary::Arbitrary;
@@ -36,7 +37,7 @@ invarianted_impl_bulk_producer_sync_and_local_nb!(TestProducer_<Item: Copy, Fina
 
 #[derive(Debug)]
 struct TestProducer<Item, Final, Error> {
-    inner: Scramble<FromBoxedSlice<Item>, Item, (), !>,
+    inner: Scramble<FromBoxedSlice<Item>, Item, (), Infallible>,
     termination: Option<Either<Final, Error>>,
 }
 
