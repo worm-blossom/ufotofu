@@ -489,12 +489,12 @@ mod tests {
         // Copy data to two of the available slots and call `consider_queued`.
         let data = b"tofu";
         let slots = queue.expose_slots().unwrap();
-        &mut slots[0..2].copy_from_slice(&data[0..2]);
+        slots[0..2].copy_from_slice(&data[0..2]);
         queue.consider_enqueued(2);
 
         // Copy data to two of the available slots and call `consider_queued`.
         let slots = queue.expose_slots().unwrap();
-        &mut slots[0..2].copy_from_slice(&data[0..2]);
+        slots[0..2].copy_from_slice(&data[0..2]);
         queue.consider_enqueued(2);
 
         // Make a third call to `expose_slots` after all available slots have been used.

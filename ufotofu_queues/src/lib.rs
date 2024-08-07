@@ -1,6 +1,6 @@
 #![no_std]
 #![cfg_attr(feature = "nightly", feature(allocator_api))]
-#![cfg_attr(feature = "nightly", feature(try_with_capacity ))]
+#![cfg_attr(feature = "nightly", feature(try_with_capacity))]
 
 //! A [trait](Queue) and implementations of non-blocking, infallible [FIFO queues](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) that support bulk enqueueing and bulk dequeueing via APIs inspired by [ufotofu](https://crates.io/crates/ufotofu).
 //!
@@ -96,7 +96,7 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                &mut slots[..amount].copy_from_slice(&buffer[..amount]);
+                slots[..amount].copy_from_slice(&buffer[..amount]);
                 self.consider_enqueued(amount);
 
                 amount
@@ -170,7 +170,7 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                &mut buffer[..amount].copy_from_slice(&slots[..amount]);
+                buffer[..amount].copy_from_slice(&slots[..amount]);
                 self.consider_dequeued(amount);
 
                 amount
