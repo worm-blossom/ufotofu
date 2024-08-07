@@ -71,7 +71,7 @@ impl<'a> Arbitrary<'a> for ProduceOperations {
 /// To be used in fuzz testing: when you want to test a `Producer` you implemented, test a scrambled version of that producer instead, to exercise many different method call patterns even if the test itself only performs a simplistic method call pattern.
 pub struct Scramble_<C, T, F, E>(Invariant<Scramble<C, T, F, E>>);
 
-impl<C, T, F, E> Scramble_<C, T, F, E> {
+impl<C, T: Default, F, E> Scramble_<C, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the producer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
     pub fn new(inner: C, operations: ProduceOperations, capacity: usize) -> Self {
         Scramble_(Invariant::new(Scramble::new(inner, operations, capacity)))
@@ -177,7 +177,7 @@ impl<P: core::fmt::Debug, T: core::fmt::Debug, F: core::fmt::Debug, E> core::fmt
     }
 }
 
-impl<P, T, F, E> Scramble<P, T, F, E> {
+impl<P, T: Default, F, E> Scramble<P, T, F, E> {
     /// Create a new wrapper around `inner` that exercises the producer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less space (surprise!).
     fn new(inner: P, operations: ProduceOperations, capacity: usize) -> Self {
         Scramble::<P, T, F, E> {
@@ -189,7 +189,8 @@ impl<P, T, F, E> Scramble<P, T, F, E> {
             phantom: PhantomData,
         }
     }
-
+}
+impl<P, T, F, E> Scramble<P, T, F, E> {
     fn advance_operations_index(&mut self) {
         self.operations_index = (self.operations_index + 1) % self.operations.len();
     }

@@ -1,7 +1,4 @@
 #![no_std]
-#![feature(maybe_uninit_write_slice)]
-#![feature(maybe_uninit_uninit_array)]
-#![feature(maybe_uninit_slice)]
 #![feature(never_type)]
 #![feature(allocator_api)]
 #![feature(vec_push_within_capacity)]
@@ -56,6 +53,8 @@
 //! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
 //!
 //! All functionality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
+//!
+//! All functionality that relies on nightly features is gated behind the `std` feature flag (disabled by default).
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -108,8 +107,3 @@ pub mod sync;
 
 /// Functionality shared between several of the three core modules ([sync], [local_nb], and [nb]). You can safaely ignore this module, all functionality is exported amongst [sync], [local_nb], and [nb].
 pub mod common;
-
-pub(crate) fn maybe_uninit_slice_mut<T>(s: &mut [T]) -> &mut [MaybeUninit<T>] {
-    let ptr = s.as_mut_ptr().cast::<MaybeUninit<T>>();
-    unsafe { core::slice::from_raw_parts_mut(ptr, s.len()) }
-}

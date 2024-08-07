@@ -1,9 +1,7 @@
-use core::mem::MaybeUninit;
-
 use either::Either;
 use wrapper::Wrapper;
 
-use crate::local_nb::{BufferedProducer, BulkProducer, Producer};
+use crate::local_nb::{BufferedProducer, BulkProducer, OverwriteFullSliceError, Producer};
 use crate::sync;
 
 /// Turns a [`sync::Producer`](crate::sync::Producer) into a [`local_nb::Producer`](crate::local_nb::Producer). Only use this to wrap types that never block and do not perform time-intensive computations.
@@ -41,6 +39,13 @@ impl<P: sync::Producer> Producer for SyncToLocalNb<P> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce()
     }
+
+    async fn overwrite_full_slice<'a>(
+        &mut self,
+        buf: &'a mut [Self::Item],
+    ) -> Result<(), OverwriteFullSliceError<Self::Final, Self::Error>> {
+        self.0.overwrite_full_slice(buf)
+    }
 }
 
 impl<P: sync::BufferedProducer> BufferedProducer for SyncToLocalNb<P> {
@@ -73,10 +78,10 @@ where
         self.0.bulk_produce(buf)
     }
 
-    async fn bulk_produce_uninit(
+    async fn bulk_overwrite_full_slice<'a>(
         &mut self,
-        buf: &mut [MaybeUninit<Self::Item>],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        self.0.bulk_produce_uninit(buf)
+        buf: &'a mut [Self::Item],
+    ) -> Result<(), OverwriteFullSliceError<Self::Final, Self::Error>> {
+        self.0.bulk_overwrite_full_slice(buf)
     }
 }

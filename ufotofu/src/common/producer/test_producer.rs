@@ -112,7 +112,7 @@ sync_bulk_producer_as_local_nb!(TestProducer<Item: Copy, Final, Error>);
 
 impl<'a, Item, Final, Error> Arbitrary<'a> for TestProducer<Item, Final, Error>
 where
-    Item: Copy + Arbitrary<'a>,
+    Item: Default + Copy + Arbitrary<'a>,
     Final: Arbitrary<'a>,
     Error: Arbitrary<'a>,
 {

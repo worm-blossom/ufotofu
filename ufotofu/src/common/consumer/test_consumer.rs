@@ -388,7 +388,7 @@ where
         }
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_error()?;
 
         {
@@ -434,7 +434,7 @@ where
 {
     async fn expose_slots<'a>(
         &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
+    ) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,
     {
@@ -442,7 +442,7 @@ where
         BulkConsumer::expose_slots(self)
     }
 
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.maybe_yield().await;
         BulkConsumer::consume_slots(self, amount)
     }

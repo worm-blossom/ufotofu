@@ -1,11 +1,9 @@
 use core::convert::{AsMut, AsRef};
 use core::fmt::Debug;
-use core::mem::MaybeUninit;
 
 use wrapper::Wrapper;
 
 use crate::common::consumer::Invariant;
-use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 invarianted_consumer_outer_type!(
@@ -111,16 +109,16 @@ impl<'a, T> BufferedConsumer for IntoSlice<'a, T> {
 }
 
 impl<'a, T: Copy> BulkConsumer for IntoSlice<'a, T> {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         if self.0.len() == self.1 {
             // We already overwrote the full slice, notify the caller via an error return.
             Err(())
         } else {
-            Ok(maybe_uninit_slice_mut(&mut self.0[self.1..]))
+            Ok(&mut self.0[self.1..])
         }
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.1 += amount;
 
         Ok(())

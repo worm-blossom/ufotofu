@@ -30,16 +30,6 @@ macro_rules! invarianted_producer_methods {
         ) -> Result<(), ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>> {
             ufotofu::sync::Producer::overwrite_full_slice(&mut self.0, buf)
         }
-
-        fn overwrite_full_slice_uninit<'b>(
-            &mut self,
-            buf: &'b mut [core::mem::MaybeUninit<Self::Item>],
-        ) -> Result<
-            &'b mut [Self::Item],
-            ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>,
-        > {
-            ufotofu::sync::Producer::overwrite_full_slice_uninit(&mut self.0, buf)
-        }
     };
 }
 
@@ -109,16 +99,6 @@ macro_rules! invarianted_bulk_producer_methods {
         ) -> Result<(), ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>> {
             ufotofu::sync::BulkProducer::bulk_overwrite_full_slice(&mut self.0, buf)
         }
-
-        fn bulk_overwrite_full_slice_uninit<'ihguiweg>(
-            &mut self,
-            buf: &'ihguiweg mut [core::mem::MaybeUninit<Self::Item>],
-        ) -> Result<
-            &'ihguiweg mut [Self::Item],
-            ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>,
-        > {
-            ufotofu::sync::BulkProducer::bulk_overwrite_full_slice_uninit(&mut self.0, buf)
-        }
     };
 }
 
@@ -147,16 +127,6 @@ macro_rules! invarianted_producer_methods_local_nb {
             buf: &'b mut [Self::Item],
         ) -> Result<(), ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>> {
             ufotofu::local_nb::Producer::overwrite_full_slice(&mut self.0, buf).await
-        }
-
-        async fn overwrite_full_slice_uninit<'b>(
-            &mut self,
-            buf: &'b mut [core::mem::MaybeUninit<Self::Item>],
-        ) -> Result<
-            &'b mut [Self::Item],
-            ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>,
-        > {
-            ufotofu::local_nb::Producer::overwrite_full_slice_uninit(&mut self.0, buf).await
         }
     };
 }
@@ -226,29 +196,11 @@ macro_rules! invarianted_bulk_producer_methods_local_nb {
             ufotofu::local_nb::BulkProducer::bulk_produce(&mut self.0, buf).await
         }
 
-        async fn bulk_produce_uninit(
-            &mut self,
-            buf: &mut [core::mem::MaybeUninit<Self::Item>],
-        ) -> Result<Either<usize, Self::Final>, Self::Error> {
-            ufotofu::local_nb::BulkProducer::bulk_produce_uninit(&mut self.0, buf).await
-        }
-
         async fn bulk_overwrite_full_slice<'kfhwkfwe>(
             &mut self,
             buf: &'kfhwkfwe mut [Self::Item],
         ) -> Result<(), ufotofu::local_nb::OverwriteFullSliceError<Self::Final, Self::Error>> {
             ufotofu::local_nb::BulkProducer::bulk_overwrite_full_slice(&mut self.0, buf).await
-        }
-
-        async fn bulk_overwrite_full_slice_uninit<'kfhwkfwe>(
-            &mut self,
-            buf: &'kfhwkfwe mut [core::mem::MaybeUninit<Self::Item>],
-        ) -> Result<
-            &'kfhwkfwe mut [Self::Item],
-            ufotofu::local_nb::OverwriteFullSliceError<Self::Final, Self::Error>,
-        > {
-            ufotofu::local_nb::BulkProducer::bulk_overwrite_full_slice_uninit(&mut self.0, buf)
-                .await
         }
     };
 }
@@ -313,16 +265,6 @@ macro_rules! sync_producer_as_local_nb {
                 ) -> Result<(), ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>> {
                     ufotofu::sync::Producer::overwrite_full_slice(self, buf)
                 }
-
-                async fn overwrite_full_slice_uninit<'b>(
-                    &mut self,
-                    buf: &'b mut [core::mem::MaybeUninit<Self::Item>],
-                ) -> Result<
-                    &'b mut [Self::Item],
-                    ufotofu::sync::OverwriteFullSliceError<Self::Final, Self::Error>,
-                > {
-                    ufotofu::sync::Producer::overwrite_full_slice_uninit(self, buf)
-                }
             }
     }
 }
@@ -369,28 +311,11 @@ macro_rules! sync_bulk_producer_as_local_nb {
                 ufotofu::sync::BulkProducer::bulk_produce(self, buf)
             }
 
-            async fn bulk_produce_uninit(
-                &mut self,
-                buf: &mut [core::mem::MaybeUninit<Self::Item>],
-            ) -> Result<Either<usize, Self::Final>, Self::Error> {
-                ufotofu::sync::BulkProducer::bulk_produce_uninit(self, buf)
-            }
-
             async fn bulk_overwrite_full_slice<'kfhwkfwe>(
                 &mut self,
                 buf: &'kfhwkfwe mut [Self::Item],
             ) -> Result<(), ufotofu::local_nb::OverwriteFullSliceError<Self::Final, Self::Error>> {
                 ufotofu::sync::BulkProducer::bulk_overwrite_full_slice(self, buf)
-            }
-
-            async fn bulk_overwrite_full_slice_uninit<'kfhwkfwe>(
-                &mut self,
-                buf: &'kfhwkfwe mut [core::mem::MaybeUninit<Self::Item>],
-            ) -> Result<
-                &'kfhwkfwe mut [Self::Item],
-                ufotofu::local_nb::OverwriteFullSliceError<Self::Final, Self::Error>,
-            > {
-                ufotofu::sync::BulkProducer::bulk_overwrite_full_slice_uninit(self, buf)
             }
         }
     }

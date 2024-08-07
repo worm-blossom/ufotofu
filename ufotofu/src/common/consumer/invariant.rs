@@ -149,7 +149,7 @@ where
             })
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_inactive();
 
         if amount > self.exposed_slots {
@@ -221,7 +221,7 @@ where
             })
     }
 
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_inactive();
 
         if amount > self.exposed_slots {

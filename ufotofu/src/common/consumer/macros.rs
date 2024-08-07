@@ -85,11 +85,11 @@ macro_rules! invarianted_impl_buffered_consumer {
 /// The method implementations of an opaque invariant wrapper around `sync::BulkConsumer`.
 macro_rules! invarianted_bulk_consumer_methods {
     () => {
-        fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+        fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
             ufotofu::sync::BulkConsumer::expose_slots(&mut self.0)
         }
 
-        unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
             ufotofu::sync::BulkConsumer::consume_slots(&mut self.0, amount)
         }
 
@@ -187,16 +187,14 @@ macro_rules! invarianted_impl_buffered_consumer_local_nb {
 /// The method implementations of an opaque invariant wrapper around `local_nb::BulkConsmer`.
 macro_rules! invarianted_bulk_consumer_methods_local_nb {
     () => {
-        async fn expose_slots<'b>(
-            &'b mut self,
-        ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
+        async fn expose_slots<'b>(&'b mut self) -> Result<&'b mut [Self::Item], Self::Error>
         where
             Self::Item: 'b,
         {
             ufotofu::local_nb::BulkConsumer::expose_slots(&mut self.0).await
         }
 
-        async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
             ufotofu::local_nb::BulkConsumer::consume_slots(&mut self.0, amount).await
         }
 
@@ -298,7 +296,7 @@ macro_rules! sync_buffered_consumer_as_local_nb {
     }
 }
 
-/// Implement `local_nb::BulkConsumer` on a type by forwarding to its implementation of `sync::NulkConsumer`.
+/// Implement `local_nb::BulkConsumer` on a type by forwarding to its implementation of `sync::BulkConsumer`.
 macro_rules! sync_bulk_consumer_as_local_nb {
     ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?) => {
         impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
@@ -308,14 +306,14 @@ macro_rules! sync_bulk_consumer_as_local_nb {
         {
             async fn expose_slots<'b>(
                 &'b mut self,
-            ) -> Result<&'b mut [MaybeUninit<Self::Item>], Self::Error>
+            ) -> Result<&'b mut [Self::Item], Self::Error>
             where
                 Self::Item: 'b,
             {
                 ufotofu::sync::BulkConsumer::expose_slots(self)
             }
 
-            async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+            async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
                 ufotofu::sync::BulkConsumer::consume_slots(self, amount)
             }
 

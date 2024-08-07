@@ -108,7 +108,7 @@ where
         self.inner.expose_slots()
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.inner.consume_slots(amount)
     }
 }
@@ -146,7 +146,7 @@ where
         self.inner.expose_slots().await
     }
 
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.inner.consume_slots(amount).await
     }
 }

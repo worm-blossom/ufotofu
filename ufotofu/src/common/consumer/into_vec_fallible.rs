@@ -1,6 +1,4 @@
 use core::fmt::Debug;
-use core::mem::MaybeUninit;
-use core::slice;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -18,7 +16,6 @@ use std::{
 use wrapper::Wrapper;
 
 use crate::common::consumer::Invariant;
-use crate::maybe_uninit_slice_mut;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
@@ -34,7 +31,10 @@ impl<T> Default for IntoVecFallible_<T> {
 
 impl<T> IntoVecFallible_<T> {
     pub fn new() -> IntoVecFallible_<T> {
-        let invariant = Invariant::new(IntoVecFallible { v: Vec::new() });
+        let invariant = Invariant::new(IntoVecFallible {
+            v: Vec::new(),
+            consumed: 0,
+        });
 
         IntoVecFallible_(invariant)
     }
@@ -49,6 +49,7 @@ impl<T, A: Allocator> IntoVecFallible_<T, A> {
     pub fn new_in(alloc: A) -> IntoVecFallible_<T, A> {
         let invariant = Invariant::new(IntoVecFallible {
             v: Vec::new_in(alloc),
+            consumed: 0,
         });
 
         IntoVecFallible_(invariant)
@@ -66,6 +67,7 @@ invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy, A: A
 #[derive(Debug)]
 struct IntoVecFallible<T, A: Allocator = Global> {
     v: Vec<T, A>,
+    consumed: usize,
 }
 
 impl<T, A: Allocator> AsRef<Vec<T, A>> for IntoVecFallible<T, A> {
@@ -86,58 +88,55 @@ impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVecFallible<T, A> {
     }
 }
 
-impl<T, A: Allocator> Consumer for IntoVecFallible<T, A> {
+impl<T: Default, A: Allocator> IntoVecFallible<T, A> {
+    fn make_space_if_needed(&mut self) -> Result<(), TryReserveError> {
+        // Allocate additional capacity to the vector if no empty slots are available.
+        if self.consumed == self.v.len() {
+            // Will return an error if capacity overflows or the allocator reports a failure.
+            self.v.try_reserve(self.consumed + 1)?;
+            self.v.resize_with(self.consumed * 2 + 1, Default::default); // Does not allocate because we reserved before.
+        }
+
+        Ok(())
+    }
+}
+
+impl<T: Default, A: Allocator> Consumer for IntoVecFallible<T, A> {
     type Item = T;
     type Final = ();
     type Error = TryReserveError;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
-        if let Err(value) = self.v.push_within_capacity(item) {
-            self.v.try_reserve((self.v.capacity() * 2) + 1)?;
-            // This cannot fail; the previous line either returned or added
-            // at least 1 free slot.
-            let _ = self.v.push_within_capacity(value);
-        }
+        // Allocate additional capacity to the vector if no empty slots are available.
+        self.make_space_if_needed();
+
+        self.v[self.consumed] = item;
+        self.consumed += 1;
 
         Ok(())
     }
 
-    fn close(&mut self, _final: Self::Final) -> Result<Self::Final, Self::Error> {
+    fn close(&mut self, _fin: Self::Final) -> Result<Self::Final, Self::Error> {
         Ok(())
     }
 }
 
-impl<T, A: Allocator> BufferedConsumer for IntoVecFallible<T, A> {
+impl<T: Default, A: Allocator> BufferedConsumer for IntoVecFallible<T, A> {
     fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
-impl<T: Copy, A: Allocator> BulkConsumer for IntoVecFallible<T, A> {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
+impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVecFallible<T, A> {
+    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         // Allocate additional capacity to the vector if no empty slots are available.
-        if self.v.capacity() == self.v.len() {
-            // Will return an error if capacity overflows or the allocator reports a failure.
-            self.v.try_reserve((self.v.capacity() * 2) + 1)?;
-        }
+        self.make_space_if_needed();
 
-        let pointer = self.v.as_mut_ptr();
-        let available_capacity = self.v.capacity() - self.v.len();
-
-        unsafe {
-            // Return a mutable slice which represents available (unused) slots.
-            Ok(maybe_uninit_slice_mut(slice::from_raw_parts_mut(
-                // The pointer offset.
-                pointer.add(self.v.len()),
-                // The length (number of slots).
-                available_capacity,
-            )))
-        }
+        Ok(&mut self.v[self.consumed..])
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        // Update the length of the vector based on the amount of items consumed.
-        self.v.set_len(self.v.len() + amount);
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        self.consumed += amount;
 
         Ok(())
     }
@@ -213,9 +212,7 @@ mod tests {
         let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
         let _ = into_vec.close(());
 
-        unsafe {
-            let _ = into_vec.consume_slots(7);
-        }
+        let _ = into_vec.consume_slots(7);
     }
 
     #[test]
@@ -233,8 +230,6 @@ mod tests {
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
 
-        unsafe {
-            let _ = into_vec.consume_slots(21);
-        }
+        let _ = into_vec.consume_slots(21);
     }
 }

@@ -1,8 +1,6 @@
-use core::mem::MaybeUninit;
-
 use wrapper::Wrapper;
 
-use crate::local_nb::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::local_nb::{BufferedConsumer, BulkConsumer, ConsumeFullSliceError, Consumer};
 use crate::sync;
 
 /// Turns a [`sync::Consumer`](crate::sync::Consumer) into a [`local_nb::Consumer`](crate::local_nb::Consumer). Only use this to wrap types that never block and do not perform time-intensive computations.
@@ -44,6 +42,16 @@ impl<C: sync::Consumer> Consumer for SyncToLocalNb<C> {
     async fn close(&mut self, f: Self::Final) -> Result<(), Self::Error> {
         self.0.close(f)
     }
+
+    async fn consume_full_slice(
+        &mut self,
+        buf: &[Self::Item],
+    ) -> Result<(), ConsumeFullSliceError<Self::Error>>
+    where
+        Self::Item: Clone,
+    {
+        self.0.consume_full_slice(buf)
+    }
 }
 
 impl<C: sync::BufferedConsumer> BufferedConsumer for SyncToLocalNb<C> {
@@ -56,20 +64,25 @@ impl<C: sync::BulkConsumer> BulkConsumer for SyncToLocalNb<C>
 where
     Self::Item: Copy,
 {
-    async fn expose_slots<'a>(
-        &'a mut self,
-    ) -> Result<&'a mut [MaybeUninit<Self::Item>], Self::Error>
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,
     {
         self.0.expose_slots()
     }
 
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.0.consume_slots(amount)
     }
 
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
         self.0.bulk_consume(buf)
+    }
+
+    async fn bulk_consume_full_slice(
+        &mut self,
+        buf: &[Self::Item],
+    ) -> Result<(), ConsumeFullSliceError<Self::Error>> {
+        self.0.bulk_consume_full_slice(buf)
     }
 }

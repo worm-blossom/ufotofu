@@ -1,6 +1,4 @@
 use core::fmt::Debug;
-use core::mem::MaybeUninit;
-use core::slice;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -15,147 +13,140 @@ use std::{
 
 use wrapper::Wrapper;
 
-use crate::common::consumer::Invariant;
-use crate::maybe_uninit_slice_mut;
+use crate::common::consumer::IntoVecFallible;
+
+use crate::local_nb::{
+    BufferedConsumer as BufferedConsumerLocalNb, BulkConsumer as BulkConsumerLocalNb,
+    Consumer as ConsumerLocalNb,
+};
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Collects data and can at any point be converted into a `Vec<T>`.
-pub struct IntoVec_<T, A: Allocator = Global>(Invariant<IntoVec<T, A>>);
+pub struct IntoVec<T, A: Allocator = Global>(IntoVecFallible<T, A>);
 
-invarianted_impl_debug!(IntoVec_<T: Debug, A: Allocator + Debug>);
+impl<T: Debug, A: Allocator + Debug> core::fmt::Debug for IntoVec<T, A> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
-impl<T> Default for IntoVec_<T> {
+impl<T: Default> Default for IntoVec<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> IntoVec_<T> {
+impl<T> IntoVec<T> {
     /// Create a new consumer that collects data into a Vec.
-    pub fn new() -> IntoVec_<T> {
-        let invariant = Invariant::new(IntoVec(Vec::new()));
-
-        IntoVec_(invariant)
+    pub fn new() -> IntoVec<T> {
+        IntoVec(IntoVecFallible::new())
     }
 
     /// Convert `self` into the vector of all consumed items.
     pub fn into_vec(self) -> Vec<T> {
-        let inner = self.0.into_inner();
-        inner.into_inner()
-    }
-
-    /// Return the remaining capacity of the vector, i.e., how many more items it can consume without reallocating.
-    pub fn remaining_capacity(&self) -> usize {
-        self.0.as_ref().remaining_capacity()
-    }
-
-    /// Allocate capacity for at least `additional` more items. See [`std::vec::Vec::reserve`].
-    pub fn reserve(&mut self, additional: usize) {
-        self.0.as_mut().reserve(additional)
+        self.0.into_inner()
     }
 }
-
-impl<T, A: Allocator> IntoVec_<T, A> {
-    pub fn new_in(alloc: A) -> IntoVec_<T, A> {
-        let invariant = Invariant::new(IntoVec(Vec::new_in(alloc)));
-
-        IntoVec_(invariant)
-    }
-}
-
-invarianted_impl_as_ref!(IntoVec_<T, A: Allocator>; Vec<T, A>);
-invarianted_impl_as_mut!(IntoVec_<T, A: Allocator>; Vec<T, A>);
-invarianted_impl_wrapper!(IntoVec_<T, A: Allocator>; Vec<T, A>);
-
-invarianted_impl_consumer_sync_and_local_nb!(IntoVec_<T, A: Allocator> Item T; Final (); Error !);
-invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVec_<T, A: Allocator>);
-invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVec_<T: Copy, A: Allocator>);
-
-#[derive(Debug)]
-struct IntoVec<T, A: Allocator = Global>(Vec<T, A>);
 
 impl<T, A: Allocator> IntoVec<T, A> {
-    fn remaining_capacity(&self) -> usize {
-        self.0.capacity() - self.0.len()
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.0.reserve(additional)
+    pub fn new_in(alloc: A) -> IntoVec<T, A> {
+        IntoVec(IntoVecFallible::new_in(alloc))
     }
 }
 
 impl<T, A: Allocator> AsRef<Vec<T, A>> for IntoVec<T, A> {
     fn as_ref(&self) -> &Vec<T, A> {
-        &self.0
+        self.0.as_ref()
     }
 }
 
 impl<T, A: Allocator> AsMut<Vec<T, A>> for IntoVec<T, A> {
     fn as_mut(&mut self) -> &mut Vec<T, A> {
-        &mut self.0
+        self.0.as_mut()
     }
 }
 
 impl<T, A: Allocator> Wrapper<Vec<T, A>> for IntoVec<T, A> {
     fn into_inner(self) -> Vec<T, A> {
-        self.0
+        self.0.into_inner()
     }
 }
 
-impl<T, A: Allocator> Consumer for IntoVec<T, A> {
+impl<T: Default, A: Allocator> Consumer for IntoVec<T, A> {
     type Item = T;
     type Final = ();
     type Error = !;
 
     fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
-        self.0.push(item);
-
-        Ok(())
+        Ok(Consumer::consume(&mut self.0, item).expect("Out of memory"))
     }
 
-    fn close(&mut self, _final: Self::Final) -> Result<Self::Final, Self::Error> {
-        Ok(())
+    fn close(&mut self, fin: Self::Final) -> Result<Self::Final, Self::Error> {
+        Ok(Consumer::close(&mut self.0, fin).expect("Out of memory"))
     }
 }
 
-impl<T, A: Allocator> BufferedConsumer for IntoVec<T, A> {
+impl<T: Default, A: Allocator> BufferedConsumer for IntoVec<T, A> {
     fn flush(&mut self) -> Result<(), Self::Error> {
-        Ok(())
+        Ok(BufferedConsumer::flush(&mut self.0).expect("Out of memory"))
     }
 }
 
-impl<T: Copy, A: Allocator> BulkConsumer for IntoVec<T, A> {
-    fn expose_slots(&mut self) -> Result<&mut [MaybeUninit<Self::Item>], Self::Error> {
-        // Allocate additional capacity to the vector if no empty slots are available.
-        if self.0.capacity() == self.0.len() {
-            self.0.reserve((self.0.capacity() * 2) + 1);
-        }
-
-        let pointer = self.0.as_mut_ptr();
-        let available_capacity = self.0.capacity() - self.0.len();
-
-        unsafe {
-            // Return a mutable slice which represents available (unused) slots.
-            Ok(maybe_uninit_slice_mut(slice::from_raw_parts_mut(
-                // The pointer offset.
-                pointer.add(self.0.len()),
-                // The length (number of slots).
-                available_capacity,
-            )))
-        }
+impl<T: Default + Copy, A: Allocator> BulkConsumer for IntoVec<T, A> {
+    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
+        Ok(BulkConsumer::expose_slots(&mut self.0).expect("Out of memory"))
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        // Update the length of the vector based on the amount of items consumed.
-        self.0.set_len(self.0.len() + amount);
-
-        Ok(())
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        Ok(BulkConsumer::consume_slots(&mut self.0, amount).expect("Out of memory"))
     }
 }
 
-sync_consumer_as_local_nb!(IntoVec<T, A: Allocator>);
-sync_buffered_consumer_as_local_nb!(IntoVec<T, A: Allocator>);
-sync_bulk_consumer_as_local_nb!(IntoVec<T: Copy, A: Allocator>);
+impl<T: Default, A: Allocator> ConsumerLocalNb for IntoVec<T, A> {
+    type Item = T;
+    type Final = ();
+    type Error = !;
+
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+        Ok(ConsumerLocalNb::consume(&mut self.0, item)
+            .await
+            .expect("Out of memory"))
+    }
+
+    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+        Ok(ConsumerLocalNb::close(&mut self.0, fin)
+            .await
+            .expect("Out of memory"))
+    }
+}
+
+impl<T: Default, A: Allocator> BufferedConsumerLocalNb for IntoVec<T, A> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(BufferedConsumerLocalNb::flush(&mut self.0)
+            .await
+            .expect("Out of memory"))
+    }
+}
+
+impl<T: Default, A: Allocator> BulkConsumerLocalNb for IntoVec<T, A>
+where
+    T: Copy,
+{
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
+    where
+        Self::Item: 'a,
+    {
+        Ok(BulkConsumerLocalNb::expose_slots(&mut self.0)
+            .await
+            .expect("Out of memory"))
+    }
+
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+        Ok(BulkConsumerLocalNb::consume_slots(&mut self.0, amount)
+            .await
+            .expect("Out of memory"))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -232,9 +223,7 @@ mod tests {
         let mut into_vec: IntoVec<u8> = IntoVec::new();
         let _ = into_vec.close(());
 
-        unsafe {
-            let _ = into_vec.consume_slots(7);
-        }
+        let _ = into_vec.consume_slots(7);
     }
 
     #[test]
@@ -252,8 +241,6 @@ mod tests {
     fn panics_on_did_consume_with_amount_greater_than_available_slots() {
         let mut into_vec: IntoVec<u8> = IntoVec::new();
 
-        unsafe {
-            let _ = into_vec.consume_slots(21);
-        }
+        let _ = into_vec.consume_slots(21);
     }
 }

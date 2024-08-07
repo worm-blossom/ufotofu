@@ -292,7 +292,7 @@ where
         }
     }
 
-    unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.buffer.consider_enqueued(amount);
 
         Ok(())
@@ -391,7 +391,7 @@ where
         }
     }
 
-    async unsafe fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.buffer.consider_enqueued(amount);
 
         Ok(())

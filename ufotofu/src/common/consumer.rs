@@ -7,7 +7,7 @@ pub use into_slice::IntoSlice_ as IntoSlice;
 #[cfg(feature = "alloc")]
 mod into_vec;
 #[cfg(feature = "alloc")]
-pub use into_vec::IntoVec_ as IntoVec;
+pub use into_vec::IntoVec;
 
 #[cfg(feature = "alloc")]
 mod into_vec_fallible;
