@@ -22,7 +22,7 @@ fuzz_target!(|data: (Vec<Operation<u8>>, usize)| {
     let capacity = data.1;
 
     // Restrict capacity to between 1 and 2048 bytes (inclusive).
-    if capacity < 1 || capacity > 2048 {
+    if !(1..=2048).contains(&capacity) {
         return;
     }
 
@@ -35,10 +35,10 @@ fuzz_target!(|data: (Vec<Operation<u8>>, usize)| {
                 let control_result = if control.len() >= capacity {
                     Some(item)
                 } else {
-                    control.push_back(item.clone());
+                    control.push_back(item);
                     None
                 };
-                let test_result = test.enqueue(item.clone());
+                let test_result = test.enqueue(item);
                 assert_eq!(test_result, control_result);
             }
             Operation::Dequeue => {
@@ -52,7 +52,7 @@ fuzz_target!(|data: (Vec<Operation<u8>>, usize)| {
                     if count >= amount {
                         break;
                     } else {
-                        control.push_back(item.clone());
+                        control.push_back(*item);
                     }
                 }
             }
@@ -60,13 +60,12 @@ fuzz_target!(|data: (Vec<Operation<u8>>, usize)| {
                 let n = n as usize;
                 if n > 0 {
                     let mut control_buffer = vec![];
-                    let mut test_buffer = vec![];
-                    test_buffer.resize(n, 0_u8);
+                    let mut test_buffer = vec![0; n];
 
                     let test_amount = test.bulk_dequeue(&mut test_buffer);
                     for _ in 0..test_amount {
                         if let Some(item) = control.pop_front() {
-                            control_buffer.push(item.clone());
+                            control_buffer.push(item);
                         }
                     }
 

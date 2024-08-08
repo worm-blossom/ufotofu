@@ -19,7 +19,7 @@ fuzz_target!(|data: (Vec<Operation<u8>>, usize)| {
     let capacity = data.1;
 
     // Restrict capacity to between 1 and 2048 bytes (inclusive).
-    if capacity < 1 || capacity > 2048 {
+    if !(1..=2048).contains(&capacity) {
         return;
     }
 
@@ -32,10 +32,10 @@ fuzz_target!(|data: (Vec<Operation<u8>>, usize)| {
                 let control_result = if control.len() >= capacity {
                     Some(item)
                 } else {
-                    control.push_back(item.clone());
+                    control.push_back(item);
                     None
                 };
-                let test_result = test.enqueue(item.clone());
+                let test_result = test.enqueue(item);
                 assert_eq!(test_result, control_result);
             }
             Operation::Dequeue => {

@@ -26,10 +26,10 @@ fuzz_target!(|data: Vec<Operation<u8>>| {
                 let control_result = if control.len() >= 42 {
                     Some(item)
                 } else {
-                    control.push_back(item.clone());
+                    control.push_back(item);
                     None
                 };
-                let test_result = test.enqueue(item.clone());
+                let test_result = test.enqueue(item);
                 assert_eq!(test_result, control_result);
             }
             Operation::Dequeue => {

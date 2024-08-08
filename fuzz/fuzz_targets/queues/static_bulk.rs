@@ -29,10 +29,10 @@ fuzz_target!(|data: Vec<Operation<u8>>| {
                 let control_result = if control.len() >= 42 {
                     Some(item)
                 } else {
-                    control.push_back(item.clone());
+                    control.push_back(item);
                     None
                 };
-                let test_result = test.enqueue(item.clone());
+                let test_result = test.enqueue(item);
                 assert_eq!(test_result, control_result);
             }
             Operation::Dequeue => {
@@ -46,7 +46,7 @@ fuzz_target!(|data: Vec<Operation<u8>>| {
                     if count >= amount {
                         break;
                     } else {
-                        control.push_back(item.clone());
+                        control.push_back(*item);
                     }
                 }
             }
@@ -54,13 +54,12 @@ fuzz_target!(|data: Vec<Operation<u8>>| {
                 let n = n as usize;
                 if n > 0 {
                     let mut control_buffer = vec![];
-                    let mut test_buffer = vec![];
-                    test_buffer.resize(n, 0_u8);
+                    let mut test_buffer = vec![0; n];
 
                     let test_amount = test.bulk_dequeue(&mut test_buffer);
                     for _ in 0..test_amount {
                         if let Some(item) = control.pop_front() {
-                            control_buffer.push(item.clone());
+                            control_buffer.push(item);
                         }
                     }
 
