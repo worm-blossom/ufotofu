@@ -10,139 +10,168 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
 smol = "2.0.0"
-ufotofu = { path = "..", features = ["dev"] }
+ufotofu = { path = "../ufotofu", features = ["dev"] }
+ufotofu_queues = { path = "../ufotofu_queues", features = ["std"] }
 wrapper = "0.1.1"
 either = "1.10.0"
 
+# [[bin]]
+# name = "slices"
+# path = "fuzz_targets/sync/slices.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "into_vec"
+# path = "fuzz_targets/sync/into_vec.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "into_vec_fallible"
+# path = "fuzz_targets/sync/into_vec_fallible.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "scramble_consumer"
+# path = "fuzz_targets/sync/scramble_consumer.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "scramble_producer"
+# path = "fuzz_targets/sync/scramble_producer.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_slices"
+# path = "fuzz_targets/local_nb/slices.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_into_vec"
+# path = "fuzz_targets/local_nb/into_vec.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_into_vec_fallible"
+# path = "fuzz_targets/local_nb/into_vec_fallible.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_scramble_consumer"
+# path = "fuzz_targets/local_nb/scramble_consumer.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_scramble_producer"
+# path = "fuzz_targets/local_nb/scramble_producer.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "sync_pipe_into_slice"
+# path = "fuzz_targets/sync/pipe_into_slice.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "sync_bulk_pipe_into_slice"
+# path = "fuzz_targets/sync/bulk_pipe_into_slice.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "sync_pipe_into_slice_uninit"
+# path = "fuzz_targets/sync/pipe_into_slice_uninit.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "sync_bulk_pipe_into_slice_uninit"
+# path = "fuzz_targets/sync/bulk_pipe_into_slice_uninit.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "sync_pipe_from_slice"
+# path = "fuzz_targets/sync/pipe_from_slice.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_pipe_into_slice"
+# path = "fuzz_targets/local_nb/pipe_into_slice.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_bulk_pipe_into_slice"
+# path = "fuzz_targets/local_nb/bulk_pipe_into_slice.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_pipe_into_slice_uninit"
+# path = "fuzz_targets/local_nb/pipe_into_slice_uninit.rs"
+# test = false
+# doc = false
+# bench = false
+
+# [[bin]]
+# name = "local_nb_bulk_pipe_into_slice_uninit"
+# path = "fuzz_targets/local_nb/bulk_pipe_into_slice_uninit.rs"
+# test = false
+# doc = false
+# bench = false
+
 [[bin]]
-name = "slices"
-path = "fuzz_targets/sync/slices.rs"
+name = "queues_fixed_bulk"
+path = "fuzz_targets/queues/fixed_bulk.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "into_vec"
-path = "fuzz_targets/sync/into_vec.rs"
+name = "queues_fixed_enqueue_dequeue"
+path = "fuzz_targets/queues/fixed_enqueue_dequeue.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "into_vec_fallible"
-path = "fuzz_targets/sync/into_vec_fallible.rs"
+name = "queues_static_bulk"
+path = "fuzz_targets/queues/static_bulk.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "scramble_consumer"
-path = "fuzz_targets/sync/scramble_consumer.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "scramble_producer"
-path = "fuzz_targets/sync/scramble_producer.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_slices"
-path = "fuzz_targets/local_nb/slices.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_into_vec"
-path = "fuzz_targets/local_nb/into_vec.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_into_vec_fallible"
-path = "fuzz_targets/local_nb/into_vec_fallible.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_scramble_consumer"
-path = "fuzz_targets/local_nb/scramble_consumer.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_scramble_producer"
-path = "fuzz_targets/local_nb/scramble_producer.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_pipe_into_slice"
-path = "fuzz_targets/sync/pipe_into_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_bulk_pipe_into_slice"
-path = "fuzz_targets/sync/bulk_pipe_into_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_pipe_into_slice_uninit"
-path = "fuzz_targets/sync/pipe_into_slice_uninit.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_bulk_pipe_into_slice_uninit"
-path = "fuzz_targets/sync/bulk_pipe_into_slice_uninit.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_pipe_from_slice"
-path = "fuzz_targets/sync/pipe_from_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_pipe_into_slice"
-path = "fuzz_targets/local_nb/pipe_into_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_bulk_pipe_into_slice"
-path = "fuzz_targets/local_nb/bulk_pipe_into_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_pipe_into_slice_uninit"
-path = "fuzz_targets/local_nb/pipe_into_slice_uninit.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_bulk_pipe_into_slice_uninit"
-path = "fuzz_targets/local_nb/bulk_pipe_into_slice_uninit.rs"
+name = "queues_static_enqueue_dequeue"
+path = "fuzz_targets/queues/static_enqueue_dequeue.rs"
 test = false
 doc = false
 bench = false

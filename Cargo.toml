@@ -1,39 +1,4 @@
-[package]
-name = "ufotofu"
-version = "0.3.0"
-edition = "2021"
-readme = "README.md"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/worm-blossom/ufotofu"
-description = "Abstractions for lazily consuming and producing sequences"
-exclude = [
-    "fuzz/*",
-    ".github/workflows/rust.yml",
-]
+[workspace]
 
-[features]
-
-default = ["std"]
-
-# Provide functionality that relies on the std library. Enabled by default.
-std = ["alloc"]
-
-# Provide functionality that relies on dynamic memory allocation.
-alloc = []
-
-# Provide implementations for development helpers.
-dev = ["dep:arbitrary"]
-
-[dependencies]
-arbitrary = { version = "1.0.2", features = ["derive"], optional = true}
-either = "1.10.0"
-ufotofu_queues = "0.4.0"
-wrapper = "0.1.1"
-
-[dev-dependencies]
-smol = "2.0.0"
-
-# docs.rs-specific configuration
-[package.metadata.docs.rs]
-# document all features
-all-features = true
+members = ["ufotofu", "ufotofu_queues", "fuzz"]
+resolver = "2"
