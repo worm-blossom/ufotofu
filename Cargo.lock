@@ -456,7 +456,7 @@ checksum = "c06d3da6113f116aaee68e4d601191614c9053067f9ab7f6edbcb161237daa54"
 
 [[package]]
 name = "ufotofu"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "arbitrary",
  "either",
