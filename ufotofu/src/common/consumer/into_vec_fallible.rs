@@ -152,6 +152,13 @@ mod tests {
     use super::super::*;
     use crate::sync::*;
 
+    // The debug output hides the internals of using semantically transparent wrappers.
+    #[test]
+    fn debug_output_hides_transparent_wrappers() {
+        let consumer: IntoVecFallible<u8> = IntoVecFallible::new();
+        assert_eq!(std::format!("{:?}", consumer), "IntoVecFallible { v: [], consumed: 0 }");
+    }
+
     #[test]
     fn converts_into_vec() {
         let mut into_vec = IntoVecFallible::new();

@@ -19,14 +19,9 @@ use crate::local_nb::{
 };
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+#[derive(Debug)]
 /// Collects data and can at any point be converted into a `Vec<T>`.
 pub struct IntoVec<T>(IntoVecFallible<T>);
-
-impl<T: Debug> core::fmt::Debug for IntoVec<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        self.0.fmt(f)
-    }
-}
 
 impl<T: Default> Default for IntoVec<T> {
     fn default() -> Self {
@@ -169,7 +164,10 @@ mod tests {
     #[test]
     fn debug_output_hides_transparent_wrappers() {
         let consumer: IntoVec<u8> = IntoVec::new();
-        assert_eq!(format!("{:?}", consumer), "IntoVec([])");
+        assert_eq!(
+            format!("{:?}", consumer),
+            "IntoVec(IntoVecFallible { v: [], consumed: 0 })"
+        );
     }
 
     #[test]
