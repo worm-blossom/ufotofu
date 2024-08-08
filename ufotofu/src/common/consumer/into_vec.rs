@@ -115,15 +115,15 @@ impl<T: Default> ConsumerLocalNb for IntoVec<T> {
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         ConsumerLocalNb::consume(&mut self.0, item)
-        .await
-        .expect("Out of memory");
+            .await
+            .expect("Out of memory");
         Ok(())
     }
 
     async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
         ConsumerLocalNb::close(&mut self.0, fin)
-        .await
-        .expect("Out of memory");
+            .await
+            .expect("Out of memory");
         Ok(())
     }
 }
@@ -131,8 +131,8 @@ impl<T: Default> ConsumerLocalNb for IntoVec<T> {
 impl<T: Default> BufferedConsumerLocalNb for IntoVec<T> {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         BufferedConsumerLocalNb::flush(&mut self.0)
-        .await
-        .expect("Out of memory");
+            .await
+            .expect("Out of memory");
         Ok(())
     }
 }
@@ -152,8 +152,8 @@ where
 
     async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         BulkConsumerLocalNb::consume_slots(&mut self.0, amount)
-        .await
-        .expect("Out of memory");
+            .await
+            .expect("Out of memory");
         Ok(())
     }
 }
