@@ -46,13 +46,16 @@ impl<T: Default> IntoVecFallible_<T> {
         self.0.as_mut().make_space_if_needed()
     }
 
+    pub(crate) fn make_space_even_if_not_needed(&mut self) -> Result<(), TryReserveError> {
+        self.0.as_mut().make_space_even_if_not_needed()
+    }
+
     pub(crate) fn remaining_slots(&self) -> usize {
         self.0.as_ref().remaining_slots()
     }
 }
 
-invarianted_impl_as_ref!(IntoVecFallible_<T>; Vec<T>);
-invarianted_impl_as_mut!(IntoVecFallible_<T>; Vec<T>);
+invarianted_impl_as_ref!(IntoVecFallible_<T>; [T]);
 invarianted_impl_wrapper!(IntoVecFallible_<T>; Vec<T>);
 
 invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default> Item T; Final (); Error TryReserveError);
@@ -65,15 +68,9 @@ struct IntoVecFallible<T> {
     consumed: usize,
 }
 
-impl<T> AsRef<Vec<T>> for IntoVecFallible<T> {
-    fn as_ref(&self) -> &Vec<T> {
-        &self.v
-    }
-}
-
-impl<T> AsMut<Vec<T>> for IntoVecFallible<T> {
-    fn as_mut(&mut self) -> &mut Vec<T> {
-        &mut self.v
+impl<T> AsRef<[T]> for IntoVecFallible<T> {
+    fn as_ref(&self) -> &[T] {
+        &self.v[..self.consumed]
     }
 }
 
@@ -93,6 +90,14 @@ impl<T: Default> IntoVecFallible<T> {
             self.v.try_reserve(self.consumed + 1)?;
             self.v.resize_with(self.consumed * 2 + 1, Default::default); // Does not allocate because we reserved before.
         }
+
+        Ok(())
+    }
+
+    fn make_space_even_if_not_needed(&mut self) -> Result<(), TryReserveError> {
+        // Will return an error if capacity overflows or the allocator reports a failure.
+        self.v.try_reserve(self.v.len() + 1)?;
+        self.v.resize_with(self.v.len() * 2 + 1, Default::default); // Does not allocate because we reserved before.
 
         Ok(())
     }
@@ -156,7 +161,10 @@ mod tests {
     #[test]
     fn debug_output_hides_transparent_wrappers() {
         let consumer: IntoVecFallible<u8> = IntoVecFallible::new();
-        assert_eq!(std::format!("{:?}", consumer), "IntoVecFallible { v: [], consumed: 0 }");
+        assert_eq!(
+            std::format!("{:?}", consumer),
+            "IntoVecFallible { v: [], consumed: 0 }"
+        );
     }
 
     #[test]

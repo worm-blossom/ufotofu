@@ -41,15 +41,9 @@ impl<T> IntoVec<T> {
     }
 }
 
-impl<T> AsRef<Vec<T>> for IntoVec<T> {
-    fn as_ref(&self) -> &Vec<T> {
+impl<T> AsRef<[T]> for IntoVec<T> {
+    fn as_ref(&self) -> &[T] {
         self.0.as_ref()
-    }
-}
-
-impl<T> AsMut<Vec<T>> for IntoVec<T> {
-    fn as_mut(&mut self) -> &mut Vec<T> {
-        self.0.as_mut()
     }
 }
 
@@ -66,6 +60,12 @@ impl<T: Default> IntoVec<T> {
 
     pub(crate) fn make_space_if_needed(&mut self) {
         self.0.make_space_if_needed().expect("Out of memory")
+    }
+
+    pub(crate) fn make_space_even_if_not_needed(&mut self) {
+        self.0
+            .make_space_even_if_not_needed()
+            .expect("Out of memory")
     }
 }
 

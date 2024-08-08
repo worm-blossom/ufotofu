@@ -2,6 +2,7 @@ use core::cmp::min;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::num::NonZeroUsize;
+use std::println;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{boxed::Box, vec::Vec};
@@ -377,7 +378,7 @@ where
                 let min_len = min(max_len, 2048);
 
                 while self.inner.remaining_slots() < min_len {
-                    self.inner.make_space_if_needed();
+                    self.inner.make_space_even_if_not_needed();
                 }
 
                 let inner_slots = BulkConsumer::expose_slots(&mut self.inner).unwrap(); // may unwrap because Err<!>
@@ -443,5 +444,21 @@ where
     async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.maybe_yield().await;
         BulkConsumer::consume_slots(self, amount)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ufotofu::sync::consumer::*;
+    use ufotofu::sync::*;
+
+    #[test]
+    fn foo() {
+        let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999)
+            .exposed_slot_sizes(std::vec![76.try_into().unwrap(), 1.try_into().unwrap()].into())
+            .build();
+        assert_eq!(76, con.expose_slots().unwrap().len());
+        assert_eq!(1, con.expose_slots().unwrap().len());
+        assert_eq!(76, con.expose_slots().unwrap().len());
     }
 }
