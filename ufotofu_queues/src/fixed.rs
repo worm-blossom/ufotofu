@@ -72,7 +72,7 @@ impl<T> Fixed<T> {
     }
 
     /// Return a slice containing the next items that should be read.
-    fn readable_slice(&mut self) -> &[MaybeUninit<T>] {
+    fn readable_slice(&mut self) -> &[T] {
         if self.is_data_contiguous() {
             &self.data[self.read..self.write_to()]
         } else {
@@ -81,7 +81,7 @@ impl<T> Fixed<T> {
     }
 
     /// Return a slice containing the next slots that should be written to.
-    fn writeable_slice(&mut self) -> &mut [MaybeUninit<T>] {
+    fn writeable_slice(&mut self) -> &mut [T] {
         let capacity = self.capacity();
         let write_to = self.write_to();
         if self.is_data_contiguous() {
@@ -217,7 +217,7 @@ impl<T: Copy> Queue for Fixed<T> {
     /// exposed to contain initialized memory after this call, even if the memory it exposed was
     /// originally uninitialized. Violating the invariants will cause the queue to read undefined
     /// memory, which triggers undefined behavior.
-    unsafe fn consider_enqueued(&mut self, amount: usize) {
+    fn consider_enqueued(&mut self, amount: usize) {
         self.amount += amount;
     }
 
@@ -233,7 +233,7 @@ impl<T: Copy> Queue for Fixed<T> {
             self.read = (self.read + 1) % self.capacity();
             self.amount -= 1;
 
-            Some(unsafe { self.data[previous_read].assume_init() })
+            Some(self.data[previous_read])
         }
     }
 
@@ -244,7 +244,7 @@ impl<T: Copy> Queue for Fixed<T> {
         if self.amount == 0 {
             None
         } else {
-            Some(unsafe { crate::slice_assume_init_ref(self.readable_slice()) })
+            Some(self.readable_slice())
         }
     }
 

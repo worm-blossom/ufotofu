@@ -154,3 +154,24 @@ path = "fuzz_targets/queues/fixed_bulk.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "queues_fixed_enqueue_dequeue"
+path = "fuzz_targets/queues/fixed_enqueue_dequeue.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "queues_static_bulk"
+path = "fuzz_targets/queues/static_bulk.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "queues_static_enqueue_dequeue"
+path = "fuzz_targets/queues/static_enqueue_dequeue.rs"
+test = false
+doc = false
+bench = false

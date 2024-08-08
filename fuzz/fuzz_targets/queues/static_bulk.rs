@@ -1,5 +1,6 @@
 #![no_main]
 
+use libfuzzer_sys::arbitrary;
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 
