@@ -1,13 +1,13 @@
 #![no_main]
 
-use libfuzzer_sys::arbitrary;
 use arbitrary::Arbitrary;
+use libfuzzer_sys::arbitrary;
 use libfuzzer_sys::fuzz_target;
 
 use std::collections::VecDeque;
 
-use ufotofu_queues::Static;
 use ufotofu_queues::Queue;
+use ufotofu_queues::Static;
 
 #[derive(Debug, Arbitrary)]
 enum Operation<T> {

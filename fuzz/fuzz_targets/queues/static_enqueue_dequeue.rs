@@ -1,8 +1,8 @@
 #![no_main]
 use std::collections::VecDeque;
 
-use libfuzzer_sys::arbitrary;
 use arbitrary::Arbitrary;
+use libfuzzer_sys::arbitrary;
 use libfuzzer_sys::fuzz_target;
 
 use ufotofu_queues::Queue;
