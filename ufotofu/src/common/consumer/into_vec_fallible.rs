@@ -42,10 +42,6 @@ impl<T> IntoVecFallible_<T> {
 }
 
 impl<T: Default> IntoVecFallible_<T> {
-    pub(crate) fn make_space_if_needed(&mut self) -> Result<(), TryReserveError> {
-        self.0.as_mut().make_space_if_needed()
-    }
-
     pub(crate) fn make_space_even_if_not_needed(&mut self) -> Result<(), TryReserveError> {
         self.0.as_mut().make_space_even_if_not_needed()
     }

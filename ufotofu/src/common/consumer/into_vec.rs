@@ -58,10 +58,6 @@ impl<T: Default> IntoVec<T> {
         self.0.remaining_slots()
     }
 
-    pub(crate) fn make_space_if_needed(&mut self) {
-        self.0.make_space_if_needed().expect("Out of memory")
-    }
-
     pub(crate) fn make_space_even_if_not_needed(&mut self) {
         self.0
             .make_space_even_if_not_needed()
