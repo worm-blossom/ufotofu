@@ -175,11 +175,11 @@ mod tests {
     #[test]
     fn converts_into_vec() {
         let mut into_vec = IntoVec::new();
-        let _ = into_vec.bulk_consume(b"ufotofu");
+        let _ = into_vec.bulk_consume_full_slice(b"ufotofu");
         let _ = into_vec.close(());
 
-        let vec = into_vec.into_vec();
-        assert_eq!(vec.len(), 7);
+        let v = into_vec.into_vec();
+        assert_eq!(v, std::vec![117, 102, 111, 116, 111, 102, 117]);
     }
 
     // Panic conditions:
