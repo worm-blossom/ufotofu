@@ -24,9 +24,6 @@ alloc = []
 # Provide implementations for development helpers.
 dev = ["dep:arbitrary"]
 
-# Enable functionality that requires nightly Rust, such as allocator-aware APIs.
-nightly = []
-
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true}
 either = "1.10.0"

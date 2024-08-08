@@ -50,8 +50,6 @@
 //! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
 //!
 //! All functionality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
-//!
-//! All functionality that relies on nightly features is gated behind the `std` feature flag (disabled by default).
 
 #[cfg(feature = "std")]
 extern crate std;
