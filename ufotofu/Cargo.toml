@@ -12,7 +12,6 @@ exclude = [
 ]
 
 [features]
-
 default = ["std"]
 
 # Provide functionality that relies on the std library. Enabled by default.

@@ -1,6 +1,9 @@
+#[cfg(not(feature = "std"))]
 use core::error::Error;
 use core::fmt::{Debug, Display};
 use either::Either;
+#[cfg(feature = "std")]
+use std::error::Error;
 
 /// Everything that can go wrong when piping a `Producer` into a `Consumer`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
