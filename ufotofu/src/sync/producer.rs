@@ -11,6 +11,10 @@
 //! The [Scramble] adaptor exists for testing producers; it turns a "sensible" pattern of `produce`, `bulk_produce` and `slurp` calls into a much wilder (but still valid) pattern of method calls on the wrapped producer. This is useful for testing corner-cases (you'd rarely write test code that slurps multple times in succession by hand, for example). To generate the method call patterns, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 //!
 //! The [TestProducer] exists for testing code that interacts with a producer; it provides customisable behavior of which items to emit, when to emit the final item or an error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
+//!
+//! ## Compatibility
+//!
+//! To use a [`Producer`] as an [`Iterator`], wrap it in a [`ProducerToIterator`]. To use an [`Iterator`] as a [`Producer`], wrap it in a [`IteratorToProducer`].
 
 pub use crate::common::producer::{FromSlice, Invariant};
 
@@ -19,3 +23,6 @@ pub use crate::common::producer::FromBoxedSlice;
 
 #[cfg(feature = "dev")]
 pub use crate::common::producer::{ProduceOperations, Scramble, TestProducer};
+
+mod iter;
+pub use iter::*;
