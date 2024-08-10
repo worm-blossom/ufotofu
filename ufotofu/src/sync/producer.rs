@@ -15,7 +15,8 @@
 //! ## Compatibility
 //!
 //! To use a [`Producer`] as an [`Iterator`], wrap it in a [`ProducerToIterator`]. To use an [`Iterator`] as a [`Producer`], wrap it in a [`IteratorToProducer`].
-
+//!
+//! To use a [`BulkProducer`] as a [`std::io::Read`] or [`std::io::BufRead`], wrap it in a [`BulkProducerToBufRead`]. To use an [`std::io::Read`] as a [`BulkProducer`], wrap it in a [`ReadToBulkProducer`], and to use an [`std::io::BufRead`] as a [`BulkProducer`], wrap it in a [`BufReadToBulkProducer`]. Requires the `std` feature.
 pub use crate::common::producer::{FromSlice, Invariant};
 
 #[cfg(feature = "alloc")]
@@ -26,3 +27,8 @@ pub use crate::common::producer::{ProduceOperations, Scramble, TestProducer};
 
 mod iter;
 pub use iter::*;
+
+#[cfg(feature = "std")]
+mod read;
+#[cfg(feature = "std")]
+pub use read::*;

@@ -455,7 +455,7 @@ mod tests {
         let mut buf = [0; 4];
 
         let enqueue_amount = queue.bulk_enqueue(b"ufo");
-        let dequeue_amount = queue.bulk_dequeue_uninit(&mut buf);
+        let dequeue_amount = queue.bulk_dequeue(&mut buf);
 
         assert_eq!(enqueue_amount, dequeue_amount);
     }

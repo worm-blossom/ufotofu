@@ -154,27 +154,4 @@ pub trait Queue {
             }
         }
     }
-
-    /// Dequeue a non-zero number of items by writing them into a given buffer of possible
-    /// uninitialised memory and returning how many items were dequeued.
-    ///
-    /// Will return `0` if the queue is empty at the time of calling.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// The default implementation orchestrates `expose_items` and `consider_dequeued` in a
-    /// straightforward manner. Only provide your own implementation if you can do better
-    /// than that.
-    fn bulk_dequeue_uninit(&mut self, buffer: &mut [Self::Item]) -> usize {
-        match self.expose_items() {
-            None => 0,
-            Some(slots) => {
-                let amount = min(slots.len(), buffer.len());
-                buffer[..amount].copy_from_slice(&slots[..amount]);
-                self.consider_dequeued(amount);
-
-                amount
-            }
-        }
-    }
 }

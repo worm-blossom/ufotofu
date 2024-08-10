@@ -6,14 +6,13 @@ support bulk enqueueing and bulk dequeueing via APIs inspired by
 
 ## Queue Implementations
 
-So far, there is only a single implementation:
-[`Fixed`](https://docs.rs/ufotofu_queues/0.1.0/ufotofu_queues/struct.Fixed.html),
-which is a heap-allocated ring-buffer of unchanging capacity.
+So far, there are two implementations:
 
-Future plans include a queue of static (known at compile-time) capacity that can
-be used in allocator-less environments, and an elastic queue that grows and
-shrinks its capacity within certain parameters, to free up memory under low
-load.
+- [`Fixed`](https://docs.rs/ufotofu_queues/latest/ufotofu_queues/struct.Fixed.html),
+which is a heap-allocated ring-buffer of unchanging capacity.
+- [`Static`](https://docs.rs/ufotofu_queues/latest/ufotofu_queues/struct.Static.html), which works exactly like [`Fixed`](https://docs.rs/ufotofu_queues/latest/ufotofu_queues/struct.Fixed.html), but is backed by an array of static capacity. It requires no allocations.
+
+Future plans include an elastic queue that grows and shrinks its capacity within certain parameters, to free up memory under low load.
 
 ## License
 

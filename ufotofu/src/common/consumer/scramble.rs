@@ -430,7 +430,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer.
-                let amount = self.buffer.bulk_dequeue_uninit(available_slots);
+                let amount = self.buffer.bulk_dequeue(available_slots);
 
                 // Report the amount of items consumed.
                 self.inner.consume_slots(amount)?;
@@ -481,7 +481,7 @@ where
                 let available_slots = &mut slots[..min(slots_len, n)];
 
                 // Dequeue items into the inner consumer.
-                let amount = self.buffer.bulk_dequeue_uninit(available_slots);
+                let amount = self.buffer.bulk_dequeue(available_slots);
 
                 // Report the amount of items consumed.
                 self.inner.consume_slots(amount).await?;

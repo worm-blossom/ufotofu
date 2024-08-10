@@ -5,14 +5,14 @@ use wrapper::Wrapper;
 
 use crate::sync::Producer;
 
-/// Treat a [`sync::Producer`](crate::Sync::Producer) as an [`Iterator`].
+/// Treat a [`sync::Producer`](crate::sync::Producer) as an [`Iterator`].
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ProducerToIterator<P>(P);
 
 impl<P> ProducerToIterator<P> {
-    /// Wrap a [`sync::Producer`](crate::Sync::Producer) as an [`Iterator`].
-    pub fn new(p: P) -> Self {
-        Self(p)
+    /// Wrap a [`sync::Producer`](crate::sync::Producer) as an [`Iterator`].
+    pub fn new(producer: P) -> Self {
+        Self(producer)
     }
 }
 
@@ -54,14 +54,14 @@ where
     }
 }
 
-/// Treat an [`Iterator`] as an [`sync::Producer`](crate::Sync::Producer).
+/// Treat an [`Iterator`] as an [`sync::Producer`](crate::sync::Producer).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct IteratorToProducer<I>(I);
 
 impl<I> IteratorToProducer<I> {
-    /// an [`Iterator`] as an [`sync::Producer`](crate::Sync::Producer).
-    pub fn new(i: I) -> Self {
-        Self(i)
+    /// Wrap an [`Iterator`] as an [`sync::Producer`](crate::sync::Producer).
+    pub fn new(iter: I) -> Self {
+        Self(iter)
     }
 }
 
