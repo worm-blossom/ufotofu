@@ -50,6 +50,8 @@
 //! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
 //!
 //! All functionality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
+//! 
+//! All compatibility wrappers for the [`futures` crate](https://crates.io/crates/futures) is gated behind the `compat_futures` feature flag (disabled by default).
 
 #[cfg(feature = "std")]
 extern crate std;

@@ -24,11 +24,15 @@ alloc = []
 # Provide implementations for development helpers.
 dev = ["dep:arbitrary"]
 
+# Provide compatibility wrappers for the `futures` crate.
+compat_futures = ["dep:futures"]
+
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true}
 either = "1.10.0"
 ufotofu_queues = { path="../ufotofu_queues", version = "0.5.0" }
 wrapper = "0.1.1"
+futures = { version = "0.3.30", optional = true}
 
 [dev-dependencies]
 smol = "2.0.0"

@@ -1,6 +1,5 @@
 use std::io::{self, ErrorKind, Write};
 
-use either::{Either, Left, Right};
 use wrapper::Wrapper;
 
 use ufotofu_queues::{Queue, Static};
