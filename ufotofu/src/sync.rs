@@ -385,7 +385,7 @@ where
         let mut produced_so_far = 0;
 
         while produced_so_far < buf.len() {
-            match self.bulk_produce(buf) {
+            match self.bulk_produce(&mut buf[produced_so_far..]) {
                 Ok(Left(count)) => produced_so_far += count,
                 Ok(Right(fin)) => {
                     return Err(OverwriteFullSliceError {
