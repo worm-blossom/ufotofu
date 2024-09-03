@@ -39,7 +39,7 @@ mod stream;
 #[cfg(all(feature = "compat_futures", any(feature = "alloc", feature = "std")))]
 pub use stream::*;
 
-// #[cfg(all(feature = "compat_futures", any(feature = "alloc", feature = "std")))]
-// mod read;
-// #[cfg(all(feature = "compat_futures", any(feature = "alloc", feature = "std")))]
-// pub use read::*;
+#[cfg(all(feature = "compat_futures", any(feature = "alloc", feature = "std")))]
+mod read;
+#[cfg(all(feature = "compat_futures", any(feature = "alloc", feature = "std")))]
+pub use read::*;
