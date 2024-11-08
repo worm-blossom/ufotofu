@@ -18,4 +18,7 @@ pub use crate::common::producer::{FromSlice, Invariant};
 pub use crate::common::producer::FromBoxedSlice;
 
 #[cfg(feature = "dev")]
-pub use crate::common::producer::{ProduceOperations, Scramble, TestProducer};
+pub use crate::common::producer::{ProduceOperations, Scramble};
+
+#[cfg(all(feature = "dev", feature = "alloc"))]
+pub use crate::common::producer::{TestProducer, TestProducerBuilder};

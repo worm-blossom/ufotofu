@@ -21,7 +21,7 @@ mod scramble;
 #[cfg(feature = "dev")]
 pub use scramble::{ProduceOperations, Scramble_ as Scramble};
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_producer;
-#[cfg(feature = "dev")]
-pub use test_producer::TestProducer_ as TestProducer;
+#[cfg(all(feature = "dev", feature = "alloc"))]
+pub use test_producer::{TestProducerBuilder, TestProducer_ as TestProducer};

@@ -1,6 +1,5 @@
 use core::cmp::min;
 use core::fmt::Debug;
-use core::marker::PhantomData;
 use core::num::NonZeroUsize;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -20,7 +19,7 @@ use crate::local_nb::{
 };
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-/// If you need to test code that works with arbitrary consumers, use this consumer. You can control the sequence of items it produces, the size of the slices it presents with `expose_slots`, and the error it emits. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
+/// If you need to test code that works with arbitrary consumers, use this one. You can choose which error it should emit, when it emits its error, the size of the slices it presents with `expose_slots`, and when to its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
 ///
 /// Create new [`TestConsumer`](crate::common::consumer::TestConsumer)s either via a [`TestConsumerBuilder`] or via the implementation of [`Arbitrary`].
 ///
@@ -258,7 +257,6 @@ impl<Error> TestConsumerBuilder<Error> {
             operations_until_error: self.operations_until_error,
             exposed_slot_sizes: self.exposed_slot_sizes.map(|sizes| (sizes, 0)),
             yielder: self.yield_pattern.map(TestYielder::new),
-            phantom: PhantomData,
         }))
     }
 }
@@ -270,7 +268,6 @@ struct TestConsumer<Item, Final, Error> {
     operations_until_error: usize,
     exposed_slot_sizes: Option<(Box<[NonZeroUsize]>, usize /* current index*/)>,
     yielder: Option<TestYielder>,
-    phantom: PhantomData<Final>,
 }
 
 impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
@@ -320,7 +317,6 @@ impl<Item: Debug, Final: Debug, Error: Debug> Debug for TestConsumer<Item, Final
             .field("operations_until_error", &self.operations_until_error)
             .field("exposed_slot_sizes", &self.exposed_slot_sizes)
             .field("yielder", &self.yielder)
-            // .field("phantom", &self.phantom) // Manually implementing to omit this PhantomData
             .finish()
     }
 }
@@ -443,21 +439,5 @@ where
     async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.maybe_yield().await;
         BulkConsumer::consume_slots(self, amount)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use ufotofu::sync::consumer::*;
-    use ufotofu::sync::*;
-
-    #[test]
-    fn foo() {
-        let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999)
-            .exposed_slot_sizes(std::vec![76.try_into().unwrap(), 1.try_into().unwrap()].into())
-            .build();
-        assert_eq!(76, con.expose_slots().unwrap().len());
-        assert_eq!(1, con.expose_slots().unwrap().len());
-        assert_eq!(76, con.expose_slots().unwrap().len());
     }
 }

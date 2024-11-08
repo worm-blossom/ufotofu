@@ -35,6 +35,11 @@ impl<T> FromBoxedSlice_<T> {
 
         FromBoxedSlice_(invariant)
     }
+
+    /// Return a slice of the data which has not yet been produced.
+    pub fn remaining(&self) -> &[T] {
+        return &self.0.as_ref().0[self.0.as_ref().1..];
+    }
 }
 
 invarianted_impl_as_ref!(FromBoxedSlice_<T>; [T]);
