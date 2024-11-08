@@ -19,6 +19,7 @@ use crate::local_nb::{
 };
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+#[derive(Clone)]
 /// If you need to test code that works with arbitrary consumers, use this one. You can choose which error it should emit, when it emits its error, the size of the slices it presents with `expose_slots`, and when to its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
 ///
 /// Create new [`TestConsumer`](crate::common::consumer::TestConsumer)s either via a [`TestConsumerBuilder`] or via the implementation of [`Arbitrary`].
@@ -148,6 +149,19 @@ impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitr
     }
 }
 
+/// This implementation considers only the consumed items, the consumed final value, and the stored error value.
+impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
+    for TestConsumer_<Item, Final, Error>
+{
+    fn eq(&self, other: &Self) -> bool {
+        return self.0.as_ref().inner.as_ref() == other.0.as_ref().inner.as_ref()
+            && self.0.as_ref().fin == other.0.as_ref().fin
+            && self.0.as_ref().error == other.0.as_ref().error;
+    }
+}
+
+impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestConsumer_<Item, Final, Error> {}
+
 /// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestConsumer`](crate::common::consumer::TestConsumer).
 ///
 /// ```
@@ -162,7 +176,7 @@ impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitr
 /// ```
 pub struct TestConsumerBuilder<Error> {
     error: Error,
-    operations_until_error: usize,
+    consumptions_until_error: usize,
     exposed_slot_sizes: Option<Box<[NonZeroUsize]>>,
     yield_pattern: Option<Box<[bool]>>,
 }
@@ -170,7 +184,7 @@ pub struct TestConsumerBuilder<Error> {
 impl<Error> TestConsumerBuilder<Error> {
     /// Create a new [`TestConsumerBuilder`].
     ///
-    /// The resulting consumer will succesfully perform `operations_until_error` many operations (i.e., calls to non-provided consumer trait methods) before emitting the error `error`.
+    /// The resulting consumer will succesfully receive `consumptions_until_error` many items before emitting the error `error` any further method call.
     ///
     /// ```
     /// use ufotofu::sync::consumer::*;
@@ -179,13 +193,13 @@ impl<Error> TestConsumerBuilder<Error> {
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
     /// assert_eq!(Ok(()), con.consume(4));
     /// assert_eq!(Ok(()), con.consume(7));
-    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
+    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two consumptions.
     /// assert_eq!(&[4, 7], con.consumed());
     /// ```
-    pub fn new(error: Error, operations_until_error: usize) -> TestConsumerBuilder<Error> {
+    pub fn new(error: Error, consumptions_until_error: usize) -> TestConsumerBuilder<Error> {
         TestConsumerBuilder {
             error,
-            operations_until_error,
+            consumptions_until_error,
             exposed_slot_sizes: None,
             yield_pattern: None,
         }
@@ -254,18 +268,19 @@ impl<Error> TestConsumerBuilder<Error> {
             inner: IntoVec::new(),
             fin: None,
             error: Some(self.error),
-            operations_until_error: self.operations_until_error,
+            consumptions_until_error: self.consumptions_until_error,
             exposed_slot_sizes: self.exposed_slot_sizes.map(|sizes| (sizes, 0)),
             yielder: self.yield_pattern.map(TestYielder::new),
         }))
     }
 }
 
+#[derive(Clone)]
 struct TestConsumer<Item, Final, Error> {
     inner: IntoVec<Item>,
     fin: Option<Final>,
     error: Option<Error>, // An option so we can `take` the error to emit it.
-    operations_until_error: usize,
+    consumptions_until_error: usize,
     exposed_slot_sizes: Option<(Box<[NonZeroUsize]>, usize /* current index*/)>,
     yielder: Option<TestYielder>,
 }
@@ -292,10 +307,9 @@ impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
     }
 
     fn check_error(&mut self) -> Result<(), Error> {
-        if self.operations_until_error == 0 {
+        if self.consumptions_until_error == 0 {
             Err(self.error.take().unwrap()) // Can unwrap because the invariant wrapper panics before unwrapping can be reached.
         } else {
-            self.operations_until_error -= 1;
             Ok(())
         }
     }
@@ -314,7 +328,7 @@ impl<Item: Debug, Final: Debug, Error: Debug> Debug for TestConsumer<Item, Final
             .field("inner", &self.inner)
             .field("final", &self.fin) // "final" is a nicer output than "fin"
             .field("error", &self.error)
-            .field("operations_until_error", &self.operations_until_error)
+            .field("operations_until_error", &self.consumptions_until_error)
             .field("exposed_slot_sizes", &self.exposed_slot_sizes)
             .field("yielder", &self.yielder)
             .finish()
@@ -329,20 +343,17 @@ impl<Item: Default, Final, Error> Consumer for TestConsumer<Item, Final, Error> 
     fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.check_error()?;
 
-        {
-            Consumer::consume(&mut self.inner, item).unwrap();
-            Ok(())
-        } // may unwrap because Err<!>
+        Consumer::consume(&mut self.inner, item).unwrap(); // may unwrap because Err<!>
+        self.consumptions_until_error -= 1;
+        Ok(())
     }
 
     fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
         self.check_error()?;
         self.fin = Some(fin);
 
-        {
-            Consumer::close(&mut self.inner, ()).unwrap();
-            Ok(())
-        } // may unwrap because Err<!>
+        Consumer::close(&mut self.inner, ()).unwrap(); // may unwrap because Err<!>
+        Ok(())
     }
 }
 
@@ -350,10 +361,8 @@ impl<Item: Default, Final, Error> BufferedConsumer for TestConsumer<Item, Final,
     fn flush(&mut self) -> Result<(), Self::Error> {
         self.check_error()?;
 
-        {
-            BufferedConsumer::flush(&mut self.inner).unwrap();
-            Ok(())
-        } // may unwrap because Err<!>
+        BufferedConsumer::flush(&mut self.inner).unwrap(); // may unwrap because Err<!>
+        Ok(())
     }
 }
 
@@ -364,34 +373,36 @@ where
     fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         self.check_error()?;
 
-        match self.exposed_slot_sizes {
-            None => return Ok(BulkConsumer::expose_slots(&mut self.inner).unwrap()), // may unwrap because Err<!>
+        let max_len: usize = match self.exposed_slot_sizes {
+            None => usize::MAX,
             Some((ref exposed_slot_sizes, ref mut index)) => {
                 let max_len: usize = exposed_slot_sizes[*index].into();
                 *index = (*index + 1) % exposed_slot_sizes.len();
-
-                let min_len = min(max_len, 2048);
-
-                while self.inner.remaining_slots() < min_len {
-                    self.inner.make_space_even_if_not_needed();
-                }
-
-                let inner_slots = BulkConsumer::expose_slots(&mut self.inner).unwrap(); // may unwrap because Err<!>
-                let actual_len = min(inner_slots.len(), max_len);
-
-                Ok(&mut inner_slots[..actual_len])
+                max_len
             }
+        };
+
+        let min_len = min(max_len, 2048);
+
+        while self.inner.remaining_slots() < min_len {
+            self.inner.make_space_even_if_not_needed();
         }
+
+        let inner_slots = BulkConsumer::expose_slots(&mut self.inner).unwrap(); // may unwrap because Err<!>
+        let actual_len = min(
+            min(inner_slots.len(), max_len),
+            self.consumptions_until_error,
+        );
+
+        Ok(&mut inner_slots[..actual_len])
     }
 
     fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.check_error()?;
 
-        {
-            BulkConsumer::consume_slots(&mut self.inner, amount).unwrap();
-            Ok(())
-        }
-        // may unwrap because Err<!>
+        BulkConsumer::consume_slots(&mut self.inner, amount).unwrap(); // may unwrap because Err<!>
+        self.consumptions_until_error -= amount;
+        Ok(())
     }
 }
 

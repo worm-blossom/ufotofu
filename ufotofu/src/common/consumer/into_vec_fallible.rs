@@ -14,6 +14,7 @@ use wrapper::Wrapper;
 use crate::common::consumer::Invariant;
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
+#[derive(Clone)]
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 pub struct IntoVecFallible_<T>(Invariant<IntoVecFallible<T>>);
 
@@ -58,7 +59,7 @@ invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default> Item T
 invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default>);
 invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy + Default>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct IntoVecFallible<T> {
     v: Vec<T>,
     consumed: usize,

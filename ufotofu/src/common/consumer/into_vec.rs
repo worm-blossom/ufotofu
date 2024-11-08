@@ -19,7 +19,7 @@ use crate::local_nb::{
 };
 use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Collects data and can at any point be converted into a `Vec<T>`.
 pub struct IntoVec<T>(IntoVecFallible<T>);
 
