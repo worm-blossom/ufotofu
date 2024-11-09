@@ -16,6 +16,7 @@ use wrapper::Wrapper;
 use crate::sync::producer::Invariant;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
+#[derive(Clone)]
 /// Produces data from a boxed slice.
 pub struct FromBoxedSlice_<T>(Invariant<FromBoxedSlice<T>>);
 
@@ -53,7 +54,7 @@ invarianted_impl_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone> Item T;
 invarianted_impl_buffered_producer_sync_and_local_nb!(FromBoxedSlice_<T: Clone>);
 invarianted_impl_bulk_producer_sync_and_local_nb!(FromBoxedSlice_<T: Copy>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct FromBoxedSlice<T>(Box<[T]>, usize);
 
 impl<T> AsRef<[T]> for FromBoxedSlice<T> {

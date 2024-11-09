@@ -23,6 +23,7 @@ use crate::local_nb::{
 use crate::sync::producer::FromBoxedSlice;
 use crate::sync::{BufferedProducer, BulkProducer, Producer};
 
+#[derive(Clone)]
 /// If you need to test code that works with arbitrary producers, use this one. You can choose which items it emits, which final or or error value it emits, the size of the slices it presents with `expose_slots`, and when to its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various producer behaviours automatically.
 ///
 /// Create new [`TestProducer`](crate::common::producer::TestProducer)s either via a [`TestProducerBuilder`] or via the implementation of [`Arbitrary`].
@@ -144,6 +145,18 @@ impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitr
     }
 }
 
+/// This implementation considers only the values that have been or will be emitted (regular, final, and error).
+impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
+    for TestProducer_<Item, Final, Error>
+{
+    fn eq(&self, other: &Self) -> bool {
+        return self.0.as_ref().inner.as_ref() == other.0.as_ref().inner.as_ref()
+            && self.0.as_ref().last == other.0.as_ref().last;
+    }
+}
+
+impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestProducer_<Item, Final, Error> {}
+
 /// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestProducer`](crate::common::producer::TestProducer).
 ///
 /// ```
@@ -263,7 +276,7 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TestProducer<Item, Final, Error> {
     inner: FromBoxedSlice<Item>,
     last: Option<Result<Final, Error>>,

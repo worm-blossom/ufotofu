@@ -1,0 +1,38 @@
+#![no_main]
+
+use either::Either::{Left, Right};
+use libfuzzer_sys::fuzz_target;
+use ufotofu::{
+    common::errors::OverwriteFullSliceError,
+    sync::{producer::TestProducer, Producer},
+};
+
+fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
+    let (mut pro, len) = data;
+    if len < 8192 {
+        let mut slice = vec![0; len];
+
+        let expected_items = pro.remaining().to_vec();
+        let expected_last = pro.peek_last().unwrap().clone();
+
+        match pro.overwrite_full_slice(&mut slice[..]) {
+            Ok(()) => {
+                assert!(!pro.did_already_emit_last());
+                assert_eq!(&slice[..], &expected_items[..len]);
+            }
+            Err(OverwriteFullSliceError {
+                overwritten,
+                reason,
+            }) => {
+                assert!(pro.did_already_emit_last());
+
+                match expected_last {
+                    Ok(fin) => assert_eq!(reason, Left(fin)),
+                    Err(err) => assert_eq!(reason, Right(err)),
+                }
+
+                assert_eq!(&slice[..overwritten], &expected_items[..overwritten]);
+            }
+        }
+    }
+});

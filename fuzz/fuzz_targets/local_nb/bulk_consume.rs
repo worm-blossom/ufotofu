@@ -3,7 +3,7 @@
 use std::num::NonZeroUsize;
 
 use libfuzzer_sys::fuzz_target;
-use ufotofu::sync::{consumer::TestConsumer, BulkConsumer, Consumer};
+use ufotofu::local_nb::{consumer::TestConsumer, BulkConsumer, Consumer};
 
 fuzz_target!(
     |data: (TestConsumer<u16, u16, u16>, Box<[u16]>, Box<[NonZeroUsize]>)| {
@@ -26,15 +26,21 @@ fuzz_target!(
                     break;
                 }
 
-                match con.bulk_consume(&items[consumed_so_far..consumed_so_far + slice_length]) {
+                match con
+                    .bulk_consume(&items[consumed_so_far..consumed_so_far + slice_length])
+                    .await
+                {
                     Ok(num_consumed) => {
                         for _ in 0..num_consumed {
-                            assert!(control.consume(items[consumed_so_far]).is_ok());
+                            assert!(control.consume(items[consumed_so_far]).await.is_ok());
                             consumed_so_far += 1;
                         }
                     }
                     Err(err) => {
-                        assert_eq!(err, control.consume(items[consumed_so_far]).unwrap_err());
+                        assert_eq!(
+                            err,
+                            control.consume(items[consumed_so_far]).await.unwrap_err()
+                        );
                         break;
                     }
                 }
