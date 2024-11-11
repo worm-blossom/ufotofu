@@ -24,7 +24,11 @@ fuzz_target!(
                 assert!(con.did_error());
                 assert_eq!(err, consumer_err);
                 assert_eq!(con.consumed(), &items[..con.consumed().len()]);
-                assert_eq!(pro.remaining(), &items[con.consumed().len() + if pro.did_already_emit_last() { 0 } else { 1 } ..]); // TODO
+                assert_eq!(
+                    pro.remaining(),
+                    &items
+                        [con.consumed().len() + if pro.did_already_emit_last() { 0 } else { 1 }..]
+                ); // TODO
             }
             Err(PipeError::Producer(err)) => {
                 assert!(pro.did_already_emit_last());
