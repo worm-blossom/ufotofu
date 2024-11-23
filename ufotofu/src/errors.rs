@@ -76,6 +76,13 @@ impl<E> Display for ConsumeFullSliceError<E> {
     }
 }
 
+impl<E> ConsumeFullSliceError<E> {
+    /// Consumes `self` and returns `self.reason`, effectively discarding `self.consumed`.
+    fn into(self) -> E {
+        self.reason
+    }
+}
+
 /// Information you get from the `pipe_into_slice` family of functions when the producer is unable to fill the complete slice.
 ///
 /// `'a` is the lifetime of the slice, `T` the type of items of the slice, `F` the `Final` type of the producer, and `E` the `Error` type of the producer.
@@ -110,5 +117,12 @@ impl<F, E> Display for OverwriteFullSliceError<F, E> {
                 write!(f, "The producer was unable to fill the whole slice due to an error, and stopped after overwriting {} items", self.overwritten)
             }
         }
+    }
+}
+
+impl<F, E> OverwriteFullSliceError<F, E> {
+    /// Consumes `self` and returns `self.reason`, effectively discarding `self.overwritten`.
+    fn into(self) -> Either<F, E> {
+        self.reason
     }
 }
