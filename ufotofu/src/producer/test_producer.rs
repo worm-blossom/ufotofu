@@ -30,10 +30,13 @@ use crate::{BufferedProducer, BulkProducer, Producer};
 /// use ufotofu::*;
 ///
 /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
-/// assert_eq!(Ok(Left(1)), pro.produce());
-/// assert_eq!(Ok(Left(2)), pro.produce());
-/// assert_eq!(Ok(Left(3)), pro.produce());
-/// assert_eq!(Ok(Right(9999)), pro.produce());
+///
+/// pollster::block_on(async {
+///     assert_eq!(Ok(Left(1)), pro.produce().await);
+///     assert_eq!(Ok(Left(2)), pro.produce().await);
+///     assert_eq!(Ok(Left(3)), pro.produce().await);
+///     assert_eq!(Ok(Right(9999)), pro.produce().await);
+/// });
 /// ```
 pub struct TestProducer_<Item, Final, Error>(Invariant<TestProducer<Item, Final, Error>>);
 
@@ -47,9 +50,12 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, (), ()> = TestProducerBuilder::new(vec![1, 2, 3, 4].into(), Ok(())).build();
-    /// assert_eq!(Ok(Left(1)), pro.produce());
-    /// assert_eq!(Ok(Left(2)), pro.produce());
-    /// assert_eq!(&[3, 4], pro.remaining());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), pro.produce().await);
+    ///     assert_eq!(Ok(Left(2)), pro.produce().await);
+    ///     assert_eq!(&[3, 4], pro.remaining());
+    /// });
     /// ```
     pub fn remaining(&self) -> &[Item] {
         self.0.as_ref().remaining()
@@ -64,9 +70,12 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, (), u16> = TestProducerBuilder::new(vec![1, 2, 3, 4].into(), Err(999)).build();
-    /// assert_eq!(Ok(Left(1)), pro.produce());
-    /// assert_eq!(Ok(Left(2)), pro.produce());
-    /// assert_eq!((vec![1, 2, 3, 4].into(), Some(Err(999))), pro.into_data());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), pro.produce().await);
+    ///     assert_eq!(Ok(Left(2)), pro.produce().await);
+    ///     assert_eq!((vec![1, 2, 3, 4].into(), Some(Err(999))), pro.into_data());
+    /// });
     /// ```
     pub fn into_data(self) -> (Box<[Item]>, Option<Result<Final, Error>>) {
         self.0.into_inner().into_data()
@@ -83,8 +92,11 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
-    /// assert_eq!(Ok(Left(1)), pro.produce());
-    /// assert_eq!(Some(&Ok(9999)), pro.peek_last());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), pro.produce().await);
+    ///     assert_eq!(Some(&Ok(9999)), pro.peek_last());
+    /// });
     /// ```
     pub fn peek_last(&self) -> Option<&Result<Final, Error>> {
         self.0.as_ref().peek_last()
@@ -99,11 +111,14 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1].into(), Ok(9999)).build();
-    /// assert_eq!(false, pro.did_already_emit_last());
-    /// assert_eq!(Ok(Left(1)), pro.produce());
-    /// assert_eq!(false, pro.did_already_emit_last());
-    /// assert_eq!(Ok(Right(9999)), pro.produce());
-    /// assert_eq!(true, pro.did_already_emit_last());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(false, pro.did_already_emit_last());
+    ///     assert_eq!(Ok(Left(1)), pro.produce().await);
+    ///     assert_eq!(false, pro.did_already_emit_last());
+    ///     assert_eq!(Ok(Right(9999)), pro.produce().await);
+    ///     assert_eq!(true, pro.did_already_emit_last());
+    /// });
     /// ```
     pub fn did_already_emit_last(&self) -> bool {
         self.0.as_ref().did_already_emit_last()
@@ -163,10 +178,13 @@ impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestProducer_<Item, Final, Error> {}
 /// use ufotofu::*;
 ///
 /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
-/// assert_eq!(Ok(Left(1)), pro.produce());
-/// assert_eq!(Ok(Left(2)), pro.produce());
-/// assert_eq!(Ok(Left(3)), pro.produce());
-/// assert_eq!(Ok(Right(9999)), pro.produce());
+///
+/// pollster::block_on(async {
+///     assert_eq!(Ok(Left(1)), pro.produce().await);
+///     assert_eq!(Ok(Left(2)), pro.produce().await);
+///     assert_eq!(Ok(Left(3)), pro.produce().await);
+///     assert_eq!(Ok(Right(9999)), pro.produce().await);
+/// });
 /// ```
 pub struct TestProducerBuilder<Item, Final, Error> {
     items: Box<[Item]>,
@@ -187,10 +205,13 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
-    /// assert_eq!(Ok(Left(1)), pro.produce());
-    /// assert_eq!(Ok(Left(2)), pro.produce());
-    /// assert_eq!(Ok(Left(3)), pro.produce());
-    /// assert_eq!(Ok(Right(9999)), pro.produce());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), pro.produce().await);
+    ///     assert_eq!(Ok(Left(2)), pro.produce().await);
+    ///     assert_eq!(Ok(Left(3)), pro.produce().await);
+    ///     assert_eq!(Ok(Right(9999)), pro.produce().await);
+    /// });
     /// ```
     pub fn new(items: Box<[Item]>, last: Result<Final, Error>) -> Self {
         TestProducerBuilder {
@@ -216,9 +237,12 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3, 4].into(), Ok(9999))
     ///     .exposed_items_sizes(vec![2.try_into().unwrap(), 1.try_into().unwrap()].into())
     ///     .build();
-    /// assert_eq!(2, pro.expose_items().unwrap().unwrap_left().len());
-    /// assert_eq!(1, pro.expose_items().unwrap().unwrap_left().len());
-    /// assert_eq!(2, pro.expose_items().unwrap().unwrap_left().len());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(2, pro.expose_items().await.unwrap().unwrap_left().len());
+    ///     assert_eq!(1, pro.expose_items().await.unwrap().unwrap_left().len());
+    ///     assert_eq!(2, pro.expose_items().await.unwrap().unwrap_left().len());
+    /// });
     /// ```
     pub fn exposed_items_sizes(mut self, sizes: Box<[NonZeroUsize]>) -> Self {
         if sizes.len() > 0 {
@@ -256,10 +280,13 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
-    /// assert_eq!(Ok(Left(1)), pro.produce());
-    /// assert_eq!(Ok(Left(2)), pro.produce());
-    /// assert_eq!(Ok(Left(3)), pro.produce());
-    /// assert_eq!(Ok(Right(9999)), pro.produce());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), pro.produce().await);
+    ///     assert_eq!(Ok(Left(2)), pro.produce().await);
+    ///     assert_eq!(Ok(Left(3)), pro.produce().await);
+    ///     assert_eq!(Ok(Right(9999)), pro.produce().await);
+    /// });
     /// ```
     pub fn build(self) -> TestProducer_<Item, Final, Error> {
         TestProducer_(Invariant::new(TestProducer {

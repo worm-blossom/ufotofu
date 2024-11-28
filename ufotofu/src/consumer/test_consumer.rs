@@ -24,10 +24,13 @@ use crate::{BufferedConsumer, BulkConsumer, Consumer};
 /// use ufotofu::*;
 ///
 /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
-/// assert_eq!(Ok(()), con.consume(4));
-/// assert_eq!(Ok(()), con.consume(7));
-/// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
-/// assert_eq!(&[4, 7], con.consumed());
+///
+/// pollster::block_on(async {
+///     assert_eq!(Ok(()), con.consume(4).await);
+///     assert_eq!(Ok(()), con.consume(7).await);
+///     assert_eq!(Err(404), con.consume(99).await); // Configured to fail after two operations.
+///     assert_eq!(&[4, 7], con.consumed());
+/// });
 /// ```
 pub struct TestConsumer_<Item, Final, Error>(Invariant<TestConsumer<Item, Final, Error>>);
 
@@ -39,9 +42,12 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(Ok(()), con.consume(7));
-    /// assert_eq!(&[4, 7], con.consumed());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(Ok(()), con.consume(7).await);
+    ///     assert_eq!(&[4, 7], con.consumed());
+    /// });
     /// ```
     pub fn consumed(&self) -> &[Item] {
         self.0.as_ref().consumed()
@@ -54,10 +60,13 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, u8, ()> = TestConsumerBuilder::new((), 999).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(None, con.final_consumed());
-    /// assert_eq!(Ok(()), con.close(17));
-    /// assert_eq!(Some(&17), con.final_consumed());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(None, con.final_consumed());
+    ///     assert_eq!(Ok(()), con.close(17).await);
+    ///     assert_eq!(Some(&17), con.final_consumed());
+    /// });
     /// ```
     pub fn final_consumed(&self) -> Option<&Final> {
         self.0.as_ref().final_consumed()
@@ -70,10 +79,13 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, u8, ()> = TestConsumerBuilder::new((), 999).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(None, con.final_consumed());
-    /// assert_eq!(Ok(()), con.close(17));
-    /// assert_eq!((vec![4], Some(17)), con.into_consumed());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(None, con.final_consumed());
+    ///     assert_eq!(Ok(()), con.close(17).await);
+    ///     assert_eq!((vec![4], Some(17)), con.into_consumed());
+    /// });
     /// ```
     pub fn into_consumed(self) -> (Vec<Item>, Option<Final>) {
         self.0.into_inner().into_consumed()
@@ -86,10 +98,13 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 1).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(Some(&404), con.peek_error());
-    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after one operation.
-    /// assert_eq!(None, con.peek_error());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(Some(&404), con.peek_error());
+    ///     assert_eq!(Err(404), con.consume(99).await); // Configured to fail after one operation.
+    ///     assert_eq!(None, con.peek_error());
+    /// });
     /// ```
     pub fn peek_error(&self) -> Option<&Error> {
         self.0.as_ref().peek_error()
@@ -102,10 +117,13 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 1).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(false, con.did_error());
-    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after one operation.
-    /// assert_eq!(true, con.did_error());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(false, con.did_error());
+    ///     assert_eq!(Err(404), con.consume(99).await); // Configured to fail after one operation.
+    ///     assert_eq!(true, con.did_error());
+    /// });
     /// ```
     pub fn did_error(&self) -> bool {
         self.0.as_ref().did_error()
@@ -164,10 +182,13 @@ impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestConsumer_<Item, Final, Error> {}
 /// use ufotofu::*;
 ///
 /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
-/// assert_eq!(Ok(()), con.consume(4));
-/// assert_eq!(Ok(()), con.consume(7));
-/// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
-/// assert_eq!(&[4, 7], con.consumed());
+///
+/// pollster::block_on(async {
+///     assert_eq!(Ok(()), con.consume(4).await);
+///     assert_eq!(Ok(()), con.consume(7).await);
+///     assert_eq!(Err(404), con.consume(99).await); // Configured to fail after two operations.
+///     assert_eq!(&[4, 7], con.consumed());
+/// });
 /// ```
 pub struct TestConsumerBuilder<Error> {
     error: Error,
@@ -186,10 +207,13 @@ impl<Error> TestConsumerBuilder<Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(Ok(()), con.consume(7));
-    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two consumptions.
-    /// assert_eq!(&[4, 7], con.consumed());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(Ok(()), con.consume(7).await);
+    ///     assert_eq!(Err(404), con.consume(99).await); // Configured to fail after two consumptions.
+    ///     assert_eq!(&[4, 7], con.consumed());
+    /// });
     /// ```
     pub fn new(error: Error, consumptions_until_error: usize) -> TestConsumerBuilder<Error> {
         TestConsumerBuilder {
@@ -213,9 +237,12 @@ impl<Error> TestConsumerBuilder<Error> {
     /// let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999)
     ///     .exposed_slot_sizes(vec![76.try_into().unwrap(), 1.try_into().unwrap()].into())
     ///     .build();
-    /// assert_eq!(76, con.expose_slots().unwrap().len());
-    /// assert_eq!(1, con.expose_slots().unwrap().len());
-    /// assert_eq!(76, con.expose_slots().unwrap().len());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(76, con.expose_slots().await.unwrap().len());
+    ///     assert_eq!(1, con.expose_slots().await.unwrap().len());
+    ///     assert_eq!(76, con.expose_slots().await.unwrap().len());
+    /// });
     /// ```
     pub fn exposed_slot_sizes(mut self, sizes: Box<[NonZeroUsize]>) -> Self {
         if sizes.len() > 0 {
@@ -251,10 +278,13 @@ impl<Error> TestConsumerBuilder<Error> {
     /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
-    /// assert_eq!(Ok(()), con.consume(4));
-    /// assert_eq!(Ok(()), con.consume(7));
-    /// assert_eq!(Err(404), con.consume(99)); // Configured to fail after two operations.
-    /// assert_eq!(&[4, 7], con.consumed());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), con.consume(4).await);
+    ///     assert_eq!(Ok(()), con.consume(7).await);
+    ///     assert_eq!(Err(404), con.consume(99).await); // Configured to fail after two operations.
+    ///     assert_eq!(&[4, 7], con.consumed());
+    /// });
     /// ```
     pub fn build<Item, Final>(self) -> TestConsumer_<Item, Final, Error> {
         TestConsumer_(Invariant::new(TestConsumer {
