@@ -30,17 +30,17 @@ macro_rules! invarianted_impl_as_ref {
     }
 }
 
-/// Implement `AsMut` for an opaque invariant wrapper type.
-macro_rules! invarianted_impl_as_mut {
-    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?; $t:ty) => {
-        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
-            core::convert::AsMut<$t>
-        for $outer
-            $(< $( $lt ),+ >)?
-        {
-            fn as_mut(&mut self) -> &mut $t {
-                self.0.as_mut().as_mut()
-            }
-        }
-    }
-}
+// /// Implement `AsMut` for an opaque invariant wrapper type.
+// macro_rules! invarianted_impl_as_mut {
+//     ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?; $t:ty) => {
+//         impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
+//             core::convert::AsMut<$t>
+//         for $outer
+//             $(< $( $lt ),+ >)?
+//         {
+//             fn as_mut(&mut self) -> &mut $t {
+//                 self.0.as_mut().as_mut()
+//             }
+//         }
+//     }
+// }

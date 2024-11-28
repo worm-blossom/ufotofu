@@ -1,10 +1,10 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use ufotofu::local_nb::{producer::TestProducer, BulkProducer, Producer};
+use ufotofu::{producer::TestProducer, BulkProducer, Producer};
 
 fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
-    smol::block_on(async {
+    pollster::block_on(async {
         let (mut pro, len) = data;
 
         if len < 8192 {

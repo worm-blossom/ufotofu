@@ -2,13 +2,10 @@
 
 use either::Either::{Left, Right};
 use libfuzzer_sys::fuzz_target;
-use ufotofu::{
-    common::errors::OverwriteFullSliceError,
-    local_nb::{producer::TestProducer, Producer},
-};
+use ufotofu::{producer::TestProducer, OverwriteFullSliceError, Producer};
 
 fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
-    smol::block_on(async {
+    pollster::block_on(async {
         let (mut pro, len) = data;
         if len < 8192 {
             let mut slice = vec![0; len];

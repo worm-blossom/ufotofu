@@ -4,10 +4,10 @@ use std::num::NonZeroUsize;
 
 use either::Either::{Left, Right};
 use libfuzzer_sys::fuzz_target;
-use ufotofu::local_nb::{producer::TestProducer, BulkProducer, Producer};
+use ufotofu::{producer::TestProducer, BulkProducer, Producer};
 
 fuzz_target!(|data: (TestProducer<u16, u16, u16>, Box<[NonZeroUsize]>)| {
-    smol::block_on(async {
+    pollster::block_on(async {
         let (mut pro, slice_lengths) = data;
         let mut control = pro.clone();
 

@@ -1,13 +1,10 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use ufotofu::{
-    common::errors::ConsumeFullSliceError,
-    local_nb::{consumer::TestConsumer, Consumer},
-};
+use ufotofu::{consumer::TestConsumer, ConsumeFullSliceError, Consumer};
 
 fuzz_target!(|data: (TestConsumer<u16, u16, u16>, Box<[u16]>)| {
-    smol::block_on(async {
+    pollster::block_on(async {
         let (mut con, items) = data;
 
         let expected_err = con.peek_error().unwrap().clone();

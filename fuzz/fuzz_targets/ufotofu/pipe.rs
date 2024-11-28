@@ -1,11 +1,11 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use ufotofu::local_nb::{consumer::TestConsumer, pipe, producer::TestProducer, PipeError};
+use ufotofu::{consumer::TestConsumer, pipe, producer::TestProducer, PipeError};
 
 fuzz_target!(
     |data: (TestProducer<u16, u16, u16>, TestConsumer<u16, u16, u16>)| {
-        smol::block_on(async {
+        pollster::block_on(async {
             let (mut pro, mut con) = data;
 
             let items = pro.remaining().to_vec();

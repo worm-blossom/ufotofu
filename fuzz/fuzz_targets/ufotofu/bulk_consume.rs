@@ -3,11 +3,11 @@
 use std::num::NonZeroUsize;
 
 use libfuzzer_sys::fuzz_target;
-use ufotofu::local_nb::{consumer::TestConsumer, BulkConsumer, Consumer};
+use ufotofu::{consumer::TestConsumer, BulkConsumer, Consumer};
 
 fuzz_target!(
     |data: (TestConsumer<u16, u16, u16>, Box<[u16]>, Box<[NonZeroUsize]>)| {
-        smol::block_on(async {
+        pollster::block_on(async {
             let (mut con, items, slice_lengths) = data;
             let mut control = con.clone();
 
