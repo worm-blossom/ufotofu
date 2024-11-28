@@ -4,13 +4,12 @@
 
 //! # UFOTOFU
 //!
-//! UFOTOFU provides APIs for lazily producing or consuming sequences of arbitrary length, serving as async redesigns of traits such as [`Iterator`], [`io::Read`](std::io::Read), or [`io::Write`](std::io::Write). Highlights of ufotofu include
+//! UFOTOFU provides APIs for lazily producing or consuming sequences of arbitrary length, serving as async redesigns of traits such as [`Iterator`], [`io::Read`](std::io::Read), or [`io::Write`](std::io::Write). Highlights include
 //!
 //! - bulk data transfer without temporary buffers,
-//! - consistent error handling semantics across all supported modes of sequence processing,
-//! - meaningful subtyping relations between, for example, streams and readers,
-//! - absence of needless specialization of error types or item types,
-//! - the ability to chain sequences of heterogenous types, and
+//! - freely choosable error and item types, even for readers and writers,
+//! - meaningful subtyping relations between streams and readers, and between sinks and writers,
+//! - the ability to represent finite and infinite sequences on the type level, and
 //! - `nostd` support.
 //!
 //! You can read an in-depth discussion of the API designs [here](https://github.com/AljoschaMeyer/lazy_on_principle/blob/main/main.pdf).
