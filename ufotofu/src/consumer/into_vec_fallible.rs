@@ -165,11 +165,13 @@ mod tests {
 
     #[test]
     fn converts_into_vec() {
-        let mut into_vec = IntoVecFallible::new();
-        let _ = into_vec.bulk_consume_full_slice(b"ufotofu");
-        let _ = into_vec.close(());
+        pollster::block_on(async {
+            let mut into_vec = IntoVecFallible::new();
+            assert_eq!(Ok(()), into_vec.bulk_consume_full_slice(b"ufotofu").await);
+            assert_eq!(Ok(()), into_vec.close(()).await);
 
-        let v = into_vec.into_vec();
-        assert_eq!(v, std::vec![117, 102, 111, 116, 111, 102, 117]);
+            let v = into_vec.into_vec();
+            assert_eq!(v, std::vec![117, 102, 111, 116, 111, 102, 117]);
+        });
     }
 }
