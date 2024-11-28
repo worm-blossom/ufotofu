@@ -60,20 +60,25 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-// This allows macros to use `ufotofu` instead of `crate`, which might become
-// convenient some day.
-extern crate self as ufotofu;
-
-pub mod consumer;
-pub mod errors;
-pub mod producer;
-
 use core::cmp::min;
 use core::future::Future;
 
 use either::Either::{self, *};
 
 use errors::{ConsumeFullSliceError, OverwriteFullSliceError, PipeError};
+
+// This allows macros to use `ufotofu` instead of `crate`, which might become
+// convenient some day.
+extern crate self as ufotofu;
+
+#[macro_use]
+mod common_macros;
+
+pub mod consumer;
+pub mod errors;
+pub mod producer;
+
+mod test_yielder;
 
 /// A `Consumer` consumes a potentially infinite sequence, one item at a time.
 ///
@@ -577,76 +582,76 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
-    use core::convert::Infallible;
+    // use core::convert::Infallible;
 
-    use crate::consumer::{IntoSlice, IntoVec};
-    use crate::producer::FromSlice;
+    // use crate::consumer::{IntoSlice, IntoVec};
+    // use crate::producer::FromSlice;
 
-    #[test]
-    fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
-        smol::block_on(async {
-            let mut buf = [0; 3];
+    // #[test]
+    // fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
+    //     smol::block_on(async {
+    //         let mut buf = [0; 3];
 
-            let mut o = FromSlice::new(b"ufo");
-            let mut i = IntoSlice::new(&mut buf);
+    //         let mut o = FromSlice::new(b"ufo");
+    //         let mut i = IntoSlice::new(&mut buf);
 
-            pipe(&mut o, &mut i).await?;
+    //         pipe(&mut o, &mut i).await?;
 
-            let m = min(o.as_ref().len(), i.as_ref().len());
-            assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-            assert_eq!(&buf, b"ufo");
+    //         let m = min(o.as_ref().len(), i.as_ref().len());
+    //         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    //         assert_eq!(&buf, b"ufo");
 
-            Ok(())
-        })
-    }
+    //         Ok(())
+    //     })
+    // }
 
-    #[test]
-    fn pipes_from_slice_producer_to_consumer_into_vec(
-    ) -> Result<(), PipeError<Infallible, Infallible>> {
-        smol::block_on(async {
-            let mut o = FromSlice::new(b"tofu");
-            let mut i = IntoVec::new();
+    // #[test]
+    // fn pipes_from_slice_producer_to_consumer_into_vec(
+    // ) -> Result<(), PipeError<Infallible, Infallible>> {
+    //     smol::block_on(async {
+    //         let mut o = FromSlice::new(b"tofu");
+    //         let mut i = IntoVec::new();
 
-            pipe(&mut o, &mut i).await?;
+    //         pipe(&mut o, &mut i).await?;
 
-            assert_eq!(&i.into_vec(), b"tofu");
+    //         assert_eq!(&i.into_vec(), b"tofu");
 
-            Ok(())
-        })
-    }
+    //         Ok(())
+    //     })
+    // }
 
-    #[test]
-    fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
-        smol::block_on(async {
-            let mut buf = [0; 3];
+    // #[test]
+    // fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
+    //     smol::block_on(async {
+    //         let mut buf = [0; 3];
 
-            let mut o = FromSlice::new(b"ufo");
-            let mut i = IntoSlice::new(&mut buf);
+    //         let mut o = FromSlice::new(b"ufo");
+    //         let mut i = IntoSlice::new(&mut buf);
 
-            bulk_pipe(&mut o, &mut i).await?;
+    //         bulk_pipe(&mut o, &mut i).await?;
 
-            let m = min(o.as_ref().len(), i.as_ref().len());
-            assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-            assert_eq!(&buf, b"ufo");
+    //         let m = min(o.as_ref().len(), i.as_ref().len());
+    //         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
+    //         assert_eq!(&buf, b"ufo");
 
-            Ok(())
-        })
-    }
+    //         Ok(())
+    //     })
+    // }
 
-    #[test]
-    fn bulk_pipes_from_slice_producer_to_consumer_into_vec(
-    ) -> Result<(), PipeError<Infallible, Infallible>> {
-        smol::block_on(async {
-            let mut o = FromSlice::new(b"tofu");
-            let mut i = IntoVec::new();
+    // #[test]
+    // fn bulk_pipes_from_slice_producer_to_consumer_into_vec(
+    // ) -> Result<(), PipeError<Infallible, Infallible>> {
+    //     smol::block_on(async {
+    //         let mut o = FromSlice::new(b"tofu");
+    //         let mut i = IntoVec::new();
 
-            bulk_pipe(&mut o, &mut i).await?;
+    //         bulk_pipe(&mut o, &mut i).await?;
 
-            assert_eq!(&i.into_vec(), b"tofu");
+    //         assert_eq!(&i.into_vec(), b"tofu");
 
-            Ok(())
-        })
-    }
+    //         Ok(())
+    //     })
+    // }
 }

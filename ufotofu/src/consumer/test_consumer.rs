@@ -10,14 +10,10 @@ use std::{boxed::Box, vec::Vec};
 use arbitrary::{size_hint, Arbitrary};
 use wrapper::Wrapper;
 
-use crate::common::consumer::IntoVec;
-use crate::common::consumer::Invariant;
-use crate::common::test_yielder::TestYielder;
-use crate::local_nb::{
-    BufferedConsumer as BufferedConsumerLocalNb, BulkConsumer as BulkConsumerLocalNb,
-    Consumer as ConsumerLocalNb,
-};
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::consumer::IntoVec;
+use crate::consumer::Invariant;
+use crate::test_yielder::TestYielder;
+use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone)]
 /// If you need to test code that works with arbitrary consumers, use this one. You can choose which error it should emit, when it emits its error, the size of the slices it presents with `expose_slots`, and when to its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
@@ -119,9 +115,9 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
 
 invarianted_impl_debug!(TestConsumer_<Item: Debug, Final: Debug, Error: Debug>);
 
-invarianted_impl_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy + Default, Final, Error> Item Item; Final Final; Error Error);
-invarianted_impl_buffered_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy + Default, Final, Error>);
-invarianted_impl_bulk_consumer_sync_and_local_nb!(TestConsumer_<Item: Copy + Default, Final, Error>);
+invarianted_impl_consumer!(TestConsumer_<Item: Copy + Default, Final, Error> Item Item; Final Final; Error Error);
+invarianted_impl_buffered_consumer!(TestConsumer_<Item: Copy + Default, Final, Error>);
+invarianted_impl_bulk_consumer!(TestConsumer_<Item: Copy + Default, Final, Error>);
 
 impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitrary<'a>
     for TestConsumer_<Item, Final, Error>
@@ -340,28 +336,31 @@ impl<Item: Default, Final, Error> Consumer for TestConsumer<Item, Final, Error> 
     type Final = Final;
     type Error = Error;
 
-    fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+        self.maybe_yield().await;
         self.check_error()?;
 
-        Consumer::consume(&mut self.inner, item).unwrap(); // may unwrap because Err<!>
+        Consumer::consume(&mut self.inner, item).await.unwrap(); // may unwrap because Err<!>
         self.consumptions_until_error -= 1;
         Ok(())
     }
 
-    fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+        self.maybe_yield().await;
         self.check_error()?;
         self.fin = Some(fin);
 
-        Consumer::close(&mut self.inner, ()).unwrap(); // may unwrap because Err<!>
+        Consumer::close(&mut self.inner, ()).await.unwrap(); // may unwrap because Err<!>
         Ok(())
     }
 }
 
 impl<Item: Default, Final, Error> BufferedConsumer for TestConsumer<Item, Final, Error> {
-    fn flush(&mut self) -> Result<(), Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        self.maybe_yield().await;
         self.check_error()?;
 
-        BufferedConsumer::flush(&mut self.inner).unwrap(); // may unwrap because Err<!>
+        BufferedConsumer::flush(&mut self.inner).await.unwrap(); // may unwrap because Err<!>
         Ok(())
     }
 }
@@ -370,7 +369,11 @@ impl<Item, Final, Error> BulkConsumer for TestConsumer<Item, Final, Error>
 where
     Item: Copy + Default,
 {
-    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
+    where
+        Self::Item: 'a,
+    {
+        self.maybe_yield().await;
         self.check_error()?;
 
         let max_len: usize = match self.exposed_slot_sizes {
@@ -388,7 +391,7 @@ where
             self.inner.make_space_even_if_not_needed();
         }
 
-        let inner_slots = BulkConsumer::expose_slots(&mut self.inner).unwrap(); // may unwrap because Err<!>
+        let inner_slots = BulkConsumer::expose_slots(&mut self.inner).await.unwrap(); // may unwrap because Err<!>
         let actual_len = min(
             min(inner_slots.len(), max_len),
             self.consumptions_until_error,
@@ -397,58 +400,14 @@ where
         Ok(&mut inner_slots[..actual_len])
     }
 
-    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
-        self.check_error()?;
-
-        BulkConsumer::consume_slots(&mut self.inner, amount).unwrap(); // may unwrap because Err<!>
-        self.consumptions_until_error -= amount;
-        Ok(())
-    }
-}
-
-impl<Item, Final, Error> ConsumerLocalNb for TestConsumer<Item, Final, Error>
-where
-    Item: Default,
-{
-    type Item = Item;
-    type Final = Final;
-    type Error = Error;
-
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        self.maybe_yield().await;
-        Consumer::consume(self, item)
-    }
-
-    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
-        self.maybe_yield().await;
-        Consumer::close(self, fin)
-    }
-}
-
-impl<Item, Final, Error> BufferedConsumerLocalNb for TestConsumer<Item, Final, Error>
-where
-    Item: Default,
-{
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        self.maybe_yield().await;
-        BufferedConsumer::flush(self)
-    }
-}
-
-impl<Item, Final, Error> BulkConsumerLocalNb for TestConsumer<Item, Final, Error>
-where
-    Item: Copy + Default,
-{
-    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
-    where
-        Self::Item: 'a,
-    {
-        self.maybe_yield().await;
-        BulkConsumer::expose_slots(self)
-    }
-
     async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.maybe_yield().await;
-        BulkConsumer::consume_slots(self, amount)
+        self.check_error()?;
+
+        BulkConsumer::consume_slots(&mut self.inner, amount)
+            .await
+            .unwrap(); // may unwrap because Err<!>
+        self.consumptions_until_error -= amount;
+        Ok(())
     }
 }

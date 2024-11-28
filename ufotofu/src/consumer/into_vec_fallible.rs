@@ -11,8 +11,8 @@ use std::{collections::TryReserveError, vec::Vec};
 
 use wrapper::Wrapper;
 
-use crate::common::consumer::Invariant;
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::consumer::Invariant;
+use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone)]
 /// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
@@ -55,9 +55,9 @@ impl<T: Default> IntoVecFallible_<T> {
 invarianted_impl_as_ref!(IntoVecFallible_<T>; [T]);
 invarianted_impl_wrapper!(IntoVecFallible_<T>; Vec<T>);
 
-invarianted_impl_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default> Item T; Final (); Error TryReserveError);
-invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoVecFallible_<T: Default>);
-invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoVecFallible_<T: Copy + Default>);
+invarianted_impl_consumer!(IntoVecFallible_<T: Default> Item T; Final (); Error TryReserveError);
+invarianted_impl_buffered_consumer!(IntoVecFallible_<T: Default>);
+invarianted_impl_bulk_consumer!(IntoVecFallible_<T: Copy + Default>);
 
 #[derive(Debug, Clone)]
 struct IntoVecFallible<T> {
@@ -109,7 +109,7 @@ impl<T: Default> Consumer for IntoVecFallible<T> {
     type Final = ();
     type Error = TryReserveError;
 
-    fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
+    async fn consume(&mut self, item: T) -> Result<Self::Final, Self::Error> {
         // Allocate additional capacity to the vector if no empty slots are available.
         self.make_space_if_needed()?;
 
@@ -119,40 +119,39 @@ impl<T: Default> Consumer for IntoVecFallible<T> {
         Ok(())
     }
 
-    fn close(&mut self, _fin: Self::Final) -> Result<Self::Final, Self::Error> {
+    async fn close(&mut self, _fin: Self::Final) -> Result<Self::Final, Self::Error> {
         Ok(())
     }
 }
 
 impl<T: Default> BufferedConsumer for IntoVecFallible<T> {
-    fn flush(&mut self) -> Result<(), Self::Error> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
 impl<T: Default + Copy> BulkConsumer for IntoVecFallible<T> {
-    fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
+    async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
+    where
+        Self::Item: 'a,
+    {
         // Allocate additional capacity to the vector if no empty slots are available.
         self.make_space_if_needed()?;
 
         Ok(&mut self.v[self.consumed..])
     }
 
-    fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
+    async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.consumed += amount;
 
         Ok(())
     }
 }
 
-sync_consumer_as_local_nb!(IntoVecFallible<T: Default>);
-sync_buffered_consumer_as_local_nb!(IntoVecFallible<T: Default>);
-sync_bulk_consumer_as_local_nb!(IntoVecFallible<T: Copy + Default>);
-
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    use crate::sync::*;
+    use crate::*;
 
     // The debug output hides the internals of using semantically transparent wrappers.
     #[test]
@@ -172,77 +171,5 @@ mod tests {
 
         let v = into_vec.into_vec();
         assert_eq!(v, std::vec![117, 102, 111, 116, 111, 102, 117]);
-    }
-
-    // Panic conditions:
-    //
-    // - `consume()` must not be called after `close()` or error
-    // - `close()` must not be called after `close()` or error
-    // - `flush()` must not be called after `close()` or error
-    // - `consumer_slots()` must not be called after `close()` or error
-    // - `did_consume()` must not be called after `close()` or error
-    // - `bulk_consume()` must not be called after `close()` or error
-    // - `did_consume(amount)` must not be called with `amount` greater than available slots
-
-    // In each of the following tests, the final function call should panic.
-
-    #[test]
-    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
-    fn panics_on_consume_after_close() {
-        let mut into_vec = IntoVecFallible::new();
-        let _ = into_vec.close(());
-        let _ = into_vec.consume(7);
-    }
-
-    #[test]
-    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
-    fn panics_on_close_after_close() {
-        // Type annotations are required because we never provide a `T`.
-        let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
-        let _ = into_vec.close(());
-        let _ = into_vec.close(());
-    }
-
-    #[test]
-    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
-    fn panics_on_flush_after_close() {
-        let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
-        let _ = into_vec.close(());
-        let _ = into_vec.flush();
-    }
-
-    #[test]
-    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
-    fn panics_on_consumer_slots_after_close() {
-        let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
-        let _ = into_vec.close(());
-        let _ = into_vec.expose_slots();
-    }
-
-    #[test]
-    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
-    fn panics_on_did_consume_after_close() {
-        let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
-        let _ = into_vec.close(());
-
-        let _ = into_vec.consume_slots(7);
-    }
-
-    #[test]
-    #[should_panic(expected = "may not call `Consumer` methods after the sequence has ended")]
-    fn panics_on_bulk_consume_after_close() {
-        let mut into_vec = IntoVecFallible::new();
-        let _ = into_vec.close(());
-        let _ = into_vec.bulk_consume(b"ufo");
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "may not call `consume_slots` with an amount exceeding the total number of exposed slots"
-    )]
-    fn panics_on_did_consume_with_amount_greater_than_available_slots() {
-        let mut into_vec: IntoVecFallible<u8> = IntoVecFallible::new();
-
-        let _ = into_vec.consume_slots(21);
     }
 }

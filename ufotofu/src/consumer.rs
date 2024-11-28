@@ -1,18 +1,18 @@
 #[macro_use]
 mod macros;
 
-mod into_slice;
-pub use into_slice::IntoSlice_ as IntoSlice;
+// mod into_slice;
+// pub use into_slice::IntoSlice_ as IntoSlice;
 
 #[cfg(feature = "alloc")]
 mod into_vec;
 #[cfg(feature = "alloc")]
-pub use into_vec::IntoVec;
+use into_vec::IntoVec;
 
 #[cfg(feature = "alloc")]
 mod into_vec_fallible;
 #[cfg(feature = "alloc")]
-pub use into_vec_fallible::IntoVecFallible_ as IntoVecFallible;
+use into_vec_fallible::IntoVecFallible_ as IntoVecFallible;
 
 #[cfg(test)]
 mod invariant;
@@ -23,10 +23,10 @@ pub use invariant::Invariant;
 #[cfg(not(test))]
 pub use invariant_noop::Invariant;
 
-#[cfg(feature = "dev")]
-mod scramble;
-#[cfg(feature = "dev")]
-pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
+// #[cfg(feature = "dev")]
+// mod scramble;
+// #[cfg(feature = "dev")]
+// pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
 
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_consumer;
