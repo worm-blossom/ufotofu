@@ -98,14 +98,20 @@ macro_rules! invarianted_bulk_producer_methods {
         async fn bulk_produce(
             &mut self,
             buf: &mut [Self::Item],
-        ) -> Result<Either<usize, Self::Final>, Self::Error> where Self::Item: Clone {
+        ) -> Result<Either<usize, Self::Final>, Self::Error>
+        where
+            Self::Item: Clone,
+        {
             ufotofu::BulkProducer::bulk_produce(&mut self.0, buf).await
         }
 
         async fn bulk_overwrite_full_slice<'kfhwkfwe>(
             &mut self,
             buf: &'kfhwkfwe mut [Self::Item],
-        ) -> Result<(), ufotofu::OverwriteFullSliceError<Self::Final, Self::Error>> where Self::Item: Clone {
+        ) -> Result<(), ufotofu::OverwriteFullSliceError<Self::Final, Self::Error>>
+        where
+            Self::Item: Clone,
+        {
             ufotofu::BulkProducer::bulk_overwrite_full_slice(&mut self.0, buf).await
         }
     };

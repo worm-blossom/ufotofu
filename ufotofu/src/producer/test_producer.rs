@@ -338,15 +338,15 @@ impl<Item: Clone, Final, Error> Producer for TestProducer<Item, Final, Error> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.maybe_yield().await;
-        if self.inner.remaining().len() == 0 {
-            return Ok(Right(self.last.take().unwrap()?));
+        if self.inner.remaining().is_empty() {
+            Ok(Right(self.last.take().unwrap()?))
         } else {
-            return Ok(Left(
+            Ok(Left(
                 Producer::produce(&mut self.inner)
                     .await
                     .unwrap()
                     .unwrap_left(),
-            ));
+            ))
         }
     }
 }
@@ -354,7 +354,7 @@ impl<Item: Clone, Final, Error> Producer for TestProducer<Item, Final, Error> {
 impl<Item: Clone, Final, Error> BufferedProducer for TestProducer<Item, Final, Error> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.maybe_yield().await;
-        if self.inner.remaining().len() == 0 && self.last.as_ref().unwrap().is_err() {
+        if self.inner.remaining().is_empty() && self.last.as_ref().unwrap().is_err() {
             let last_owned = self.last.take().unwrap();
             match last_owned {
                 Ok(_) => unreachable!(),
@@ -362,7 +362,7 @@ impl<Item: Clone, Final, Error> BufferedProducer for TestProducer<Item, Final, E
             }
         }
 
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -374,21 +374,21 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
         Self::Item: 'a,
     {
         self.maybe_yield().await;
-        if self.inner.remaining().len() == 0 {
+        if self.inner.remaining().is_empty() {
             let last_owned = self.last.take().unwrap();
             match last_owned {
-                Ok(fin) => return Ok(Right(fin)),
-                Err(err) => return Err(err),
+                Ok(fin) => Ok(Right(fin)),
+                Err(err) => Err(err),
             }
         } else {
             match self.exposed_items_sizes {
                 None => {
-                    return Ok(Left(
+                    Ok(Left(
                         BulkProducer::expose_items(&mut self.inner)
                             .await
                             .unwrap()
                             .unwrap_left(),
-                    ));
+                    ))
                 }
                 Some((ref exposed_item_sizes, ref mut index)) => {
                     let max_len: usize = exposed_item_sizes[*index].into();
@@ -408,7 +408,7 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
 
     async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.maybe_yield().await;
-        if self.inner.remaining().len() == 0 && self.last.as_ref().unwrap().is_err() {
+        if self.inner.remaining().is_empty() && self.last.as_ref().unwrap().is_err() {
             let last_owned = self.last.take().unwrap();
             match last_owned {
                 Ok(_) => unreachable!(),
@@ -416,8 +416,11 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
             }
         }
 
-        return Ok(BulkProducer::consider_produced(&mut self.inner, amount)
+        {
+            BulkProducer::consider_produced(&mut self.inner, amount)
             .await
-            .unwrap());
+            .unwrap();
+            Ok(())
+        }
     }
 }
