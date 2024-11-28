@@ -3,7 +3,7 @@ use crate::{BufferedConsumer, BulkConsumer, Consumer};
 /// A `Consumer` wrapper that panics when callers violate API contracts such
 /// as halting interaction after an error.
 ///
-/// This wrapper only performs the checks when testing code (more specifically,
+/// This wrapper only performs the checks while testing (more specifically,
 /// when `#[cfg(test)]` applies). In production builds, the wrapper does
 /// nothing at all and compiles away without any overhead.
 ///
@@ -38,7 +38,7 @@ impl<C: core::fmt::Debug> core::fmt::Debug for Invariant<C> {
 }
 
 impl<C> Invariant<C> {
-    /// Returns a `Consumer` that behaves exactly like the wrapped `Consumer`
+    /// Returns a consumer that behaves exactly like the wrapped consumer
     /// `inner`, except that - when running tests - it performs runtime
     /// validation of API invariants and panics if they are violated by a
     /// caller.
@@ -50,7 +50,7 @@ impl<C> Invariant<C> {
         }
     }
 
-    /// Returns the wrapped consumer.
+    /// Consumes `self` and returns the wrapped consumer.
     pub fn into_inner(self) -> C {
         self.inner
     }

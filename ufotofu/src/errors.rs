@@ -78,7 +78,7 @@ impl<E> Display for ConsumeFullSliceError<E> {
 
 impl<E> ConsumeFullSliceError<E> {
     /// Consumes `self` and returns `self.reason`, effectively discarding `self.consumed`.
-    fn into(self) -> E {
+    pub fn into_reason(self) -> E {
         self.reason
     }
 }
@@ -122,7 +122,7 @@ impl<F, E> Display for OverwriteFullSliceError<F, E> {
 
 impl<F, E> OverwriteFullSliceError<F, E> {
     /// Consumes `self` and returns `self.reason`, effectively discarding `self.overwritten`.
-    fn into(self) -> Either<F, E> {
+    pub fn into_reason(self) -> Either<F, E> {
         self.reason
     }
 }

@@ -3,8 +3,8 @@ use core::fmt::Debug;
 
 use wrapper::Wrapper;
 
-use crate::common::consumer::Invariant;
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::consumer::Invariant;
+use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 invarianted_consumer_outer_type!(
     /// Consumes data into a mutable slice.
@@ -17,12 +17,12 @@ invarianted_impl_as_ref!(IntoSlice_<'a, T>; [T]);
 invarianted_impl_as_mut!(IntoSlice_<'a, T>; [T]);
 invarianted_impl_wrapper!(IntoSlice_<'a, T>; &'a [T]);
 
-invarianted_impl_consumer_sync_and_local_nb!(IntoSlice_<'a, T> Item T; Final ();
+invarianted_impl_consumer!(IntoSlice_<'a, T> Item T; Final ();
     /// Emitted when the slice has been fully overwritten and an attempt to consume more items is made.
     Error ()
 );
-invarianted_impl_buffered_consumer_sync_and_local_nb!(IntoSlice_<'a, T>);
-invarianted_impl_bulk_consumer_sync_and_local_nb!(IntoSlice_<'a, T: Copy>);
+invarianted_impl_buffered_consumer!(IntoSlice_<'a, T>);
+invarianted_impl_bulk_consumer!(IntoSlice_<'a, T: Copy>);
 
 /// Create a consumer which places consumed data into the given slice.
 impl<'a, T> IntoSlice_<'a, T> {
@@ -125,14 +125,10 @@ impl<'a, T: Copy> BulkConsumer for IntoSlice<'a, T> {
     }
 }
 
-sync_consumer_as_local_nb!(IntoSlice<'a, T>);
-sync_buffered_consumer_as_local_nb!(IntoSlice<'a, T>);
-sync_bulk_consumer_as_local_nb!(IntoSlice<'a, T: Copy>);
-
 // #[cfg(test)]
 // mod tests {
 //     use super::super::*;
-//     use crate::sync::*;
+//     use crate::*;
 
 //     // Panic conditions:
 //     //

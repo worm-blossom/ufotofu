@@ -13,7 +13,7 @@ use crate::consumer::Invariant;
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone)]
-/// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::sync::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
+/// Collects data and can at any point be converted into a `Vec<T>`. Unlike [`IntoVec`](crate::consumer::IntoVec), reports an error instead of panicking when an internal memory allocation fails.
 pub struct IntoVecFallible_<T>(Invariant<IntoVecFallible<T>>);
 
 invarianted_impl_debug!(IntoVecFallible_<T: Debug>);

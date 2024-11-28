@@ -3,7 +3,7 @@
 //! More specifically, a family of macros for wrapper producers with an invariant wrapper and implementing various traits on the
 //! resulting type by forwarding to the wrapper.
 //!
-//! See `common::producer::from_boxed_slice` for example usage of all these macros.
+//! See `producer::from_boxed_slice` for example usage of all these macros.
 
 // Macro syntax for handling generic parameters from https://stackoverflow.com/a/61189128
 

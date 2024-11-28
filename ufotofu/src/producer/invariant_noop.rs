@@ -5,7 +5,7 @@ use crate::{BufferedProducer, BulkProducer, Producer};
 /// A `Producer` wrapper that panics when callers violate API contracts such
 /// as halting interaction after an error.
 ///
-/// This wrapper only performs the checks when testing code (more specifically,
+/// This wrapper only performs the checks while testing (more specifically,
 /// when `#[cfg(test)]` applies). In production builds, the wrapper does
 /// nothing at all and compiles away without any overhead.
 ///
@@ -13,6 +13,8 @@ use crate::{BufferedProducer, BulkProducer, Producer};
 /// We recommend to use this type for all custom producers as well.
 ///
 /// #### Invariants
+///
+/// The wrapper enforces the following invariants:
 ///
 /// The wrapper enforces the following invariants:
 ///
@@ -33,7 +35,7 @@ impl<P: core::fmt::Debug> core::fmt::Debug for Invariant<P> {
 }
 
 impl<P> Invariant<P> {
-    /// Returns a `Producer` that behaves exactly like the wrapped `Producer`
+    /// Returns a producer that behaves exactly like the wrapped producer
     /// `inner`, except that - when running tests - it performs runtime
     /// validation of API invariants and panics if they are violated by a
     /// caller.
@@ -41,7 +43,7 @@ impl<P> Invariant<P> {
         Invariant { inner }
     }
 
-    /// Returns the wrapped producer.
+    /// Consumes `self` and returns the wrapped producer.
     pub fn into_inner(self) -> P {
         self.inner
     }

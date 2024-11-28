@@ -3,9 +3,7 @@
 //! More specifically, a family of macros for wrapper consumers with an invariant wrapper and implementing various traits on the
 //! resulting type by forwarding to the wrapper.
 //!
-//! Also, a family of macros to implement `local_nb::Consumer` by referring to an implementation of `sync::local_nb::Consumer`.
-//!
-//! See `common::consumer::into_slice` for example usage of all these macros.
+//! See `consumer::into_slice` for example usage of all these macros.
 
 // Macro syntax for handling generic parameters from https://stackoverflow.com/a/61189128
 
@@ -13,7 +11,7 @@
 macro_rules! invarianted_consumer_outer_type {
     ($(#[$doc:meta])* $outer:ident $inner:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ) => {
         $(#[$doc])*
-        pub struct $outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?(ufotofu::common::consumer::Invariant<$inner $(< $( $lt ),+ >)?>);
+        pub struct $outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?(ufotofu::consumer::Invariant<$inner $(< $( $lt ),+ >)?>);
     }
 }
 

@@ -11,12 +11,8 @@ use arbitrary::{Arbitrary, Error as ArbitraryError, Unstructured};
 use ufotofu_queues::{Fixed, Queue};
 use wrapper::Wrapper;
 
-use crate::common::consumer::Invariant;
-use crate::local_nb::{
-    BufferedConsumer as BufferedConsumerLocalNb, BulkConsumer as BulkConsumerLocalNb,
-    Consumer as ConsumerLocalNb,
-};
-use crate::sync::{BufferedConsumer, BulkConsumer, Consumer};
+use crate::consumer::Invariant;
+use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// Operations which may be called against a consumer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
@@ -108,34 +104,6 @@ where
     T: Copy,
 {
     invarianted_bulk_consumer_methods!();
-}
-
-impl<C, T, F, E> ConsumerLocalNb for Scramble_<C, T, F, E>
-where
-    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
-{
-    type Item = T;
-    type Final = F;
-    type Error = E;
-
-    invarianted_consumer_methods_local_nb!();
-}
-
-impl<C, T, F, E> BufferedConsumerLocalNb for Scramble_<C, T, F, E>
-where
-    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
-{
-    invarianted_buffered_consumer_methods_local_nb!();
-}
-
-impl<C, T, F, E> BulkConsumerLocalNb for Scramble_<C, T, F, E>
-where
-    C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
-{
-    invarianted_bulk_consumer_methods_local_nb!();
 }
 
 struct Scramble<C, T, F, E> {

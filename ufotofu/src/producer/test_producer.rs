@@ -19,15 +19,15 @@ use crate::producer::FromBoxedSlice;
 use crate::{BufferedProducer, BulkProducer, Producer};
 
 #[derive(Clone)]
-/// If you need to test code that works with arbitrary producers, use this one. You can choose which items it emits, which final or or error value it emits, the size of the slices it presents with `expose_slots`, and when to its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various producer behaviours automatically.
+/// If you need to test code that works with arbitrary producers, use this one. You can choose which items it emits, which final or error value it emits, the size of the slices it presents with [`expose_items`](BulkProducer::expose_items), and when its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various producer behaviours automatically.
 ///
-/// Create new [`TestProducer`](crate::common::producer::TestProducer)s either via a [`TestProducerBuilder`] or via the implementation of [`Arbitrary`].
+/// Create new [`TestProducer`](crate::producer::TestProducer)s either via a [`TestProducerBuilder`] or via the implementation of [`Arbitrary`].
 ///
 /// ```
 /// use std::convert::Infallible;
 /// use either::Either::*;  
-/// use ufotofu::sync::producer::*;
-/// use ufotofu::sync::*;
+/// use ufotofu::producer::*;
+/// use ufotofu::*;
 ///
 /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
 /// assert_eq!(Ok(Left(1)), pro.produce());
@@ -38,13 +38,13 @@ use crate::{BufferedProducer, BulkProducer, Producer};
 pub struct TestProducer_<Item, Final, Error>(Invariant<TestProducer<Item, Final, Error>>);
 
 impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
-    /// Obtain a slice of all regular items that will be produced in the future.
+    /// Returns a slice of all regular items that will be produced in the future.
     ///
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, (), ()> = TestProducerBuilder::new(vec![1, 2, 3, 4].into(), Ok(())).build();
     /// assert_eq!(Ok(Left(1)), pro.produce());
@@ -55,13 +55,13 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
         self.0.as_ref().remaining()
     }
 
-    /// Consume the [`TestProducer`](crate::common::producer::TestProducer) and obtain ownership of all values that it has or would have produced, including the last one.
+    /// Consumes the [`TestProducer`](crate::producer::TestProducer) and obtain ownership of all values that it has or would have produced, including the last one.
     ///
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, (), u16> = TestProducerBuilder::new(vec![1, 2, 3, 4].into(), Err(999)).build();
     /// assert_eq!(Ok(Left(1)), pro.produce());
@@ -72,13 +72,15 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
         self.0.into_inner().into_data()
     }
 
-    /// Obtain a reference to the last value that this will emit, either a `Final` value, or an `Error` value.
+    /// Returns a reference to the last value that this will emit, either a `Final` value, or an `Error` value.
+    /// 
+    /// Returns `None` if it has been emitted already.
     ///
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
     /// assert_eq!(Ok(Left(1)), pro.produce());
@@ -88,13 +90,13 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
         self.0.as_ref().peek_last()
     }
 
-    /// Return whether the last value (a `Final` value or an `Error`) was already emitted.
+    /// Returns whether the last value (a `Final` value or an `Error`) was already emitted.
     ///
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1].into(), Ok(9999)).build();
     /// assert_eq!(false, pro.did_already_emit_last());
@@ -152,13 +154,13 @@ impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
 
 impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestProducer_<Item, Final, Error> {}
 
-/// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestProducer`](crate::common::producer::TestProducer).
+/// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestProducer`](crate::producer::TestProducer).
 ///
 /// ```
 /// use std::convert::Infallible;
 /// use either::Either::*;  
-/// use ufotofu::sync::producer::*;
-/// use ufotofu::sync::*;
+/// use ufotofu::producer::*;
+/// use ufotofu::*;
 ///
 /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
 /// assert_eq!(Ok(Left(1)), pro.produce());
@@ -174,15 +176,15 @@ pub struct TestProducerBuilder<Item, Final, Error> {
 }
 
 impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
-    /// Create a new [`TestProducerBuilder`].
+    /// Creates a new [`TestProducerBuilder`].
     ///
     /// The resulting producer will succesfully produce the given `items` before emitting the given `last` value (either a final value or an error).
     ///
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
     /// assert_eq!(Ok(Left(1)), pro.produce());
@@ -199,7 +201,7 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
         }
     }
 
-    /// Set a pattern of upper bounds to the slice sizes that the [`BulkProducer::expose_items`] method returns. The consumer will cycle through the supplied upper bounds. Up to a size of 2048, the supplied sizes will also act as lower bounds, i.e., [`BulkProducer::expose_items`] will return slices of the exact sizes supplied here, unless it exceeds 2048.
+    /// Sets a pattern of upper bounds to the slice sizes that the [`BulkProducer::expose_items`] method returns. The producer will cycle through the supplied upper bounds. Up to a size of 2048, the supplied sizes will also act as lower bounds, i.e., [`BulkProducer::expose_items`] will return slices of the exact sizes supplied here, unless it exceeds 2048.
     ///
     /// An empty slice will be ignored.
     ///
@@ -208,8 +210,8 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3, 4].into(), Ok(9999))
     ///     .exposed_items_sizes(vec![2.try_into().unwrap(), 1.try_into().unwrap()].into())
@@ -228,11 +230,9 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
         self
     }
 
-    /// Set a pattern of whether to immediately complete asynchronous action, or to yield back to the task executor first.
+    /// Sets a pattern of whether to immediately complete asynchronous action, or to yield back to the task executor first.
     ///
     /// If all booleans are `true`, a single `false` will be appended (otherwise, the producer would never complete its operations).
-    ///
-    /// Will be ignored by non-nonblocking consumers.
     pub fn yield_pattern(mut self, pattern: Box<[bool]>) -> Self {
         if pattern.iter().all(|b| *b) {
             // This also handles empty patterns.
@@ -247,13 +247,13 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
         self
     }
 
-    /// Create a fully configured [`TestProducer`](crate::common::consumer::TestProducer).
+    /// Creates a fully configured [`TestProducer`](crate::producer::TestProducer).
     ///
     /// ```
     /// use std::convert::Infallible;
     /// use either::Either::*;  
-    /// use ufotofu::sync::producer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
     ///
     /// let mut pro: TestProducer<u8, u16, Infallible> = TestProducerBuilder::new(vec![1, 2, 3].into(), Ok(9999)).build();
     /// assert_eq!(Ok(Left(1)), pro.produce());

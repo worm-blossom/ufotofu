@@ -15,13 +15,13 @@ use crate::test_yielder::TestYielder;
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 #[derive(Clone)]
-/// If you need to test code that works with arbitrary consumers, use this one. You can choose which error it should emit, when it emits its error, the size of the slices it presents with `expose_slots`, and when to its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
+/// If you need to test code that works with arbitrary consumers, use this one. You can choose which error it should emit, when it emits its error, the size of the slices it presents with [`expose_slots`](BulkConsumer::expose_slots), and when its async functions should yield instead of returning immediately. Beyond manual control, the [`Arbitrary`] implementation lets you test against various consumer behaviours automatically.
 ///
-/// Create new [`TestConsumer`](crate::common::consumer::TestConsumer)s either via a [`TestConsumerBuilder`] or via the implementation of [`Arbitrary`].
+/// Create new [`TestConsumer`](crate::consumer::TestConsumer)s either via a [`TestConsumerBuilder`] or via the implementation of [`Arbitrary`].
 ///
 /// ```
-/// use ufotofu::sync::consumer::*;
-/// use ufotofu::sync::*;
+/// use ufotofu::consumer::*;
+/// use ufotofu::*;
 ///
 /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
 /// assert_eq!(Ok(()), con.consume(4));
@@ -32,11 +32,11 @@ use crate::{BufferedConsumer, BulkConsumer, Consumer};
 pub struct TestConsumer_<Item, Final, Error>(Invariant<TestConsumer<Item, Final, Error>>);
 
 impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
-    /// Obtain a slice of all items that have been consumed so far.
+    /// Obtains a slice of all items that have been consumed so far.
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999).build();
     /// assert_eq!(Ok(()), con.consume(4));
@@ -47,11 +47,11 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
         self.0.as_ref().consumed()
     }
 
-    /// Obtain a reference to the final item that was consumed, or `None` if the consumer had not been closed so far.
+    /// Obtains a reference to the final item that was consumed, or `None` if the consumer had not been closed so far.
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, u8, ()> = TestConsumerBuilder::new((), 999).build();
     /// assert_eq!(Ok(()), con.consume(4));
@@ -63,11 +63,11 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
         self.0.as_ref().final_consumed()
     }
 
-    /// Consume the [`TestConsumer`](crate::common::consumer::TestConsumer) and obtain ownership of all items that were consumed, including the final one (if any).
+    /// Consumes the [`TestConsumer`](crate::consumer::TestConsumer) and obtain ownership of all items that were consumed, including the final one (if any).
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, u8, ()> = TestConsumerBuilder::new((), 999).build();
     /// assert_eq!(Ok(()), con.consume(4));
@@ -79,11 +79,11 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
         self.0.into_inner().into_consumed()
     }
 
-    /// Obtain a reference to the error that this will eventually emit, or `None` if the error was already emitted.
+    /// Obtains a reference to the error that this will eventually emit, or `None` if the error was already emitted.
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 1).build();
     /// assert_eq!(Ok(()), con.consume(4));
@@ -95,11 +95,11 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
         self.0.as_ref().peek_error()
     }
 
-    /// Return whether an error was already emitted.
+    /// Returns whether an error was already emitted.
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 1).build();
     /// assert_eq!(Ok(()), con.consume(4));
@@ -157,11 +157,11 @@ impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
 
 impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestConsumer_<Item, Final, Error> {}
 
-/// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestConsumer`](crate::common::consumer::TestConsumer).
+/// A [builder](https://rust-unofficial.github.io/patterns/patterns/creational/builder.html) for [`TestConsumer`](crate::consumer::TestConsumer).
 ///
 /// ```
-/// use ufotofu::sync::consumer::*;
-/// use ufotofu::sync::*;
+/// use ufotofu::consumer::*;
+/// use ufotofu::*;
 ///
 /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
 /// assert_eq!(Ok(()), con.consume(4));
@@ -177,13 +177,13 @@ pub struct TestConsumerBuilder<Error> {
 }
 
 impl<Error> TestConsumerBuilder<Error> {
-    /// Create a new [`TestConsumerBuilder`].
+    /// Creates a new [`TestConsumerBuilder`].
     ///
-    /// The resulting consumer will succesfully receive `consumptions_until_error` many items before emitting the error `error` any further method call.
+    /// The resulting consumer will succesfully receive `consumptions_until_error` many items before emitting the error `error` on any further method call.
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
     /// assert_eq!(Ok(()), con.consume(4));
@@ -200,15 +200,15 @@ impl<Error> TestConsumerBuilder<Error> {
         }
     }
 
-    /// Set a pattern of upper bounds to the slice sizes that the [`BulkConsumer::expose_slots`] method returns. The consumer will cycle through the supplied upper bounds. Up to a size of 2048, the supplied sizes will also act as lower bounds, i.e., [`BulkConsumer::expose_slots`] will return slices of the exact sizes supplied here, unless it exceeds 2048.
+    /// Sets a pattern of upper bounds to the slice sizes that the [`BulkConsumer::expose_slots`] method returns. The consumer will cycle through the supplied upper bounds. Up to a size of 2048, the supplied sizes will also act as lower bounds, i.e., [`BulkConsumer::expose_slots`] will return slices of the exact sizes supplied here, unless it exceeds 2048.
     ///
     /// An empty slice will be ignored.
     ///
     /// Will be ignored by non-bulk consumers.
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), ()> = TestConsumerBuilder::new((), 999)
     ///     .exposed_slot_sizes(vec![76.try_into().unwrap(), 1.try_into().unwrap()].into())
@@ -227,11 +227,9 @@ impl<Error> TestConsumerBuilder<Error> {
         self
     }
 
-    /// Set a pattern of whether to immediately complete asynchronous action, or to yield back to the task executor first.
+    /// Sets a pattern of whether to immediately complete asynchronous action, or to yield back to the task executor first.
     ///
     /// If all booleans are `true`, a single `false` will be appended (otherwise, the consumer would never complete its operations).
-    ///
-    /// Will be ignored by non-nonblocking consumers.
     pub fn yield_pattern(mut self, pattern: Box<[bool]>) -> Self {
         if pattern.iter().all(|b| *b) {
             // This also handles empty patterns.
@@ -246,11 +244,11 @@ impl<Error> TestConsumerBuilder<Error> {
         self
     }
 
-    /// Create a fully configured [`TestConsumer`](crate::common::consumer::TestConsumer).
+    /// Creates a fully configured [`TestConsumer`](crate::consumer::TestConsumer).
     ///
     /// ```
-    /// use ufotofu::sync::consumer::*;
-    /// use ufotofu::sync::*;
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
     ///
     /// let mut con: TestConsumer<u8, (), u16> = TestConsumerBuilder::new(404, 2).build();
     /// assert_eq!(Ok(()), con.consume(4));

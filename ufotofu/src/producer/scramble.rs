@@ -13,12 +13,8 @@ use ufotofu_queues::{Fixed, Queue};
 
 use wrapper::Wrapper;
 
-use crate::common::producer::Invariant;
-use crate::local_nb::{
-    BufferedProducer as BufferedProducerLocalNb, BulkProducer as BulkProducerLocalNb,
-    Producer as ProducerLocalNb,
-};
-use crate::sync::{BufferedProducer, BulkProducer, Producer};
+use crate::producer::Invariant;
+use crate::{BufferedProducer, BulkProducer, Producer};
 
 /// Operations which may be called against a producer.
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]

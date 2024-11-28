@@ -6,6 +6,7 @@
 //!
 //! UFOTOFU provides APIs for lazily producing or consuming sequences of arbitrary length, serving as async redesigns of traits such as [`Iterator`], [`io::Read`](std::io::Read), or [`io::Write`](std::io::Write). Highlights of ufotofu include
 //!
+//! - bulk data transfer without temporary buffers,
 //! - consistent error handling semantics across all supported modes of sequence processing,
 //! - meaningful subtyping relations between, for example, streams and readers,
 //! - absence of needless specialization of error types or item types,
@@ -18,21 +19,21 @@
 //!
 //! UFOTOFU is built around a small hierarchy of traits that describe how to produce or consume a sequence item by item.
 //!
-//! A [`Producer`](sync::Producer) provides the items of a sequence to some client code, similar to the [`futures::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html) or the [`core::iter::Iterator`] traits. Client code can repeatedly request the next item, and receives either another item, an error, or a dedicated *final* item which may be of a different type than the repeated items. An *iterator* of `T`s corresponds to a *producer* of `T`s with final item type `()` and error type [`Infallible`](core::convert::Infallible).
+//! A [`Producer`] provides the items of a sequence to some client code, similar to the [`futures::Stream`](https://docs.rs/futures/latest/futures/stream/trait.Stream.html) and [`core::iter::Iterator`] traits. Client code can repeatedly request the next item, and receives either another item, an error, or a dedicated *final* item which may be of a different type than the repeated items. An *iterator* of `T`s corresponds to a *producer* of `T`s with final item type `()` and error type [`Infallible`](core::convert::Infallible).
 //!
-//! A [`Consumer`](sync::Consumer) accepts the items of a sequence from some client code, similar to the [`futures::Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html) traits. Client code can repeatedly add new items to the sequence, until it adds a single *final* item which may be of a different type than the repeated items. A final item type of `()` makes adding the final item equivalent to calling a conventional [`close`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html#tymethod.poll_close) method.
+//! A [`Consumer`] accepts the items of a sequence from some client code, similar to the [`futures::Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html) trait. Client code can repeatedly add new items to the sequence, until it adds a single *final* item which may be of a different type than the repeated items. A final item type of `()` makes adding the final item equivalent to calling a conventional [`close`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html#tymethod.poll_close) method.
 //!
-//! Producers and consumers are fully dual; the [pipe](sync::pipe) function writes as much data as possible from a producer into a consumer.
+//! Producers and consumers are fully dual; the [`pipe`] function writes as much data as possible from a producer into a consumer.
 //!
-//! Consumers often buffer items in an internal queue before performing side-effects on data in larger chunks, such as writing data to the network only once a full packet can be filled. The [`BufferedConsumer`](sync::BufferedConsumer) trait extends the [`Consumer`](sync::Consumer) trait to allow client code to trigger effectful flushing of internal buffers. Dually, the [`BufferedProducer`](sync::BufferedProducer) trait extends the [`Producer`](sync::Producer) trait to allow client code to trigger effectful prefetching of data into internal buffers.
+//! Consumers often buffer items in an internal queue before performing side-effects on data in larger chunks, such as writing data to the network only once a full packet can be filled. The [`BufferedConsumer`] trait extends the [`Consumer`] trait to allow client code to trigger effectful flushing of internal buffers. Dually, the [`BufferedProducer`] trait extends the [`Producer`] trait to allow client code to trigger effectful prefetching of data into internal buffers.
 //!
-//! Finally, the [`BulkProducer`](sync::BulkProducer) and [`BulkConsumer`](sync::BulkConsumer) traits extend [`BufferedProducer`](sync::BufferedProducer) and [`BufferedConsumer`](sync::BufferedConsumer) respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [bulk_pipe](sync::bulk_pipe) function leverages this ability to efficiently pipe data — unlike the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxiliary buffer.
+//! Finally, the [`BulkProducer`] and [`BulkConsumer`] traits extend [`BufferedProducer`] and [`BufferedConsumer`] respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [`bulk_pipe`] function leverages this ability to efficiently pipe data — unlike when using the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxiliary buffer.
 //!
 //! ## Async Conventions
 //!
-//! UFOTOFU provides async APIs, and follows some consistent conventions. Most importantly, the futures returned by any UFOTOFU method are not expected to be cancellation safe: while it is allowed to drop a Future returned by an UFOTOFU trait method without polling it to completion, it is forbidden to call any further UFOTOFU trait methods on the same value afterwards. In other words: you must poll the future returned by any trait method to completion before calling the next trait method. This mirrors the design of sync APIs, where there is no way to partially execute a method either.
+//! UFOTOFU provides async APIs, and follows some consistent conventions. Most importantly, the futures returned by any UFOTOFU method are not expected to be cancellation safe: while it is allowed to drop a Future returned by an UFOTOFU trait method without polling it to completion, it is forbidden to call any further UFOTOFU trait methods on the same value afterwards. In other words: you must poll the future returned by any trait method to completion before calling the next trait method. This mirrors — as closely as possible — the design of sync APIs, where there is no way to partially execute a method either.
 //!
-//! Further, UFOTOFU does not require a `Send` bound on any futures. In other words, it can only be used with single-threaded async runtimes (or, technically, runtimes that confine the execution of any one future to a single thread).
+//! Further, UFOTOFU never requires a `Send` bound on any futures. In other words, it can only be used with single-threaded async runtimes (or, more precisely, runtimes that confine the execution of any one future to a single thread).
 //!
 //! ## Module Organisation
 //!
@@ -52,7 +53,7 @@
 //!
 //! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
 //!
-//! All functionality that aids in testing and development is gated behind the `dev` feature flag (disabled by default).
+//! All functionality specifically designed to aid in testing and development is gated behind the `dev` feature flag (disabled by default).
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -65,8 +66,6 @@ use core::future::Future;
 
 use either::Either::{self, *};
 
-use errors::{ConsumeFullSliceError, OverwriteFullSliceError, PipeError};
-
 // This allows macros to use `ufotofu` instead of `crate`, which might become
 // convenient some day.
 extern crate self as ufotofu;
@@ -74,48 +73,50 @@ extern crate self as ufotofu;
 #[macro_use]
 mod common_macros;
 
+mod errors;
+pub use errors::*;
+
 pub mod consumer;
-pub mod errors;
 pub mod producer;
 
 mod test_yielder;
 
-/// A `Consumer` consumes a potentially infinite sequence, one item at a time.
+/// A [`Consumer`] consumes a potentially infinite sequence, one item at a time.
 ///
-/// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
-/// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// [`Infallible`](core::convert::Infallible) for `Self::Final`.
+/// The sequence consists of an arbitrary number of values of type [`Self::Item`], followed by
+/// up to one value of type [`Self::Final`]. If you intend for the sequence to be infinite, use
+/// [`Infallible`](core::convert::Infallible) for [`Self::Final`].
 ///
-/// A consumer can also signal an error of type `Self::Error` instead of consuming an item.
+/// A consumer may signal an error of type [`Self::Error`] instead of consuming any item (whether repeated or final).
 pub trait Consumer {
-    /// The sequence consumed by this consumer *starts* with *arbitrarily many* values of this type.
+    /// The sequence consumed by this consumer starts with *arbitrarily many* values of this type.
     type Item;
-    /// The sequence consumed by this consumer *ends* with *up to one* value of this type.
+    /// The sequence consumed by this consumer ends with *up to one* value of this type.
     type Final;
     /// The type of errors the consumer can emit instead of doing its job.
     type Error;
 
-    /// Attempt to consume the next item.
+    /// Attempts to consume the next item.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
     ///
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     fn consume(&mut self, item: Self::Item) -> impl Future<Output = Result<(), Self::Error>>;
 
-    /// Attempt to consume the final item.
+    /// Attempts to consume the final item.
     ///
     /// After this function is called, no further functions of this trait may be invoked.
     ///
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     fn close(&mut self, fin: Self::Final) -> impl Future<Output = Result<(), Self::Error>>;
 
-    /// Try to consume (clones of) *all* items in the given slice.
+    /// Tries to consume (clones of) *all* items in the given slice.
     /// Reports an error if the slice could not be consumed completely.
     ///
     /// This is a trait method for convenience, you should never need to
@@ -124,7 +125,7 @@ pub trait Consumer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     ///
     /// #### Implementation Notes
     ///
@@ -154,38 +155,38 @@ pub trait Consumer {
     }
 }
 
-/// A `Consumer` that can delay performing side-effects when consuming items.
+/// A [`Consumer`] that can delay performing side-effects when consuming items.
 ///
 /// It must not delay performing side-effects when being closed. In other words,
-/// calling `close` should internally trigger flushing.
+/// calling [`close`](Consumer::close) should internally trigger flushing.
 pub trait BufferedConsumer: Consumer {
-    /// Perform any side-effects that were delayed for previously consumed items.
+    /// Forces the consumer to perform any side-effects that were delayed for previously consumed items.
     ///
-    /// This function allows the client code to force execution of the (potentially expensive)
+    /// This function allows client code to force execution of the (potentially expensive)
     /// side-effects. In exchange, the consumer gains the freedom to delay the side-effects of
-    /// `consume` to improve efficiency.
+    /// [`consume`](Consumer::consume) to improve efficiency.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
     ///
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>>;
 }
 
-/// A `Consumer` that is able to consume several items with a single function call, in order to
-/// improve on the efficiency of the `Consumer` trait. Semantically, there must be no
+/// A [`Consumer`] that is able to consume several items with a single function call, in order to
+/// improve on the efficiency of the [`Consumer`] trait. Semantically, there must be no
 /// difference between consuming items in bulk or one item at a time.
 ///
-/// Note that `Self::Item` must be `Copy` for efficiency reasons.
+/// Note that [`Self::Item`](Consumer::Item) must be [`Copy`] for efficiency reasons.
 pub trait BulkConsumer: BufferedConsumer
 where
     Self::Item: Copy,
 {
     /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
     ///
-    ///  Expose a non-empty slice of memory for the client code to fill with items that should
+    /// Exposes a non-empty slice of memory for client code to fill with items that should
     /// be consumed.
     ///
     /// The consumer should expose the largest contiguous slice it can expose efficiently.
@@ -197,7 +198,7 @@ where
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     fn expose_slots<'a>(
         &'a mut self,
     ) -> impl Future<Output = Result<&'a mut [Self::Item], Self::Error>>
@@ -206,8 +207,8 @@ where
 
     /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
     ///
-    ///  Instruct the consumer to consume the first `amount` many items of the slots
-    /// it has most recently exposed. The semantics must be equivalent to those of `consume`
+    /// Instructs the consumer to consume the first `amount` many items of the slots
+    /// it has most recently exposed. The semantics must be equivalent to those of [`consume`](Consumer::consume)
     /// being called `amount` many times with exactly those items.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
@@ -215,13 +216,13 @@ where
     /// #### Invariants
     ///
     /// Callers must have written into (at least) the `amount` many first slots that
-    /// were most recently exposed. Failure to uphold this invariant may cause undefined behavior.
+    /// were most recently exposed.
     ///
     /// Must not be called after any function of this trait has returned an error, nor after
-    /// `close` was called.
+    /// [`close`](Consumer::close) was called.
     fn consume_slots(&mut self, amount: usize) -> impl Future<Output = Result<(), Self::Error>>;
 
-    /// Consume a non-zero number of items by reading them from a given buffer and returning how
+    /// Consumes a non-zero number of items by reading them from a given buffer and returning how
     /// many items were consumed.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
@@ -229,11 +230,11 @@ where
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error, nor after
-    /// `close` was called.
+    /// [`close`](Consumer::close) was called.
     ///
     /// #### Implementation Notes
     ///
-    /// The default implementation orchestrates `expose_slots` and `consume_slots` in a
+    /// The default implementation orchestrates [`expose_slots`](BulkConsumer::expose_slots) and [`consume_slots`](BulkConsumer::consume_slots) in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
     fn bulk_consume(
@@ -250,7 +251,7 @@ where
         }
     }
 
-    /// Try to bulk-consume (copies of) *all* items in the given slice.
+    /// Tries to bulk-consume (copies of) *all* items in the given slice.
     /// Reports an error if the slice could not be consumed completely.
     ///
     /// This is a trait method for convenience, you should never need to
@@ -259,7 +260,7 @@ where
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     ///
     /// #### Implementation Notes
     ///
@@ -289,25 +290,22 @@ where
     }
 }
 
-/// A `Producer` produces a potentially infinite sequence, one item at a time.
+/// A [`Producer`] produces a potentially infinite sequence, one item at a time.
 ///
-/// The sequence consists of an arbitrary number of values of type `Self::Item`, followed by
-/// up to one value of type `Self::Final`. If you intend for the sequence to be infinite, use
-/// [`Infallible`](core::convert::Infallible) for `Self::Final`.
+/// The sequence consists of an arbitrary number of values of type [`Self::Item`], followed by
+/// up to one value of type [`Self::Final`]. If you intend for the sequence to be infinite, use
+/// [`Infallible`](core::convert::Infallible) for [`Self::Final`].
 ///
-/// A producer can also signal an error of type `Self::Error` instead of producing an item.
+/// A producer may signal an error of type [`Self::Error`] instead of producing an item (whether repeated or final).
 pub trait Producer {
-    /// The sequence produced by this producer *starts* with *arbitrarily many* values of this type.
+    /// The sequence produced by this producer starts with *arbitrarily many* values of this type.
     type Item;
-    /// The sequence produced by this producer *ends* with *up to one* value of this type.
+    /// The sequence produced by this producer ends with *up to one* value of this type.
     type Final;
     /// The type of errors the producer can emit instead of doing its job.
     type Error;
 
-    /// Attempt to produce the next item, which is either a regular repeated item or the final item.
-    /// If the sequence of items has not ended yet, but no item are available at the time of calling,
-    /// the function must block until at least one more item becomes available (or it becomes clear
-    /// that the final value or an error should be yielded).
+    /// Attempts to produce the next item, which is either a regular repeated item or the final item.
     ///
     /// After this function returns the final item, or after it returns an error, no further
     /// functions of this trait may be invoked.
@@ -319,7 +317,7 @@ pub trait Producer {
         &mut self,
     ) -> impl Future<Output = Result<Either<Self::Item, Self::Final>, Self::Error>>;
 
-    /// Try to completely overwrite a slice with items from a producer.
+    /// Tries to completely overwrite a slice with items from a producer.
     /// Reports an error if the slice could not be overwritten completely.
     ///
     /// This is a trait method for convenience, you should never need to
@@ -328,7 +326,7 @@ pub trait Producer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     ///
     /// #### Implementation Notes
     ///
@@ -362,10 +360,12 @@ pub trait Producer {
     }
 }
 
-/// A `Producer` that can eagerly perform side-effects to prepare values for later yielding.
+/// A [`Producer`] that can eagerly perform side-effects to prepare values for later yielding.
 pub trait BufferedProducer: Producer {
-    /// Prepare some values for yielding. This function allows the `Producer` to perform side
-    /// effects that it would otherwise have to do just-in-time when `produce` gets called.
+    /// Asks the producer to prepare some values for yielding.
+    ///
+    /// This function allows the [`Producer`] to perform side effects that it would otherwise
+    /// have to do just-in-time when [`produce`](Producer::produce) gets called.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
     ///
@@ -375,22 +375,19 @@ pub trait BufferedProducer: Producer {
     fn slurp(&mut self) -> impl Future<Output = Result<(), Self::Error>>;
 }
 
-/// A `Producer` that is able to produce several items with a single function call, in order to
-/// improve on the efficiency of the `Producer` trait. Semantically, there must be no difference
+/// A [`Producer`] that is able to produce several items with a single function call, in order to
+/// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
 /// between producing items in bulk or one item at a time.
 ///
-/// Note that `Self::Item` must be `Copy` for efficiency reasons.
+/// Note that [`Self::Item`](Producer::Item) must be [`Copy`] for efficiency reasons.
 pub trait BulkProducer: BufferedProducer
 where
     Self::Item: Copy,
 {
-    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_uninit] instead.
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] instead.
     ///
-    ///  Expose a non-empty slice of items to be produced (or the final value, or an error).
-    /// The items in the slice must not have been emitted by `produce` before. If the sequence
-    /// of items has not ended yet, but no item is available at the time of calling, the
-    /// function must block until at least one more item becomes available (or it becomes clear
-    /// that the final value or an error should be yielded).
+    /// Exposes a non-empty slice of items to be produced (or the final value, or an error).
+    /// The items in the slice must not have been emitted by [`produce`](Producer::produce) before.
     ///
     /// The producer should expose the largest contiguous slice it can expose efficiently.
     /// It should not perform copies to increase the size of the slice. Client code must be
@@ -408,25 +405,23 @@ where
     where
         Self::Item: 'a;
 
-    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] or [BulkProducer::bulk_produce_uninit] instead.
+    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] instead.
     ///
-    ///  Mark `amount` many items as having been produced. Future calls to `produce` and to
-    /// `expose_items` must act as if `produce` had been called `amount` many times.
+    /// Marks `amount` many items as having been produced. Future calls to [`produce`](Producer::produce) and to
+    /// [`expose_items`](BulkProducer::expose_items) must act as if [`produce`](Producer::produce) had been called `amount` many times.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
     ///
     /// #### Invariants
     ///
-    /// Callers must not mark items as produced that had not previously been exposed by `expose_items`.
+    /// Callers must not mark items as produced that had not previously been exposed by [`expose_items`](BulkProducer::expose_items).
     ///
     /// Must not be called after any function of this trait returned a final item or an error.
     fn consider_produced(&mut self, amount: usize)
         -> impl Future<Output = Result<(), Self::Error>>;
 
-    /// Produce a non-zero number of items by writing them into a given buffer and returning how
-    /// many items were produced. If the sequence of items has not ended yet, but no item is
-    /// available at the time of calling, the function must block until at least one more item
-    /// becomes available (or it becomes clear that the final value or an error should be yielded).
+    /// Produces a non-zero number of items by writing them into a given buffer and returning how
+    /// many items were produced.
     ///
     /// After this function returns the final item, or after it returns an error, no further
     /// functions of this trait may be invoked.
@@ -437,7 +432,7 @@ where
     ///
     /// #### Implementation Notes
     ///
-    /// The default implementation orchestrates `expose_items` and `consider_produced` in a
+    /// The default implementation orchestrates [`expose_items`](BulkProducer::expose_items) and [`consider_produced`](BulkProducer::consider_produced) in a
     /// straightforward manner. Only provide your own implementation if you can do better
     /// than that.
     fn bulk_produce(
@@ -459,7 +454,7 @@ where
         }
     }
 
-    /// Try to completely overwrite a slice with items from a bulk producer.
+    /// Tries to completely overwrite a slice with items from a bulk producer.
     /// Reports an error if the slice could not be overwritten completely.
     ///
     /// This is a trait method for convenience, you should never need to
@@ -468,7 +463,7 @@ where
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
-    /// nor after `close` was called.
+    /// nor after [`close`](Consumer::close) was called.
     ///
     /// #### Implementation Notes
     ///
@@ -504,7 +499,7 @@ where
     }
 }
 
-/// Pipe as many items as possible from a producer into a consumer. Then call `close`
+/// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
 /// on the consumer with the final value emitted by the producer.
 pub async fn pipe<P, C>(
     producer: &mut P,
@@ -541,8 +536,8 @@ where
     }
 }
 
-/// Efficiently pipe as many items as possible from a bulk producer into a bulk consumer
-/// using `consumer.bulk_consume`. Then call `close` on the consumer with the final value
+/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`]
+/// using [`consumer.bulk_consume`](BulkConsumer::bulk_consume). Then calls [`close`](Consumer::close) on the consumer with the final value
 /// emitted by the producer.
 pub async fn bulk_pipe<P, C>(
     producer: &mut P,
@@ -578,80 +573,4 @@ where
             }
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    // use super::*;
-
-    // use core::convert::Infallible;
-
-    // use crate::consumer::{IntoSlice, IntoVec};
-    // use crate::producer::FromSlice;
-
-    // #[test]
-    // fn pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
-    //     smol::block_on(async {
-    //         let mut buf = [0; 3];
-
-    //         let mut o = FromSlice::new(b"ufo");
-    //         let mut i = IntoSlice::new(&mut buf);
-
-    //         pipe(&mut o, &mut i).await?;
-
-    //         let m = min(o.as_ref().len(), i.as_ref().len());
-    //         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-    //         assert_eq!(&buf, b"ufo");
-
-    //         Ok(())
-    //     })
-    // }
-
-    // #[test]
-    // fn pipes_from_slice_producer_to_consumer_into_vec(
-    // ) -> Result<(), PipeError<Infallible, Infallible>> {
-    //     smol::block_on(async {
-    //         let mut o = FromSlice::new(b"tofu");
-    //         let mut i = IntoVec::new();
-
-    //         pipe(&mut o, &mut i).await?;
-
-    //         assert_eq!(&i.into_vec(), b"tofu");
-
-    //         Ok(())
-    //     })
-    // }
-
-    // #[test]
-    // fn bulk_pipes_from_slice_producer_to_slice_consumer() -> Result<(), PipeError<Infallible, ()>> {
-    //     smol::block_on(async {
-    //         let mut buf = [0; 3];
-
-    //         let mut o = FromSlice::new(b"ufo");
-    //         let mut i = IntoSlice::new(&mut buf);
-
-    //         bulk_pipe(&mut o, &mut i).await?;
-
-    //         let m = min(o.as_ref().len(), i.as_ref().len());
-    //         assert_eq!(&i.as_ref()[..m], &o.as_ref()[..m]);
-    //         assert_eq!(&buf, b"ufo");
-
-    //         Ok(())
-    //     })
-    // }
-
-    // #[test]
-    // fn bulk_pipes_from_slice_producer_to_consumer_into_vec(
-    // ) -> Result<(), PipeError<Infallible, Infallible>> {
-    //     smol::block_on(async {
-    //         let mut o = FromSlice::new(b"tofu");
-    //         let mut i = IntoVec::new();
-
-    //         bulk_pipe(&mut o, &mut i).await?;
-
-    //         assert_eq!(&i.into_vec(), b"tofu");
-
-    //         Ok(())
-    //     })
-    // }
 }
