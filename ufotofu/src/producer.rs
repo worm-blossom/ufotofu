@@ -6,7 +6,6 @@
 //!
 //! The [TestProducer] exists for testing code that interacts with arbitrary producers; it provides customisable behavior of which items to emit, when to emit the final item or an error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 
-
 #[macro_use]
 mod macros;
 

@@ -382,14 +382,12 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
             }
         } else {
             match self.exposed_items_sizes {
-                None => {
-                    Ok(Left(
-                        BulkProducer::expose_items(&mut self.inner)
-                            .await
-                            .unwrap()
-                            .unwrap_left(),
-                    ))
-                }
+                None => Ok(Left(
+                    BulkProducer::expose_items(&mut self.inner)
+                        .await
+                        .unwrap()
+                        .unwrap_left(),
+                )),
                 Some((ref exposed_item_sizes, ref mut index)) => {
                     let max_len: usize = exposed_item_sizes[*index].into();
                     *index = (*index + 1) % exposed_item_sizes.len();
@@ -418,8 +416,8 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
 
         {
             BulkProducer::consider_produced(&mut self.inner, amount)
-            .await
-            .unwrap();
+                .await
+                .unwrap();
             Ok(())
         }
     }
