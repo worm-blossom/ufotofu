@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
-smol = "2.0.0"
+pollster = "0.4.0"
 ufotofu = { path = "../ufotofu", features = ["dev"] }
 ufotofu_queues = { path = "../ufotofu_queues", features = ["std"] }
 wrapper = "0.1.1"
@@ -20,113 +20,57 @@ either = "1.10.0"
 ###########
 
 [[bin]]
-name = "sync_consume_full_slice"
-path = "fuzz_targets/sync/consume_full_slice.rs"
+name = "consume_full_slice"
+path = "fuzz_targets/ufotofu/consume_full_slice.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "local_nb_consume_full_slice"
-path = "fuzz_targets/local_nb/consume_full_slice.rs"
+name = "bulk_consume"
+path = "fuzz_targets/ufotofu/bulk_consume.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "sync_bulk_consume"
-path = "fuzz_targets/sync/bulk_consume.rs"
+name = "bulk_consume_full_slice"
+path = "fuzz_targets/ufotofu/bulk_consume_full_slice.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "local_nb_bulk_consume"
-path = "fuzz_targets/local_nb/bulk_consume.rs"
+name = "overwrite_full_slice"
+path = "fuzz_targets/ufotofu/overwrite_full_slice.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "sync_bulk_consume_full_slice"
-path = "fuzz_targets/sync/bulk_consume_full_slice.rs"
+name = "bulk_produce"
+path = "fuzz_targets/ufotofu/bulk_produce.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "local_nb_bulk_consume_full_slice"
-path = "fuzz_targets/local_nb/bulk_consume_full_slice.rs"
+name = "bulk_overwrite_full_slice"
+path = "fuzz_targets/ufotofu/bulk_overwrite_full_slice.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "sync_overwrite_full_slice"
-path = "fuzz_targets/sync/overwrite_full_slice.rs"
+name = "pipe"
+path = "fuzz_targets/ufotofu/pipe.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "local_nb_overwrite_full_slice"
-path = "fuzz_targets/local_nb/overwrite_full_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_bulk_produce"
-path = "fuzz_targets/sync/bulk_produce.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_bulk_produce"
-path = "fuzz_targets/local_nb/bulk_produce.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_bulk_overwrite_full_slice"
-path = "fuzz_targets/sync/bulk_overwrite_full_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_bulk_overwrite_full_slice"
-path = "fuzz_targets/local_nb/bulk_overwrite_full_slice.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_pipe"
-path = "fuzz_targets/sync/pipe.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_pipe"
-path = "fuzz_targets/local_nb/pipe.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "sync_bulk_pipe"
-path = "fuzz_targets/sync/bulk_pipe.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "local_nb_bulk_pipe"
-path = "fuzz_targets/local_nb/bulk_pipe.rs"
+name = "bulk_pipe"
+path = "fuzz_targets/ufotofu/bulk_pipe.rs"
 test = false
 doc = false
 bench = false
