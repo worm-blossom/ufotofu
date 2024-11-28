@@ -78,6 +78,7 @@ pub use errors::*;
 pub mod consumer;
 pub mod producer;
 
+#[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_yielder;
 
 /// A [`Consumer`] consumes a potentially infinite sequence, one item at a time.
