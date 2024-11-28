@@ -28,7 +28,6 @@ dev = ["dep:arbitrary"]
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true}
 either = "1.10.0"
 ufotofu_queues = { path="../ufotofu_queues", version = "0.5.0" }
-wrapper = "0.1.1"
 
 [dev-dependencies]
 smol = "2.0.0"

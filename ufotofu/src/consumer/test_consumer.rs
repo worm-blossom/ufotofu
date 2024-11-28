@@ -8,7 +8,6 @@ use alloc::{boxed::Box, vec::Vec};
 use std::{boxed::Box, vec::Vec};
 
 use arbitrary::{size_hint, Arbitrary};
-use wrapper::Wrapper;
 
 use crate::consumer::IntoVec;
 use crate::consumer::Invariant;
@@ -291,7 +290,7 @@ impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
     }
 
     fn into_consumed(self) -> (Vec<Item>, Option<Final>) {
-        (self.inner.into_inner(), self.fin)
+        (self.inner.into_vec(), self.fin)
     }
 
     fn peek_error(&self) -> Option<&Error> {

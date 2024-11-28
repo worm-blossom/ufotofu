@@ -462,7 +462,6 @@ dependencies = [
  "either",
  "smol",
  "ufotofu_queues",
- "wrapper",
 ]
 
 [[package]]

@@ -9,8 +9,6 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{collections::TryReserveError, vec::Vec};
 
-use wrapper::Wrapper;
-
 use crate::consumer::Invariant;
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
@@ -27,6 +25,7 @@ impl<T> Default for IntoVecFallible_<T> {
 }
 
 impl<T> IntoVecFallible_<T> {
+    /// Creates a new consumer that collects data into a Vec, which errors when memory allocation fails.
     pub fn new() -> IntoVecFallible_<T> {
         let invariant = Invariant::new(IntoVecFallible {
             v: Vec::new(),
@@ -36,9 +35,10 @@ impl<T> IntoVecFallible_<T> {
         IntoVecFallible_(invariant)
     }
 
+    /// Converts `self` into the vector of all consumed items.
     pub fn into_vec(self) -> Vec<T> {
         let inner = self.0.into_inner();
-        inner.into_inner()
+        inner.into_vec()
     }
 }
 
@@ -53,7 +53,6 @@ impl<T: Default> IntoVecFallible_<T> {
 }
 
 invarianted_impl_as_ref!(IntoVecFallible_<T>; [T]);
-invarianted_impl_wrapper!(IntoVecFallible_<T>; Vec<T>);
 
 invarianted_impl_consumer!(IntoVecFallible_<T: Default> Item T; Final (); Error TryReserveError);
 invarianted_impl_buffered_consumer!(IntoVecFallible_<T: Default>);
@@ -71,8 +70,9 @@ impl<T> AsRef<[T]> for IntoVecFallible<T> {
     }
 }
 
-impl<T> Wrapper<Vec<T>> for IntoVecFallible<T> {
-    fn into_inner(self) -> Vec<T> {
+impl<T> IntoVecFallible<T> {
+    /// Converts `self` into the vector of all consumed items.
+    fn into_vec(self) -> Vec<T> {
         let IntoVecFallible { mut v, consumed } = self;
         v.truncate(consumed);
         v

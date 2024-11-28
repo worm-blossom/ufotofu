@@ -1,5 +1,4 @@
 use either::Either;
-use wrapper::Wrapper;
 
 use crate::{BufferedProducer, BulkProducer, Producer};
 
@@ -34,12 +33,17 @@ impl<P: core::fmt::Debug> core::fmt::Debug for Invariant<P> {
 }
 
 impl<P> Invariant<P> {
-    /// Return a `Producer` that behaves exactly like the wrapped `Producer`
+    /// Returns a `Producer` that behaves exactly like the wrapped `Producer`
     /// `inner`, except that - when running tests - it performs runtime
     /// validation of API invariants and panics if they are violated by a
     /// caller.
     pub fn new(inner: P) -> Self {
         Invariant { inner }
+    }
+
+    /// Returns the wrapped producer.
+    pub fn into_inner(self) -> P {
+        self.inner
     }
 }
 
@@ -52,12 +56,6 @@ impl<P> AsRef<P> for Invariant<P> {
 impl<P> AsMut<P> for Invariant<P> {
     fn as_mut(&mut self) -> &mut P {
         &mut self.inner
-    }
-}
-
-impl<P> Wrapper<P> for Invariant<P> {
-    fn into_inner(self) -> P {
-        self.inner
     }
 }
 

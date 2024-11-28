@@ -6,7 +6,6 @@ use core::num::NonZeroUsize;
 use alloc::{boxed::Box, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, vec::Vec};
-use wrapper::Wrapper;
 
 use arbitrary::{size_hint, Arbitrary};
 use either::Either;

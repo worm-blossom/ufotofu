@@ -1,5 +1,4 @@
 use either::Either;
-use wrapper::Wrapper;
 
 use crate::{BufferedProducer, BulkProducer, Producer};
 
@@ -54,6 +53,11 @@ impl<P> Invariant<P> {
         }
     }
 
+    /// Returns the wrapped producer.
+    pub fn into_inner(self) -> P {
+        self.inner
+    }
+
     /// Check the state of the `active` field and panic if the value is
     /// `false`.
     fn check_inactive(&self) {
@@ -72,12 +76,6 @@ impl<P> AsRef<P> for Invariant<P> {
 impl<P> AsMut<P> for Invariant<P> {
     fn as_mut(&mut self) -> &mut P {
         &mut self.inner
-    }
-}
-
-impl<P> Wrapper<P> for Invariant<P> {
-    fn into_inner(self) -> P {
-        self.inner
     }
 }
 

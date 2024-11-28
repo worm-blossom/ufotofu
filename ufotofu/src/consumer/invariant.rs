@@ -1,5 +1,3 @@
-use wrapper::Wrapper;
-
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
 /// A `Consumer` wrapper that panics when callers violate API contracts such
@@ -40,7 +38,7 @@ impl<C: core::fmt::Debug> core::fmt::Debug for Invariant<C> {
 }
 
 impl<C> Invariant<C> {
-    /// Return a `Consumer` that behaves exactly like the wrapped `Consumer`
+    /// Returns a `Consumer` that behaves exactly like the wrapped `Consumer`
     /// `inner`, except that - when running tests - it performs runtime
     /// validation of API invariants and panics if they are violated by a
     /// caller.
@@ -50,6 +48,11 @@ impl<C> Invariant<C> {
             active: true,
             exposed_slots: 0,
         }
+    }
+
+    /// Returns the wrapped consumer.
+    pub fn into_inner(self) -> C {
+        self.inner
     }
 
     /// Checks the state of the `active` field and panics if the value is
@@ -70,12 +73,6 @@ impl<C> AsRef<C> for Invariant<C> {
 impl<C> AsMut<C> for Invariant<C> {
     fn as_mut(&mut self) -> &mut C {
         &mut self.inner
-    }
-}
-
-impl<C> Wrapper<C> for Invariant<C> {
-    fn into_inner(self) -> C {
-        self.inner
     }
 }
 

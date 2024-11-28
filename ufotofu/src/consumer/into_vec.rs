@@ -9,8 +9,6 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrapper::Wrapper;
-
 use crate::consumer::IntoVecFallible;
 
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
@@ -26,26 +24,20 @@ impl<T: Default> Default for IntoVec<T> {
 }
 
 impl<T> IntoVec<T> {
-    /// Create a new consumer that collects data into a Vec.
+    /// Creates a new consumer that collects data into a Vec.
     pub fn new() -> IntoVec<T> {
         IntoVec(IntoVecFallible::new())
     }
 
-    /// Convert `self` into the vector of all consumed items.
+    /// Converts `self` into the vector of all consumed items.
     pub fn into_vec(self) -> Vec<T> {
-        self.0.into_inner()
+        self.0.into_vec()
     }
 }
 
 impl<T> AsRef<[T]> for IntoVec<T> {
     fn as_ref(&self) -> &[T] {
         self.0.as_ref()
-    }
-}
-
-impl<T> Wrapper<Vec<T>> for IntoVec<T> {
-    fn into_inner(self) -> Vec<T> {
-        self.0.into_inner()
     }
 }
 

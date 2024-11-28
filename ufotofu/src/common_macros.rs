@@ -44,18 +44,3 @@ macro_rules! invarianted_impl_as_mut {
         }
     }
 }
-
-/// Implement `Wrapper` for an opaque invariant wrapper type.
-macro_rules! invarianted_impl_wrapper {
-    ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)?; $t:ty) => {
-        impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
-            wrapper::Wrapper<$t>
-        for $outer
-            $(< $( $lt ),+ >)?
-        {
-            fn into_inner(self) -> $t {
-                self.0.into_inner().into_inner()
-            }
-        }
-    }
-}

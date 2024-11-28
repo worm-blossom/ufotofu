@@ -11,7 +11,6 @@ use alloc::{
 use std::{boxed::Box, vec::Vec};
 
 use either::Either;
-use wrapper::Wrapper;
 
 use crate::producer::Invariant;
 use crate::{BufferedProducer, BulkProducer, Producer};
@@ -41,10 +40,14 @@ impl<T> FromBoxedSlice_<T> {
     pub fn remaining(&self) -> &[T] {
         return &self.0.as_ref().0[self.0.as_ref().1..];
     }
+
+    /// Returns the full slice from which this was contructed.
+    pub fn into_inner(self) -> Box<[T]> {
+        self.0.into_inner().0
+    }
 }
 
 invarianted_impl_as_ref!(FromBoxedSlice_<T>; [T]);
-invarianted_impl_wrapper!(FromBoxedSlice_<T>; Box<[T]>);
 
 invarianted_impl_producer!(FromBoxedSlice_<T: Clone> Item T;
     /// Emitted once the end of the boxed slice has been reached.
@@ -60,12 +63,6 @@ struct FromBoxedSlice<T>(Box<[T]>, usize);
 impl<T> AsRef<[T]> for FromBoxedSlice<T> {
     fn as_ref(&self) -> &[T] {
         self.0.as_ref()
-    }
-}
-
-impl<T> Wrapper<Box<[T]>> for FromBoxedSlice<T> {
-    fn into_inner(self) -> Box<[T]> {
-        self.0
     }
 }
 
