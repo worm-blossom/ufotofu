@@ -77,10 +77,7 @@ impl<P: BufferedProducer> BufferedProducer for Invariant<P> {
     }
 }
 
-impl<P: BulkProducer> BulkProducer for Invariant<P>
-where
-    P::Item: Copy,
-{
+impl<P: BulkProducer> BulkProducer for Invariant<P> {
     async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>

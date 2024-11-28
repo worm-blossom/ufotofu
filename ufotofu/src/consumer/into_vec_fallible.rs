@@ -56,7 +56,7 @@ invarianted_impl_as_ref!(IntoVecFallible_<T>; [T]);
 
 invarianted_impl_consumer!(IntoVecFallible_<T: Default> Item T; Final (); Error TryReserveError);
 invarianted_impl_buffered_consumer!(IntoVecFallible_<T: Default>);
-invarianted_impl_bulk_consumer!(IntoVecFallible_<T: Copy + Default>);
+invarianted_impl_bulk_consumer!(IntoVecFallible_<T: Default>);
 
 #[derive(Debug, Clone)]
 struct IntoVecFallible<T> {
@@ -130,7 +130,7 @@ impl<T: Default> BufferedConsumer for IntoVecFallible<T> {
     }
 }
 
-impl<T: Default + Copy> BulkConsumer for IntoVecFallible<T> {
+impl<T: Default> BulkConsumer for IntoVecFallible<T> {
     async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,

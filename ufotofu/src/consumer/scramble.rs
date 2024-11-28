@@ -81,7 +81,6 @@ invarianted_impl_wrapper!(Scramble_<C, T, F, E>; C);
 impl<C, T, F, E> Consumer for Scramble_<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -93,7 +92,6 @@ where
 impl<C, T, F, E> BufferedConsumer for Scramble_<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     invarianted_buffered_consumer_methods!();
 }
@@ -101,7 +99,6 @@ where
 impl<C, T, F, E> BulkConsumer for Scramble_<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     invarianted_bulk_consumer_methods!();
 }
@@ -177,7 +174,6 @@ impl<C, T, F, E> Wrapper<C> for Scramble<C, T, F, E> {
 impl<C, T, F, E> Consumer for Scramble<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -217,7 +213,6 @@ where
 impl<C, T, F, E> BufferedConsumer for Scramble<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn flush(&mut self) -> Result<(), Self::Error> {
         // Perform operations until the queue is empty.
@@ -233,7 +228,6 @@ where
 impl<C, T, F, E> BulkConsumer for Scramble<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         let amount = self.buffer.len();
@@ -271,7 +265,6 @@ where
 impl<C, T, F, E> ConsumerLocalNb for Scramble<C, T, F, E>
 where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -311,7 +304,6 @@ where
 impl<C, T, F, E> BufferedConsumerLocalNb for Scramble<C, T, F, E>
 where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         // Perform operations until the queue is empty.
@@ -327,7 +319,6 @@ where
 impl<C, T, F, E> BulkConsumerLocalNb for Scramble<C, T, F, E>
 where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
@@ -368,7 +359,6 @@ where
 impl<C, T, F, E> Scramble<C, T, F, E>
 where
     C: BulkConsumer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn perform_operation(&mut self) -> Result<(), E> {
         debug_assert!(self.buffer.len() > 0);
@@ -419,7 +409,6 @@ where
 impl<C, T, F, E> Scramble<C, T, F, E>
 where
     C: BulkConsumerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     async fn perform_operation_local_nb(&mut self) -> Result<(), E> {
         debug_assert!(self.buffer.len() > 0);

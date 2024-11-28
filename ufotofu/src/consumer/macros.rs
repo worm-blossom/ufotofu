@@ -96,14 +96,20 @@ macro_rules! invarianted_bulk_consumer_methods {
             ufotofu::BulkConsumer::consume_slots(&mut self.0, amount).await
         }
 
-        async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
+        async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error>
+        where
+            Self::Item: Clone,
+        {
             ufotofu::BulkConsumer::bulk_consume(&mut self.0, buf).await
         }
 
         async fn bulk_consume_full_slice(
             &mut self,
             buf: &[Self::Item],
-        ) -> Result<(), ufotofu::ConsumeFullSliceError<Self::Error>> {
+        ) -> Result<(), ufotofu::ConsumeFullSliceError<Self::Error>>
+        where
+            Self::Item: Clone,
+        {
             ufotofu::BulkConsumer::bulk_consume_full_slice(&mut self.0, buf).await
         }
     };

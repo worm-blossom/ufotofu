@@ -73,7 +73,7 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
     }
 
     /// Returns a reference to the last value that this will emit, either a `Final` value, or an `Error` value.
-    /// 
+    ///
     /// Returns `None` if it has been emitted already.
     ///
     /// ```
@@ -112,9 +112,9 @@ impl<Item, Final, Error> TestProducer_<Item, Final, Error> {
 
 invarianted_impl_debug!(TestProducer_<Item: Debug, Final: Debug, Error: Debug>);
 
-invarianted_impl_producer!(TestProducer_<Item: Copy + Default, Final, Error> Item Item; Final Final; Error Error);
-invarianted_impl_buffered_producer!(TestProducer_<Item: Copy + Default, Final, Error>);
-invarianted_impl_bulk_producer!(TestProducer_<Item: Copy + Default, Final, Error>);
+invarianted_impl_producer!(TestProducer_<Item: Default + Clone, Final, Error> Item Item; Final Final; Error Error);
+invarianted_impl_buffered_producer!(TestProducer_<Item: Default + Clone, Final, Error>);
+invarianted_impl_bulk_producer!(TestProducer_<Item: Default + Clone, Final, Error>);
 
 impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitrary<'a>
     for TestProducer_<Item, Final, Error>
@@ -339,10 +339,7 @@ impl<Item: Clone, Final, Error> BufferedProducer for TestProducer<Item, Final, E
     }
 }
 
-impl<Item, Final, Error> BulkProducer for TestProducer<Item, Final, Error>
-where
-    Item: Copy,
-{
+impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error> {
     async fn expose_items<'a>(
         &'a mut self,
     ) -> Result<Either<&'a [Self::Item], Self::Final>, Self::Error>

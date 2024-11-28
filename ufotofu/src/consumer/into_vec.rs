@@ -82,7 +82,7 @@ impl<T: Default> BufferedConsumer for IntoVec<T> {
     }
 }
 
-impl<T: Default + Copy> BulkConsumer for IntoVec<T> {
+impl<T: Default> BulkConsumer for IntoVec<T> {
     async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
         Self::Item: 'a,

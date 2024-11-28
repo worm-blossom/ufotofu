@@ -178,12 +178,7 @@ pub trait BufferedConsumer: Consumer {
 /// A [`Consumer`] that is able to consume several items with a single function call, in order to
 /// improve on the efficiency of the [`Consumer`] trait. Semantically, there must be no
 /// difference between consuming items in bulk or one item at a time.
-///
-/// Note that [`Self::Item`](Consumer::Item) must be [`Copy`] for efficiency reasons.
-pub trait BulkConsumer: BufferedConsumer
-where
-    Self::Item: Copy,
-{
+pub trait BulkConsumer: BufferedConsumer {
     /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
     ///
     /// Exposes a non-empty slice of memory for client code to fill with items that should
@@ -240,11 +235,14 @@ where
     fn bulk_consume(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<usize, Self::Error>> {
+    ) -> impl Future<Output = Result<usize, Self::Error>>
+    where
+        Self::Item: Clone,
+    {
         async {
             let slots = self.expose_slots().await?;
             let amount = min(slots.len(), buf.len());
-            slots[0..amount].copy_from_slice(&buf[0..amount]);
+            slots[0..amount].clone_from_slice(&buf[0..amount]);
             self.consume_slots(amount).await?;
 
             Ok(amount)
@@ -269,7 +267,10 @@ where
     fn bulk_consume_full_slice(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<(), ConsumeFullSliceError<Self::Error>>> {
+    ) -> impl Future<Output = Result<(), ConsumeFullSliceError<Self::Error>>>
+    where
+        Self::Item: Clone,
+    {
         async {
             let mut consumed_so_far = 0;
 
@@ -378,12 +379,7 @@ pub trait BufferedProducer: Producer {
 /// A [`Producer`] that is able to produce several items with a single function call, in order to
 /// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
 /// between producing items in bulk or one item at a time.
-///
-/// Note that [`Self::Item`](Producer::Item) must be [`Copy`] for efficiency reasons.
-pub trait BulkProducer: BufferedProducer
-where
-    Self::Item: Copy,
-{
+pub trait BulkProducer: BufferedProducer {
     /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] instead.
     ///
     /// Exposes a non-empty slice of items to be produced (or the final value, or an error).
@@ -438,12 +434,15 @@ where
     fn bulk_produce(
         &mut self,
         buf: &mut [Self::Item],
-    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>> {
+    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>>
+    where
+        Self::Item: Clone,
+    {
         async {
             match self.expose_items().await? {
                 Either::Left(slots) => {
                     let amount = min(slots.len(), buf.len());
-                    buf[0..amount].copy_from_slice(&slots[0..amount]);
+                    buf[0..amount].clone_from_slice(&slots[0..amount]);
 
                     self.consider_produced(amount).await?;
 
@@ -472,7 +471,10 @@ where
     fn bulk_overwrite_full_slice<'a>(
         &mut self,
         buf: &'a mut [Self::Item],
-    ) -> impl Future<Output = Result<(), OverwriteFullSliceError<Self::Final, Self::Error>>> {
+    ) -> impl Future<Output = Result<(), OverwriteFullSliceError<Self::Final, Self::Error>>>
+    where
+        Self::Item: Clone,
+    {
         async {
             let mut produced_so_far = 0;
 
@@ -545,7 +547,7 @@ pub async fn bulk_pipe<P, C>(
 ) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: BulkProducer,
-    P::Item: Copy,
+    P::Item: Clone,
     C: BulkConsumer<Item = P::Item, Final = P::Final>,
 {
     loop {

@@ -48,7 +48,7 @@ invarianted_impl_producer!(FromSlice_<'a, T: Clone> Item T;
     Error Infallible
 );
 invarianted_impl_buffered_producer!(FromSlice_<'a, T: Clone>);
-invarianted_impl_bulk_producer!(FromSlice_<'a, T: Copy>);
+invarianted_impl_bulk_producer!(FromSlice_<'a, T: Clone>);
 
 #[derive(Debug)]
 struct FromSlice<'a, T>(&'a [T], usize);
@@ -89,7 +89,7 @@ impl<'a, T: Clone> BufferedProducer for FromSlice<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BulkProducer for FromSlice<'a, T> {
+impl<'a, T: Clone> BulkProducer for FromSlice<'a, T> {
     async fn expose_items<'b>(
         &'b mut self,
     ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>

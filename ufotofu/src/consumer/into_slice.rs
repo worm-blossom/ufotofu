@@ -22,7 +22,7 @@ invarianted_impl_consumer!(IntoSlice_<'a, T> Item T; Final ();
     Error ()
 );
 invarianted_impl_buffered_consumer!(IntoSlice_<'a, T>);
-invarianted_impl_bulk_consumer!(IntoSlice_<'a, T: Copy>);
+invarianted_impl_bulk_consumer!(IntoSlice_<'a, T>);
 
 /// Create a consumer which places consumed data into the given slice.
 impl<'a, T> IntoSlice_<'a, T> {
@@ -108,7 +108,7 @@ impl<'a, T> BufferedConsumer for IntoSlice<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BulkConsumer for IntoSlice<'a, T> {
+impl<'a, T> BulkConsumer for IntoSlice<'a, T> {
     fn expose_slots(&mut self) -> Result<&mut [Self::Item], Self::Error> {
         if self.0.len() == self.1 {
             // We already overwrote the full slice, notify the caller via an error return.

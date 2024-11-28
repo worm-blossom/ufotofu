@@ -118,7 +118,6 @@ where
 impl<C> BulkConsumer for Invariant<C>
 where
     C: BulkConsumer,
-    C::Item: Copy,
 {
     async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where

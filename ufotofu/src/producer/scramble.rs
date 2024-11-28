@@ -83,7 +83,6 @@ invarianted_impl_wrapper!(Scramble_<C, T, F, E>; C);
 impl<C, T, F, E> Producer for Scramble_<C, T, F, E>
 where
     C: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -95,7 +94,6 @@ where
 impl<C, T, F, E> BufferedProducer for Scramble_<C, T, F, E>
 where
     C: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     invarianted_buffered_producer_methods!();
 }
@@ -103,7 +101,6 @@ where
 impl<C, T, F, E> BulkProducer for Scramble_<C, T, F, E>
 where
     C: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     invarianted_bulk_producer_methods!();
 }
@@ -111,7 +108,6 @@ where
 impl<C, T, F, E> ProducerLocalNb for Scramble_<C, T, F, E>
 where
     C: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -123,7 +119,6 @@ where
 impl<C, T, F, E> BufferedProducerLocalNb for Scramble_<C, T, F, E>
 where
     C: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     invarianted_buffered_producer_methods!();
 }
@@ -131,7 +126,6 @@ where
 impl<C, T, F, E> BulkProducerLocalNb for Scramble_<C, T, F, E>
 where
     C: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     invarianted_bulk_producer_methods!();
 }
@@ -215,7 +209,6 @@ impl<P, T, F, E> Wrapper<P> for Scramble<P, T, F, E> {
 impl<P, T, F, E> Producer for Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -253,7 +246,6 @@ where
 impl<P, T, F, E> BufferedProducer for Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn slurp(&mut self) -> Result<(), Self::Error> {
         if self.final_val.is_some() {
@@ -278,7 +270,6 @@ where
 impl<P, T, F, E> BulkProducer for Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn expose_items(&mut self) -> Result<Either<&[Self::Item], Self::Final>, Self::Error> {
         // While the final value has not been set and the queue is not full, perform operations.
@@ -316,7 +307,6 @@ where
 impl<P, T, F, E> Scramble<P, T, F, E>
 where
     P: BulkProducer<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     fn perform_operation(&mut self) -> Result<Option<F>, E> {
         debug_assert!(self.buffer.len() < self.buffer.capacity());
@@ -372,7 +362,6 @@ where
 impl<P, T, F, E> ProducerLocalNb for Scramble<P, T, F, E>
 where
     P: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     type Item = T;
     type Final = F;
@@ -410,7 +399,6 @@ where
 impl<P, T, F, E> BufferedProducerLocalNb for Scramble<P, T, F, E>
 where
     P: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         if self.final_val.is_some() {
@@ -435,7 +423,6 @@ where
 impl<P, T, F, E> BulkProducerLocalNb for Scramble<P, T, F, E>
 where
     P: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     async fn expose_items<'a>(
         &'a mut self,
@@ -478,7 +465,6 @@ where
 impl<P, T, F, E> Scramble<P, T, F, E>
 where
     P: BulkProducerLocalNb<Item = T, Final = F, Error = E>,
-    T: Copy,
 {
     async fn perform_operation_local_nb(&mut self) -> Result<Option<F>, E> {
         debug_assert!(self.buffer.len() < self.buffer.capacity());

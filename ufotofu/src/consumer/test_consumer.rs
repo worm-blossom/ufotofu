@@ -114,9 +114,9 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
 
 invarianted_impl_debug!(TestConsumer_<Item: Debug, Final: Debug, Error: Debug>);
 
-invarianted_impl_consumer!(TestConsumer_<Item: Copy + Default, Final, Error> Item Item; Final Final; Error Error);
-invarianted_impl_buffered_consumer!(TestConsumer_<Item: Copy + Default, Final, Error>);
-invarianted_impl_bulk_consumer!(TestConsumer_<Item: Copy + Default, Final, Error>);
+invarianted_impl_consumer!(TestConsumer_<Item: Default, Final, Error> Item Item; Final Final; Error Error);
+invarianted_impl_buffered_consumer!(TestConsumer_<Item: Default, Final, Error>);
+invarianted_impl_bulk_consumer!(TestConsumer_<Item: Default, Final, Error>);
 
 impl<'a, Item: Arbitrary<'a>, Final: Arbitrary<'a>, Error: Arbitrary<'a>> Arbitrary<'a>
     for TestConsumer_<Item, Final, Error>
@@ -364,7 +364,7 @@ impl<Item: Default, Final, Error> BufferedConsumer for TestConsumer<Item, Final,
 
 impl<Item, Final, Error> BulkConsumer for TestConsumer<Item, Final, Error>
 where
-    Item: Copy + Default,
+    Item: Default,
 {
     async fn expose_slots<'a>(&'a mut self) -> Result<&'a mut [Self::Item], Self::Error>
     where
