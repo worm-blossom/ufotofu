@@ -75,6 +75,13 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "into_vec"
+path = "fuzz_targets/ufotofu/into_vec.rs"
+test = false
+doc = false
+bench = false
+
 ####################
 ## ufotofu_queues ##
 ####################

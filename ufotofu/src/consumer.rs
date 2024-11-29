@@ -1,5 +1,9 @@
 //! Useful functionality for working with consumers.
 //!
+//! ## Obtaining Consumers
+//!
+//! The [`IntoVec`] consumer consumes an arbitrary number of items and can be turned into a [`Vec`](std::vec::Vec) of all consumed items.
+//!
 //! ## Development Helpers
 //!
 //! The [Invariant] adaptor wraps any consumer and makes it panic during tests when some client code violates the API contracts imposed by the consumer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom consumers; all consumers in the ufotofu crate use this wrapper internally.
@@ -15,12 +19,7 @@ mod macros;
 #[cfg(feature = "alloc")]
 mod into_vec;
 #[cfg(feature = "alloc")]
-use into_vec::IntoVec;
-
-#[cfg(feature = "alloc")]
-mod into_vec_fallible;
-#[cfg(feature = "alloc")]
-use into_vec_fallible::IntoVecFallible_ as IntoVecFallible;
+pub use into_vec::IntoVec_ as IntoVec;
 
 #[cfg(test)]
 mod invariant;
