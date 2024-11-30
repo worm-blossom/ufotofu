@@ -308,7 +308,7 @@ struct TestProducer<Item, Final, Error> {
 
 impl<Item, Final, Error> TestProducer<Item, Final, Error> {
     fn remaining(&self) -> &[Item] {
-        self.inner.remaining()
+        self.inner.not_yet_produced()
     }
 
     fn into_data(self) -> (Box<[Item]>, Option<Result<Final, Error>>) {
@@ -338,7 +338,7 @@ impl<Item: Clone, Final, Error> Producer for TestProducer<Item, Final, Error> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.maybe_yield().await;
-        if self.inner.remaining().is_empty() {
+        if self.inner.not_yet_produced().is_empty() {
             Ok(Right(self.last.take().unwrap()?))
         } else {
             Ok(Left(
@@ -354,7 +354,7 @@ impl<Item: Clone, Final, Error> Producer for TestProducer<Item, Final, Error> {
 impl<Item: Clone, Final, Error> BufferedProducer for TestProducer<Item, Final, Error> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.maybe_yield().await;
-        if self.inner.remaining().is_empty() && self.last.as_ref().unwrap().is_err() {
+        if self.inner.not_yet_produced().is_empty() && self.last.as_ref().unwrap().is_err() {
             let last_owned = self.last.take().unwrap();
             match last_owned {
                 Ok(_) => unreachable!(),
@@ -374,7 +374,7 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
         Self::Item: 'a,
     {
         self.maybe_yield().await;
-        if self.inner.remaining().is_empty() {
+        if self.inner.not_yet_produced().is_empty() {
             let last_owned = self.last.take().unwrap();
             match last_owned {
                 Ok(fin) => Ok(Right(fin)),
@@ -406,7 +406,7 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
 
     async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.maybe_yield().await;
-        if self.inner.remaining().is_empty() && self.last.as_ref().unwrap().is_err() {
+        if self.inner.not_yet_produced().is_empty() && self.last.as_ref().unwrap().is_err() {
             let last_owned = self.last.take().unwrap();
             match last_owned {
                 Ok(_) => unreachable!(),

@@ -2,11 +2,11 @@
 
 use libfuzzer_sys::fuzz_target;
 use ufotofu::{
-    consumer::{BulkConsumeOperation, BulkScrambler, IntoVec},
+    consumer::{BulkConsumerOperation, BulkScrambler, IntoVec},
     BufferedConsumer, Consumer,
 };
 
-fuzz_target!(|data: (Box<[u8]>, usize, Vec<BulkConsumeOperation>)| {
+fuzz_target!(|data: (Box<[u8]>, usize, Vec<BulkConsumerOperation>)| {
     pollster::block_on(async {
         let (input, capacity, ops) = data;
         let capacity = core::cmp::min(capacity, 2048);

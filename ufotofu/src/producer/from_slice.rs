@@ -2,7 +2,6 @@ use core::convert::{AsRef, Infallible};
 use core::fmt::Debug;
 
 use either::Either;
-use wrapper::Wrapper;
 
 use crate::producer::Invariant;
 use crate::{BufferedProducer, BulkProducer, Producer};
@@ -15,32 +14,123 @@ invarianted_producer_outer_type!(
 invarianted_impl_debug!(FromSlice_<'a, T: Debug>);
 
 impl<'a, T> FromSlice_<'a, T> {
-    /// Create a producer which produces the data in the given slice.
+    /// Creates a producer that produces the data in the given slice.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_slice = FromSlice::new(&[1, 2, 3]);
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), from_slice.produce().await);
+    ///     assert_eq!(Ok(Left(2)), from_slice.produce().await);
+    ///     assert_eq!(Ok(Left(3)), from_slice.produce().await);
+    ///     assert_eq!(Ok(Right(())), from_slice.produce().await);
+    /// });
+    /// ```
     pub fn new(slice: &'a [T]) -> FromSlice_<'a, T> {
-        // Wrap the inner slice producer in the invariant type.
         let invariant = Invariant::new(FromSlice(slice, 0));
-
         FromSlice_(invariant)
     }
 
-    /// Return the offset into the slice at which the next item will be produced.
-    pub fn get_offset(&self) -> usize {
+    /// Returns the offset into the slice at which the next item will be produced.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_slice = FromSlice::new(&[1, 2, 3]);
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(0, from_slice.offset());
+    ///     assert_eq!(Ok(Left(1)), from_slice.produce().await);
+    ///     assert_eq!(1, from_slice.offset());
+    ///     assert_eq!(Ok(Left(2)), from_slice.produce().await);
+    ///     assert_eq!(2, from_slice.offset());
+    ///     assert_eq!(Ok(Left(3)), from_slice.produce().await);
+    ///     assert_eq!(3, from_slice.offset());
+    ///     assert_eq!(Ok(Right(())), from_slice.produce().await);
+    ///     assert_eq!(3, from_slice.offset());
+    /// });
+    /// ```
+    pub fn offset(&self) -> usize {
         (self.0).as_ref().1
     }
 
-    /// Return the subslice of items that have been produced so far.
-    pub fn get_produced_so_far(&self) -> &[T] {
-        &(self.0).as_ref().0[..self.get_offset()]
+    /// Returns the subslice of items that have been produced so far.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_slice = FromSlice::new(&[1, 2, 3]);
+    ///
+    /// pollster::block_on(async {
+    ///     assert!(from_slice.produced_so_far().is_empty());
+    ///     assert_eq!(Ok(Left(1)), from_slice.produce().await);
+    ///     assert_eq!(&[1], from_slice.produced_so_far());
+    ///     assert_eq!(Ok(Left(2)), from_slice.produce().await);
+    ///     assert_eq!(&[1, 2], from_slice.produced_so_far());
+    ///     assert_eq!(Ok(Left(3)), from_slice.produce().await);
+    ///     assert_eq!(&[1, 2, 3], from_slice.produced_so_far());
+    ///     assert_eq!(Ok(Right(())), from_slice.produce().await);
+    ///     assert_eq!(&[1, 2, 3], from_slice.produced_so_far());
+    /// });
+    /// ```
+    pub fn produced_so_far(&self) -> &[T] {
+        &(self.0).as_ref().0[..self.offset()]
     }
 
-    /// Return the subslice of items that have not been produced yet.
-    pub fn get_not_yet_produced(&self) -> &[T] {
-        &(self.0).as_ref().0[self.get_offset()..]
+    /// Returns the subslice of items that have not been produced yet.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_slice = FromSlice::new(&[1, 2, 3]);
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(&[1, 2, 3], from_slice.not_yet_produced());
+    ///     assert_eq!(Ok(Left(1)), from_slice.produce().await);
+    ///     assert_eq!(&[2, 3], from_slice.not_yet_produced());
+    ///     assert_eq!(Ok(Left(2)), from_slice.produce().await);
+    ///     assert_eq!(&[3], from_slice.not_yet_produced());
+    ///     assert_eq!(Ok(Left(3)), from_slice.produce().await);
+    ///     assert!(from_slice.not_yet_produced().is_empty());
+    ///     assert_eq!(Ok(Right(())), from_slice.produce().await);
+    ///     assert!(from_slice.not_yet_produced().is_empty());
+    /// });
+    /// ```
+    pub fn not_yet_produced(&self) -> &[T] {
+        &(self.0).as_ref().0[self.offset()..]
+    }
+
+    /// Consumes `self` and returns the original reference to the slice.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_slice = FromSlice::new(&[1, 2, 3]);
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), from_slice.produce().await);
+    ///     assert_eq!(Ok(Left(2)), from_slice.produce().await);
+    ///     assert_eq!(&[1, 2, 3], from_slice.into_inner());
+    /// });
+    /// ```
+    pub fn into_inner(self) -> &'a [T] {
+        self.0.into_inner().0
     }
 }
 
 invarianted_impl_as_ref!(FromSlice_<'a, T>; [T]);
-invarianted_impl_wrapper!(FromSlice_<'a, T>; &'a [T]);
 
 invarianted_impl_producer!(FromSlice_<'a, T: Clone> Item T;
     /// Emitted once the end of the slice has been reached.
@@ -55,12 +145,6 @@ struct FromSlice<'a, T>(&'a [T], usize);
 
 impl<'a, T> AsRef<[T]> for FromSlice<'a, T> {
     fn as_ref(&self) -> &[T] {
-        self.0
-    }
-}
-
-impl<'a, T> Wrapper<&'a [T]> for FromSlice<'a, T> {
-    fn into_inner(self) -> &'a [T] {
         self.0
     }
 }

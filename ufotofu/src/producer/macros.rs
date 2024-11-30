@@ -7,13 +7,13 @@
 
 // Macro syntax for handling generic parameters from https://stackoverflow.com/a/61189128
 
-// /// Create an opaque type of name `outer` that wraps the producer `inner` with invariant checks.
-// macro_rules! invarianted_producer_outer_type {
-//     ($(#[$doc:meta])* $outer:ident $inner:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ) => {
-//         $(#[$doc])*
-//         pub struct $outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?(ufotofu::producer::Invariant<$inner $(< $( $lt ),+ >)?>);
-//     }
-// }
+/// Create an opaque type of name `outer` that wraps the producer `inner` with invariant checks.
+macro_rules! invarianted_producer_outer_type {
+    ($(#[$doc:meta])* $outer:ident $inner:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ) => {
+        $(#[$doc])*
+        pub struct $outer $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?(ufotofu::producer::Invariant<$inner $(< $( $lt ),+ >)?>);
+    }
+}
 
 /// The method implementations of an opaque invariant wrapper around `Producer`.
 macro_rules! invarianted_producer_methods {

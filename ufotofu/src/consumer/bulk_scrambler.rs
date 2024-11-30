@@ -14,17 +14,17 @@ use arbitrary::Arbitrary;
 use crate::consumer::Invariant;
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
-/// An operation which may be called against a consumer.
+/// An operation which may be called against a [`BulkConsumer`].
 #[derive(Debug, PartialEq, Eq, Arbitrary, Clone)]
-pub enum BulkConsumeOperation {
+pub enum BulkConsumerOperation {
     Consume,
-    ConsumerSlots(NonZeroUsize),
+    ConsumeSlots(NonZeroUsize),
     Flush,
 }
 
-fn do_operations_make_progress(ops: &[BulkConsumeOperation]) -> bool {
+fn do_operations_make_progress(ops: &[BulkConsumerOperation]) -> bool {
     for operation in ops {
-        if *operation != BulkConsumeOperation::Flush {
+        if *operation != BulkConsumerOperation::Flush {
             return true;
         }
     }
@@ -32,11 +32,11 @@ fn do_operations_make_progress(ops: &[BulkConsumeOperation]) -> bool {
     false
 }
 
-/// A [`BulkConsumer`] wrapper that scrambles the methods that get called on a wrapped consumer. Will turn any "sensible" access pattern (say, calling `consume` repeatedly) into a more interesting pattern, as determined by the [`Operation`]s that are supplied in the constructor.
+/// A [`BulkConsumer`] wrapper that scrambles the methods that get called on a wrapped consumer. Will turn any "sensible" access pattern (say, calling `consume` repeatedly) into a more interesting pattern, as determined by the [`BulkConsumerOperation`]s that are supplied in the constructor.
 ///
 /// The scrambler feeds the same items that it receives into the wrapped consumer in the same order. It is allowed to buffer them before doing so, allowing for bulk transfer to the wrapped consumer even if the scrambler is only being fed with [`consume`](Consumer::consume) calls. As a consequence, the scrambler might accept items beyond the point where the wrapped consumer would already emit an error. Once those items are flushed into the wrapped consumer, the scrambler forwards the error immediately. The maximum delay in consumed items before an error is emitted is given by the `capacity` of [`BulkScrambler::new_with_capacity`](super::BulkScrambler::new_with_capacity) (which defaults to `2048` for [`BulkScrambler::new`](super::BulkScrambler::new)).
 ///
-/// To be used in fuzz testing: when you want to test a `Consumer` you implemented, test a scrambled version of that consumer instead, to exercise many different method call patterns even if the test itself only performs a simplistic method call pattern.
+/// To be used in fuzz testing: when you want to test a [`BulkConsumer`] you implemented, test a scrambled version of that consumer instead, to exercise many different method call patterns even if the test itself only performs a simplistic method call pattern.
 pub struct BulkScrambler_<C, T>(Invariant<BulkScrambler<C, T>>);
 
 invarianted_impl_debug!(BulkScrambler_<C: Debug, T: Debug>);
@@ -49,22 +49,22 @@ impl<C, T: Default> BulkScrambler_<C, T> {
     /// If the `operations` do not make any progress (they only flush), a single consume operation is appended.
     ///
     /// Chances are you want to use the [`Arbitrary`] trait to generate the `operations` rather than crafting them manually.
-    pub fn new(inner: C, operations: Vec<BulkConsumeOperation>) -> Self {
+    pub fn new(inner: C, operations: Vec<BulkConsumerOperation>) -> Self {
         Self::new_with_capacity(inner, operations, 2048)
     }
 
-    /// Creates a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper must allocate an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more bizarre method call patterns, smaller values consume less memory (linearly so). [`BulkScrambler::new`](super::BulkScrambler::new) uses a capacity of `2048`.
+    /// Creates a new wrapper around `inner` that exercises the consumer trait methods of `inner` by cycling through the given `operations`. To provide this functionality, the wrapper allocates an internal buffer of items, `capacity` sets the size of that buffer. Larger values allow for more distinct method call patterns, smaller values consume less memory (linearly so). [`BulkScrambler::new`](super::BulkScrambler::new) uses a capacity of `2048`.
     ///
     /// If the `operations` do not make any progress (they only flush), a single consume operation is appended.
     ///
     /// Chances are you want to use the [`Arbitrary`] trait to generate the `operations` rather than crafting them manually.
     pub fn new_with_capacity(
         inner: C,
-        mut operations: Vec<BulkConsumeOperation>,
+        mut operations: Vec<BulkConsumerOperation>,
         capacity: usize,
     ) -> Self {
         if !do_operations_make_progress(&operations[..]) {
-            operations.push(BulkConsumeOperation::Consume);
+            operations.push(BulkConsumerOperation::Consume);
         }
 
         BulkScrambler_(Invariant::new(BulkScrambler {
@@ -110,7 +110,7 @@ where
 
 #[derive(Debug)]
 struct BulkScrambler<C, T> {
-    /// The `Consumer` that we wrap. All consumer operations on the `BulkScrambler`
+    /// The consumer that we wrap. All consumer operations on the `BulkScrambler`
     /// will be transformed into semantically equivalent scrambled operations,
     /// and then forwarded to the `inner` consumer.
     inner: C,
@@ -120,7 +120,7 @@ struct BulkScrambler<C, T> {
     buffer: Fixed<T>,
     /// The instructions on how to scramble consumer operations. We cycle
     /// through these round-robin.
-    operations: Box<[BulkConsumeOperation]>,
+    operations: Box<[BulkConsumerOperation]>,
     /// The next operation to call on the `inner` consumer once we need to empty
     /// our item queue.
     operations_index: usize,
@@ -245,7 +245,7 @@ where
         debug_assert!(self.buffer.len() > 0);
 
         match self.operations[self.operations_index] {
-            BulkConsumeOperation::Consume => {
+            BulkConsumerOperation::Consume => {
                 // Remove an item from the buffer.
                 let item = self
                     .buffer
@@ -255,7 +255,7 @@ where
                 // Feed the item to the inner consumer.
                 self.inner.consume(item).await?;
             }
-            BulkConsumeOperation::ConsumerSlots(n) => {
+            BulkConsumerOperation::ConsumeSlots(n) => {
                 // Remove items from the queue in bulk and place them in the inner consumer slots.
                 let n: usize = n.into();
 
@@ -274,7 +274,7 @@ where
                 // Report the amount of items consumed.
                 self.inner.consume_slots(amount).await?;
             }
-            BulkConsumeOperation::Flush => {
+            BulkConsumerOperation::Flush => {
                 // Flush the inner consumer.
                 self.inner.flush().await?;
             }

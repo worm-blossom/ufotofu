@@ -30,12 +30,12 @@ impl<T> IntoVec_<T> {
     /// use ufotofu::consumer::*;
     /// use ufotofu::*;
     ///
-    /// let mut intoVec = IntoVec::new();
+    /// let mut into_vec = IntoVec::new();
     ///
     /// pollster::block_on(async {
-    ///     assert_eq!(Ok(()), intoVec.consume(4).await);
-    ///     assert_eq!(Ok(()), intoVec.consume(7).await);
-    ///     assert_eq!(vec![4, 7], intoVec.into_vec());
+    ///     assert_eq!(Ok(()), into_vec.consume(4).await);
+    ///     assert_eq!(Ok(()), into_vec.consume(7).await);
+    ///     assert_eq!(vec![4, 7], into_vec.into_vec());
     /// });
     /// ```
     pub fn new() -> IntoVec_<T> {
@@ -48,13 +48,13 @@ impl<T> IntoVec_<T> {
     /// use ufotofu::consumer::*;
     /// use ufotofu::*;
     ///
-    /// let mut intoVec = IntoVec::with_capacity(999);
+    /// let mut into_vec = IntoVec::with_capacity(999);
     ///
     /// pollster::block_on(async {
-    ///     assert_eq!(Ok(()), intoVec.consume(4).await);
-    ///     assert_eq!(Ok(()), intoVec.consume(7).await);
+    ///     assert_eq!(Ok(()), into_vec.consume(4).await);
+    ///     assert_eq!(Ok(()), into_vec.consume(7).await);
     ///
-    ///     let collected = intoVec.into_vec();
+    ///     let collected = into_vec.into_vec();
     ///     assert!(collected.capacity() >= 999);
     ///     assert_eq!(vec![4, 7], collected);
     /// });
@@ -74,12 +74,12 @@ impl<T> IntoVec_<T> {
     /// use ufotofu::consumer::*;
     /// use ufotofu::*;
     ///
-    /// let mut intoVec = IntoVec::new();
+    /// let mut into_vec = IntoVec::new();
     ///
     /// pollster::block_on(async {
-    ///     assert_eq!(Ok(()), intoVec.consume(4).await);
-    ///     assert_eq!(Ok(()), intoVec.consume(7).await);
-    ///     assert_eq!(vec![4, 7], intoVec.into_vec());
+    ///     assert_eq!(Ok(()), into_vec.consume(4).await);
+    ///     assert_eq!(Ok(()), into_vec.consume(7).await);
+    ///     assert_eq!(vec![4, 7], into_vec.into_vec());
     /// });
     /// ```
     pub fn into_vec(self) -> Vec<T> {

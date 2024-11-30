@@ -2,13 +2,13 @@
 
 use libfuzzer_sys::fuzz_target;
 use ufotofu::{
-    consumer::{BulkConsumeOperation, BulkScrambler, TestConsumer},
+    consumer::{BulkConsumerOperation, BulkScrambler, TestConsumer},
     BufferedConsumer, Consumer,
 };
 
 fuzz_target!(|data: (
     TestConsumer<u16, u16, u16>,
-    Vec<BulkConsumeOperation>,
+    Vec<BulkConsumerOperation>,
     Box<[u16]>,
     u16
 )| {

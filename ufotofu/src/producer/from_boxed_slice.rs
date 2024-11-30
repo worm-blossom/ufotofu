@@ -16,38 +16,157 @@ use crate::producer::Invariant;
 use crate::{BufferedProducer, BulkProducer, Producer};
 
 #[derive(Clone)]
-/// Produces data from a boxed slice.
+/// Takes ownership of a boxed slice and produces its items.
 pub struct FromBoxedSlice_<T>(Invariant<FromBoxedSlice<T>>);
 
 invarianted_impl_debug!(FromBoxedSlice_<T: Debug>);
 
 impl<T> FromBoxedSlice_<T> {
-    /// Create a producer which produces the data in the given boxed slice.
+    /// Creates a producer which produces the data in the given boxed slice.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_boxed_slice = FromBoxedSlice::new(vec![1, 2, 3].into_boxed_slice());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Left(2)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Left(3)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Right(())), from_boxed_slice.produce().await);
+    /// });
+    /// ```
     pub fn new(v: Box<[T]>) -> FromBoxedSlice_<T> {
         let invariant = Invariant::new(FromBoxedSlice(v, 0));
 
         FromBoxedSlice_(invariant)
     }
 
-    /// Create a producer which produces the data in the given vector.
+    /// Creates a producer which produces the data in the given vector.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_boxed_slice = FromBoxedSlice::from_vec(vec![1, 2, 3]);
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Left(2)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Left(3)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Right(())), from_boxed_slice.produce().await);
+    /// });
+    /// ```
     pub fn from_vec(v: Vec<T>) -> FromBoxedSlice_<T> {
         let invariant = Invariant::new(FromBoxedSlice(v.into_boxed_slice(), 0));
 
         FromBoxedSlice_(invariant)
     }
 
-    /// Return a slice of the data which has not yet been produced.
-    pub fn remaining(&self) -> &[T] {
-        return &self.0.as_ref().0[self.0.as_ref().1..];
+    /// Returns the offset into the slice at which the next item will be produced.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_boxed_slice = FromBoxedSlice::new(vec![1, 2, 3].into_boxed_slice());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(0, from_boxed_slice.offset());
+    ///     assert_eq!(Ok(Left(1)), from_boxed_slice.produce().await);
+    ///     assert_eq!(1, from_boxed_slice.offset());
+    ///     assert_eq!(Ok(Left(2)), from_boxed_slice.produce().await);
+    ///     assert_eq!(2, from_boxed_slice.offset());
+    ///     assert_eq!(Ok(Left(3)), from_boxed_slice.produce().await);
+    ///     assert_eq!(3, from_boxed_slice.offset());
+    ///     assert_eq!(Ok(Right(())), from_boxed_slice.produce().await);
+    ///     assert_eq!(3, from_boxed_slice.offset());
+    /// });
+    /// ```
+    pub fn offset(&self) -> usize {
+        (self.0).as_ref().1
     }
 
-    /// Returns the full slice from which this was contructed.
+    /// Returns the subslice of items that have been produced so far.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_boxed_slice = FromBoxedSlice::new(vec![1, 2, 3].into_boxed_slice());
+    ///
+    /// pollster::block_on(async {
+    ///     assert!(from_boxed_slice.produced_so_far().is_empty());
+    ///     assert_eq!(Ok(Left(1)), from_boxed_slice.produce().await);
+    ///     assert_eq!(&[1], from_boxed_slice.produced_so_far());
+    ///     assert_eq!(Ok(Left(2)), from_boxed_slice.produce().await);
+    ///     assert_eq!(&[1, 2], from_boxed_slice.produced_so_far());
+    ///     assert_eq!(Ok(Left(3)), from_boxed_slice.produce().await);
+    ///     assert_eq!(&[1, 2, 3], from_boxed_slice.produced_so_far());
+    ///     assert_eq!(Ok(Right(())), from_boxed_slice.produce().await);
+    ///     assert_eq!(&[1, 2, 3], from_boxed_slice.produced_so_far());
+    /// });
+    /// ```
+    pub fn produced_so_far(&self) -> &[T] {
+        &(self.0).as_ref().0[..self.offset()]
+    }
+
+    /// Returns the subslice of items that have not been produced yet.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_boxed_slice = FromBoxedSlice::new(vec![1, 2, 3].into_boxed_slice());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(&[1, 2, 3], from_boxed_slice.not_yet_produced());
+    ///     assert_eq!(Ok(Left(1)), from_boxed_slice.produce().await);
+    ///     assert_eq!(&[2, 3], from_boxed_slice.not_yet_produced());
+    ///     assert_eq!(Ok(Left(2)), from_boxed_slice.produce().await);
+    ///     assert_eq!(&[3], from_boxed_slice.not_yet_produced());
+    ///     assert_eq!(Ok(Left(3)), from_boxed_slice.produce().await);
+    ///     assert!(from_boxed_slice.not_yet_produced().is_empty());
+    ///     assert_eq!(Ok(Right(())), from_boxed_slice.produce().await);
+    ///     assert!(from_boxed_slice.not_yet_produced().is_empty());
+    /// });
+    /// ```
+    pub fn not_yet_produced(&self) -> &[T] {
+        &(self.0).as_ref().0[self.offset()..]
+    }
+
+    /// Returns the full slice from which this was constructed.
+    ///
+    /// ```
+    /// use either::Either::*;
+    /// use ufotofu::producer::*;
+    /// use ufotofu::*;
+    ///
+    /// let mut from_boxed_slice = FromBoxedSlice::new(vec![1, 2, 3].into_boxed_slice());
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(Left(1)), from_boxed_slice.produce().await);
+    ///     assert_eq!(Ok(Left(2)), from_boxed_slice.produce().await);
+    ///     assert_eq!(vec![1, 2, 3].into_boxed_slice(), from_boxed_slice.into_inner());
+    /// });
+    /// ```
     pub fn into_inner(self) -> Box<[T]> {
         self.0.into_inner().0
     }
 }
 
-invarianted_impl_as_ref!(FromBoxedSlice_<T>; [T]);
+/// Returns a reference to the full slice.
+impl<T> AsRef<[T]> for FromBoxedSlice_<T> {
+    fn as_ref(&self) -> &[T] {
+        self.0.as_ref().as_ref()
+    }
+}
 
 invarianted_impl_producer!(FromBoxedSlice_<T: Clone> Item T;
     /// Emitted once the end of the boxed slice has been reached.

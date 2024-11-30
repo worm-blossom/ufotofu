@@ -76,6 +76,34 @@ doc = false
 bench = false
 
 [[bin]]
+name = "consumer_bulk_scrambler_is_mostly_transparent"
+path = "fuzz_targets/ufotofu/consumer_bulk_scrambler_is_mostly_transparent.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_bulk_scrambler_is_transparent"
+path = "fuzz_targets/ufotofu/producer_bulk_scrambler_is_transparent.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "consumer_invariant_is_transparent"
+path = "fuzz_targets/ufotofu/consumer_invariant_is_transparent.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_invariant_is_transparent"
+path = "fuzz_targets/ufotofu/producer_invariant_is_transparent.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "into_vec"
 path = "fuzz_targets/ufotofu/into_vec.rs"
 test = false
@@ -83,8 +111,15 @@ doc = false
 bench = false
 
 [[bin]]
-name = "consumer_bulk_scrambler_is_mostly_transparent"
-path = "fuzz_targets/ufotofu/consumer_bulk_scrambler_is_mostly_transparent.rs"
+name = "from_boxed_slice"
+path = "fuzz_targets/ufotofu/from_boxed_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "from_slice"
+path = "fuzz_targets/ufotofu/from_slice.rs"
 test = false
 doc = false
 bench = false
