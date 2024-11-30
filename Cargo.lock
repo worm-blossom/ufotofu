@@ -135,7 +135,7 @@ dependencies = [
 
 [[package]]
 name = "ufotofu_queues"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "unicode-ident"

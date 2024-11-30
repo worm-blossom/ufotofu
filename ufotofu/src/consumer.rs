@@ -30,10 +30,10 @@ pub use invariant::Invariant;
 #[cfg(not(test))]
 pub use invariant_noop::Invariant;
 
-// #[cfg(feature = "dev")]
-// mod scramble;
-// #[cfg(feature = "dev")]
-// pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
+#[cfg(feature = "dev")]
+mod scramble;
+#[cfg(feature = "dev")]
+pub use scramble::{ConsumeOperations, Scramble_ as Scramble};
 
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_consumer;

@@ -39,7 +39,7 @@ pub struct Fixed<T, A: Allocator = Global> {
 }
 
 impl<T: Default> Fixed<T> {
-    /// Create a fixed-capacity queue. Panic if the initial memory allocation fails.
+    /// Creates a fixed-capacity queue. Panics if the initial memory allocation fails.
     pub fn new(capacity: usize) -> Self {
         let mut v = Vec::with_capacity(capacity);
         v.resize_with(capacity, Default::default);
@@ -52,7 +52,7 @@ impl<T: Default> Fixed<T> {
     }
 
     #[cfg(feature = "nightly")]
-    /// Try to create a fixed-capacity queue. If the initial memory allocation fails, return `None` instead.
+    /// Tries to create a fixed-capacity queue. If the initial memory allocation fails, returns `None` instead.
     pub fn try_new(capacity: usize) -> Option<Self> {
         let mut v = Vec::try_with_capacity(capacity).ok()?;
         v.resize_with(capacity, Default::default);
@@ -71,7 +71,7 @@ impl<T> Fixed<T> {
         self.read + self.amount < self.capacity()
     }
 
-    /// Return a slice containing the next items that should be read.
+    /// Returns a slice containing the next items that should be read.
     fn readable_slice(&mut self) -> &[T] {
         if self.is_data_contiguous() {
             &self.data[self.read..self.write_to()]
@@ -80,7 +80,7 @@ impl<T> Fixed<T> {
         }
     }
 
-    /// Return a slice containing the next slots that should be written to.
+    /// Returns a slice containing the next slots that should be written to.
     fn writeable_slice(&mut self) -> &mut [T] {
         let capacity = self.capacity();
         let write_to = self.write_to();
@@ -91,7 +91,7 @@ impl<T> Fixed<T> {
         }
     }
 
-    /// Return the capacity with which thise queue was initialised.
+    /// Returns the capacity with which this queue was initialised.
     ///
     /// The number of free item slots at any time is `q.capacity() - q.amount()`.
     pub fn capacity(&self) -> usize {
@@ -105,7 +105,7 @@ impl<T> Fixed<T> {
 
 #[cfg(feature = "nightly")]
 impl<T: Default, A: Allocator> Fixed<T, A> {
-    /// Create a fixed-capacity queue with a given memory allocator. Panic if the initial memory allocation fails.
+    /// Creates a fixed-capacity queue with a given memory allocator. Panics if the initial memory allocation fails.
     pub fn new_in(capacity: usize, alloc: A) -> Self {
         let mut v = Vec::with_capacity_in(capacity, alloc);
         v.resize_with(capacity, Default::default);
@@ -117,7 +117,7 @@ impl<T: Default, A: Allocator> Fixed<T, A> {
         }
     }
 
-    /// Try to create a fixed-capacity queue. If the initial memory allocation fails, return `None` instead.
+    /// Tries to create a fixed-capacity queue. If the initial memory allocation fails, returns `None` instead.
     pub fn try_new_in(capacity: usize, alloc: A) -> Option<Self> {
         let mut v = Vec::try_with_capacity_in(capacity, alloc).ok()?;
         v.resize_with(capacity, Default::default);
@@ -136,7 +136,7 @@ impl<T, A: Allocator> Fixed<T, A> {
         self.read + self.amount < self.capacity()
     }
 
-    /// Return a slice containing the next items that should be read.
+    /// Returns a slice containing the next items that should be read.
     fn readable_slice(&mut self) -> &[T] {
         if self.is_data_contiguous() {
             &self.data[self.read..self.write_to()]
@@ -145,7 +145,7 @@ impl<T, A: Allocator> Fixed<T, A> {
         }
     }
 
-    /// Return a slice containing the next slots that should be written to.
+    /// Returns a slice containing the next slots that should be written to.
     fn writeable_slice(&mut self) -> &mut [T] {
         let capacity = self.capacity();
         let write_to = self.write_to();
@@ -156,7 +156,7 @@ impl<T, A: Allocator> Fixed<T, A> {
         }
     }
 
-    /// Return the capacity with which thise queue was initialised.
+    /// Returns the capacity with which this queue was initialised.
     ///
     /// The number of free item slots at any time is `q.capacity() - q.amount()`.
     pub fn capacity(&self) -> usize {
@@ -169,17 +169,13 @@ impl<T, A: Allocator> Fixed<T, A> {
 }
 
 #[cfg(not(feature = "nightly"))]
-impl<T: Copy> Queue for Fixed<T> {
+impl<T: Clone> Queue for Fixed<T> {
     type Item = T;
 
-    /// Return the number of items in the queue.
     fn len(&self) -> usize {
         self.amount
     }
 
-    /// Attempt to enqueue the next item.
-    ///
-    /// Will return the item if the queue is full at the time of calling.
     fn enqueue(&mut self, item: T) -> Option<T> {
         if self.amount == self.capacity() {
             Some(item)
@@ -191,10 +187,6 @@ impl<T: Copy> Queue for Fixed<T> {
         }
     }
 
-    /// Expose a non-empty slice of memory for the client code to fill with items that should
-    /// be enqueued.
-    ///
-    /// Will return `None` if the queue is full at the time of calling.
     fn expose_slots(&mut self) -> Option<&mut [T]> {
         if self.amount == self.capacity() {
             None
@@ -203,27 +195,10 @@ impl<T: Copy> Queue for Fixed<T> {
         }
     }
 
-    /// Inform the queue that `amount` many items have been written to the first `amount`
-    /// indices of the `expose_slots` it has most recently exposed.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must have written into (at least) the `amount` many first `expose_slots` that
-    /// were most recently exposed. Failure to uphold this invariant may cause undefined behavior.
-    ///
-    /// #### Safety
-    ///
-    /// The queue will assume the first `amount` many `expose_slots` that were most recently
-    /// exposed to contain initialized memory after this call, even if the memory it exposed was
-    /// originally uninitialized. Violating the invariants will cause the queue to read undefined
-    /// memory, which triggers undefined behavior.
     fn consider_enqueued(&mut self, amount: usize) {
         self.amount += amount;
     }
 
-    /// Attempt to dequeue the next item.
-    ///
-    /// Will return `None` if the queue is empty at the time of calling.
     fn dequeue(&mut self) -> Option<T> {
         if self.amount == 0 {
             None
@@ -233,13 +208,10 @@ impl<T: Copy> Queue for Fixed<T> {
             self.read = (self.read + 1) % self.capacity();
             self.amount -= 1;
 
-            Some(self.data[previous_read])
+            Some(self.data[previous_read].clone())
         }
     }
 
-    /// Expose a non-empty slice of items to be dequeued.
-    ///
-    /// Will return `None` if the queue is empty at the time of calling.
     fn expose_items(&mut self) -> Option<&[T]> {
         if self.amount == 0 {
             None
@@ -248,12 +220,6 @@ impl<T: Copy> Queue for Fixed<T> {
         }
     }
 
-    /// Mark `amount` many items as having been dequeued.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must not mark items as dequeued that had not previously been exposed by
-    /// `expose_items`.
     fn consider_dequeued(&mut self, amount: usize) {
         self.read = (self.read + amount) % self.capacity();
         self.amount -= amount;
@@ -261,17 +227,13 @@ impl<T: Copy> Queue for Fixed<T> {
 }
 
 #[cfg(feature = "nightly")]
-impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
+impl<T: Clone, A: Allocator> Queue for Fixed<T, A> {
     type Item = T;
 
-    /// Return the number of items in the queue.
     fn len(&self) -> usize {
         self.amount
     }
 
-    /// Attempt to enqueue the next item.
-    ///
-    /// Will return the item if the queue is full at the time of calling.
     fn enqueue(&mut self, item: T) -> Option<T> {
         if self.amount == self.capacity() {
             Some(item)
@@ -283,10 +245,6 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
         }
     }
 
-    /// Expose a non-empty slice of memory for the client code to fill with items that should
-    /// be enqueued.
-    ///
-    /// Will return `None` if the queue is full at the time of calling.
     fn expose_slots(&mut self) -> Option<&mut [T]> {
         if self.amount == self.capacity() {
             None
@@ -295,27 +253,10 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
         }
     }
 
-    /// Inform the queue that `amount` many items have been written to the first `amount`
-    /// indices of the `expose_slots` it has most recently exposed.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must have written into (at least) the `amount` many first `expose_slots` that
-    /// were most recently exposed. Failure to uphold this invariant may cause undefined behavior.
-    ///
-    /// #### Safety
-    ///
-    /// The queue will assume the first `amount` many `expose_slots` that were most recently
-    /// exposed to contain initialized memory after this call, even if the memory it exposed was
-    /// originally uninitialized. Violating the invariants will cause the queue to read undefined
-    /// memory, which triggers undefined behavior.
     fn consider_enqueued(&mut self, amount: usize) {
         self.amount += amount;
     }
 
-    /// Attempt to dequeue the next item.
-    ///
-    /// Will return `None` if the queue is empty at the time of calling.
     fn dequeue(&mut self) -> Option<T> {
         if self.amount == 0 {
             None
@@ -325,13 +266,10 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
             self.read = (self.read + 1) % self.capacity();
             self.amount -= 1;
 
-            Some(self.data[previous_read])
+            Some(self.data[previous_read].clone())
         }
     }
 
-    /// Expose a non-empty slice of items to be dequeued.
-    ///
-    /// Will return `None` if the queue is empty at the time of calling.
     fn expose_items(&mut self) -> Option<&[T]> {
         if self.amount == 0 {
             None
@@ -340,12 +278,6 @@ impl<T: Copy, A: Allocator> Queue for Fixed<T, A> {
         }
     }
 
-    /// Mark `amount` many items as having been dequeued.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must not mark items as dequeued that had not previously been exposed by
-    /// `expose_items`.
     fn consider_dequeued(&mut self, amount: usize) {
         self.read = (self.read + amount) % self.capacity();
         self.amount -= amount;
@@ -455,7 +387,7 @@ mod tests {
         let mut buf = [0; 4];
 
         let enqueue_amount = queue.bulk_enqueue(b"ufo");
-        let dequeue_amount = queue.bulk_dequeue_uninit(&mut buf);
+        let dequeue_amount = queue.bulk_dequeue(&mut buf);
 
         assert_eq!(enqueue_amount, dequeue_amount);
     }

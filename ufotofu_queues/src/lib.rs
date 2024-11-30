@@ -38,17 +38,17 @@ use core::cmp::min;
 /// A first-in-first-out queue. Provides methods for bulk transfer of items similar to [ufotofu](https://crates.io/crates/ufotofu) [`BulkProducer`](https://docs.rs/ufotofu/0.1.0/ufotofu/sync/trait.BulkProducer.html)s and [`BulkConsumer`](https://docs.rs/ufotofu/0.1.0/ufotofu/sync/trait.BulkConsumer.html)s.
 pub trait Queue {
     /// The type of items to manage in the queue.
-    type Item: Copy;
+    type Item: Clone;
 
-    /// Return the number of items currently in the queue.
+    /// Returns the number of items currently in the queue.
     fn len(&self) -> usize;
 
-    /// Return whether the queue is empty. Must return `true` if and only if `self.len()` returns `0`.
+    /// Returns whether the queue is empty. Must return `true` if and only if `self.len()` returns `0`.
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Attempt to enqueue an item.
+    /// Attempts to enqueue an item.
     ///
     /// Will return the item instead of enqueueing it if the queue is full at the time of calling.
     fn enqueue(&mut self, item: Self::Item) -> Option<Self::Item>;
@@ -57,7 +57,7 @@ pub trait Queue {
     /// queues (rather than implementing them yourself), you will probably want to ignore this method
     /// and use [Queue::bulk_enqueue] instead.
     ///
-    /// Expose a non-empty slice of memory for the client code to fill with items that should
+    /// Exposes a non-empty slice of memory for the client code to fill with items that should
     /// be enqueued. To be used together with [Queue::consider_enqueued].
     ///
     /// Will return `None` if the queue is full at the time of calling.
@@ -67,7 +67,7 @@ pub trait Queue {
     /// queues (rather than implementing them yourself), you will probably want to ignore this method
     /// and use [Queue::bulk_enqueue] instead.
     ///
-    /// Inform the queue that `amount` many items have been written to the first `amount`
+    /// Informs the queue that `amount` many items have been written to the first `amount`
     /// indices of the `expose_slots` it has most recently exposed. The semantics must be
     /// equivalent to those of `enqueue` being called `amount` many times with exactly those
     /// items.
@@ -81,7 +81,7 @@ pub trait Queue {
     /// Failure to uphold this invariant may cause undefined behavior.
     fn consider_enqueued(&mut self, amount: usize);
 
-    /// Enqueue a non-zero number of items by reading them from a given buffer and returning how
+    /// Enqueues a non-zero number of items by reading them from a given buffer and returning how
     /// many items were enqueued.
     ///
     /// Will return `0` if the queue is full at the time of calling.
@@ -96,7 +96,7 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                slots[..amount].copy_from_slice(&buffer[..amount]);
+                slots[..amount].clone_from_slice(&buffer[..amount]);
                 self.consider_enqueued(amount);
 
                 amount
@@ -104,16 +104,16 @@ pub trait Queue {
         }
     }
 
-    /// Attempt to dequeue the next item.
+    /// Attempts to dequeue the next item.
     ///
     /// Will return `None` if the queue is empty at the time of calling.
     fn dequeue(&mut self) -> Option<Self::Item>;
 
     /// A low-level method for dequeueing multiple items at a time. If you are only *working* with
     /// queues (rather than implementing them yourself), you will probably want to ignore this method
-    /// and use [Queue::bulk_dequeue] or [Queue::bulk_dequeue_uninit] instead.
+    /// and use [Queue::bulk_dequeue] instead.
     ///
-    /// Expose a non-empty slice of items to be dequeued.
+    /// Exposes a non-empty slice of items to be dequeued.
     /// The items in the slice must not have been emitted by `dequeue` before.
     /// To be used together with [Queue::consider_dequeued].
     ///
@@ -122,9 +122,9 @@ pub trait Queue {
 
     /// A low-level method for dequeueing multiple items at a time. If you are only *working* with
     /// queues (rather than implementing them yourself), you will probably want to ignore this method
-    /// and use [Queue::bulk_dequeue] or [Queue::bulk_dequeue_uninit] instead.
+    /// and use [Queue::bulk_dequeue] instead.
     ///
-    /// Mark `amount` many items as having been dequeued. Future calls to `dequeue` and to
+    /// Marks `amount` many items as having been dequeued. Future calls to `dequeue` and to
     /// `expose_items` must act as if `dequeue` had been called `amount` many times.
     ///     
     /// #### Invariants
@@ -132,7 +132,7 @@ pub trait Queue {
     /// Callers must not mark items as dequeued that had not previously been exposed by `expose_items`.
     fn consider_dequeued(&mut self, amount: usize);
 
-    /// Dequeue a non-zero number of items by writing them into a given buffer and returning how
+    /// Dequeues a non-zero number of items by writing them into a given buffer and returning how
     /// many items were dequeued.
     ///
     /// Will return `0` if the queue is empty at the time of calling.
@@ -147,30 +147,7 @@ pub trait Queue {
             None => 0,
             Some(slots) => {
                 let amount = min(slots.len(), buffer.len());
-                buffer[..amount].copy_from_slice(&slots[..amount]);
-                self.consider_dequeued(amount);
-
-                amount
-            }
-        }
-    }
-
-    /// Dequeue a non-zero number of items by writing them into a given buffer of possible
-    /// uninitialised memory and returning how many items were dequeued.
-    ///
-    /// Will return `0` if the queue is empty at the time of calling.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// The default implementation orchestrates `expose_items` and `consider_dequeued` in a
-    /// straightforward manner. Only provide your own implementation if you can do better
-    /// than that.
-    fn bulk_dequeue_uninit(&mut self, buffer: &mut [Self::Item]) -> usize {
-        match self.expose_items() {
-            None => 0,
-            Some(slots) => {
-                let amount = min(slots.len(), buffer.len());
-                buffer[..amount].copy_from_slice(&slots[..amount]);
+                buffer[..amount].clone_from_slice(&slots[..amount]);
                 self.consider_dequeued(amount);
 
                 amount

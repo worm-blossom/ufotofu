@@ -6,7 +6,7 @@ use crate::Queue;
 
 /// A queue holding up to a certain number of items. The capacity is statically determined by a const parameter. Performs no allocations.
 ///
-/// Use the methods of the [Queue] trait implementation to interact with the contents of the queue.
+/// Use the methods of the [Queue] trait to interact with the contents of the queue.
 pub struct Static<T, const N: usize> {
     /// Buffer of memory, used as a ring-buffer.
     data: [T; N],
@@ -16,17 +16,17 @@ pub struct Static<T, const N: usize> {
     amount: usize,
 }
 
-impl<T: Default + Copy, const N: usize> Default for Static<T, N> {
+impl<T: Default, const N: usize> Default for Static<T, N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Default + Copy, const N: usize> Static<T, N> {
-    /// Create a fixed-capacity queue.
+impl<T: Default, const N: usize> Static<T, N> {
+    /// Creates a statically-fixed-capacity queue.
     pub fn new() -> Self {
         Static {
-            data: [T::default(); N],
+            data: core::array::from_fn(|_| T::default()),
             read: 0,
             amount: 0,
         }
@@ -38,7 +38,7 @@ impl<T, const N: usize> Static<T, N> {
         self.read + self.amount < N
     }
 
-    /// Return a slice containing the next items that should be read.
+    /// Returns a slice containing the next items that should be read.
     fn readable_slice(&mut self) -> &[T] {
         if self.is_data_contiguous() {
             &self.data[self.read..self.write_to()]
@@ -47,7 +47,7 @@ impl<T, const N: usize> Static<T, N> {
         }
     }
 
-    /// Return a slice containing the next slots that should be written to.
+    /// Returns a slice containing the next slots that should be written to.
     fn writeable_slice(&mut self) -> &mut [T] {
         let capacity = N;
         let write_to = self.write_to();
@@ -63,17 +63,13 @@ impl<T, const N: usize> Static<T, N> {
     }
 }
 
-impl<T: Copy, const N: usize> Queue for Static<T, N> {
+impl<T: Clone, const N: usize> Queue for Static<T, N> {
     type Item = T;
 
-    /// Return the number of items in the queue.
     fn len(&self) -> usize {
         self.amount
     }
 
-    /// Attempt to enqueue the next item.
-    ///
-    /// Will return the item if the queue is full at the time of calling.
     fn enqueue(&mut self, item: T) -> Option<T> {
         if self.amount == N {
             Some(item)
@@ -85,10 +81,6 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
         }
     }
 
-    /// Expose a non-empty slice of memory for the client code to fill with items that should
-    /// be enqueued.
-    ///
-    /// Will return `None` if the queue is full at the time of calling.
     fn expose_slots(&mut self) -> Option<&mut [T]> {
         if self.amount == N {
             None
@@ -97,27 +89,10 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
         }
     }
 
-    /// Inform the queue that `amount` many items have been written to the first `amount`
-    /// indices of the `expose_slots` it has most recently exposed.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must have written into (at least) the `amount` many first `expose_slots` that
-    /// were most recently exposed. Failure to uphold this invariant may cause undefined behavior.
-    ///
-    /// #### Safety
-    ///
-    /// The queue will assume the first `amount` many `expose_slots` that were most recently
-    /// exposed to contain initialized memory after this call, even if the memory it exposed was
-    /// originally uninitialized. Violating the invariants will cause the queue to read undefined
-    /// memory, which triggers undefined behavior.
     fn consider_enqueued(&mut self, amount: usize) {
         self.amount += amount;
     }
 
-    /// Attempt to dequeue the next item.
-    ///
-    /// Will return `None` if the queue is empty at the time of calling.
     fn dequeue(&mut self) -> Option<T> {
         if self.amount == 0 {
             None
@@ -127,13 +102,10 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
             self.read = (self.read + 1) % N;
             self.amount -= 1;
 
-            Some(self.data[previous_read])
+            Some(self.data[previous_read].clone())
         }
     }
 
-    /// Expose a non-empty slice of items to be dequeued.
-    ///
-    /// Will return `None` if the queue is empty at the time of calling.
     fn expose_items(&mut self) -> Option<&[T]> {
         if self.amount == 0 {
             None
@@ -142,12 +114,6 @@ impl<T: Copy, const N: usize> Queue for Static<T, N> {
         }
     }
 
-    /// Mark `amount` many items as having been dequeued.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must not mark items as dequeued that had not previously been exposed by
-    /// `expose_items`.
     fn consider_dequeued(&mut self, amount: usize) {
         self.read = (self.read + amount) % N;
         self.amount -= amount;
@@ -216,7 +182,7 @@ mod tests {
         let mut buf = [0; 4];
 
         let enqueue_amount = queue.bulk_enqueue(b"ufo");
-        let dequeue_amount = queue.bulk_dequeue_uninit(&mut buf);
+        let dequeue_amount = queue.bulk_dequeue(&mut buf);
 
         assert_eq!(enqueue_amount, dequeue_amount);
     }
