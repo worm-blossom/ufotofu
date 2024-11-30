@@ -9,8 +9,8 @@ fuzz_target!(
             let (mut pro, mut con) = data;
 
             let items = pro.remaining().to_vec();
-            let last = pro.peek_last().unwrap().clone();
-            let consumer_err = con.peek_error().unwrap().clone();
+            let last = *pro.peek_last().unwrap();
+            let consumer_err = *con.peek_error().unwrap();
 
             match pipe(&mut pro, &mut con).await {
                 Ok(()) => {

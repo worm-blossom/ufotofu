@@ -29,7 +29,7 @@ fn do_operations_make_progress(ops: &[BulkConsumeOperation]) -> bool {
         }
     }
 
-    return false;
+    false
 }
 
 /// A [`BulkConsumer`] wrapper that scrambles the methods that get called on a wrapped consumer. Will turn any "sensible" access pattern (say, calling `consume` repeatedly) into a more interesting pattern, as determined by the [`Operation`]s that are supplied in the constructor.

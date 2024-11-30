@@ -120,3 +120,6 @@ path = "fuzz_targets/queues/static_enqueue_dequeue.rs"
 test = false
 doc = false
 bench = false
+
+[lints]
+workspace = true

@@ -7,7 +7,7 @@ fuzz_target!(|data: (TestConsumer<u16, u16, u16>, Box<[u16]>)| {
     pollster::block_on(async {
         let (mut con, items) = data;
 
-        let expected_err = con.peek_error().unwrap().clone();
+        let expected_err = *con.peek_error().unwrap();
 
         match con.consume_full_slice(&items[..]).await {
             Ok(()) => {

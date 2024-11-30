@@ -327,7 +327,7 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Fixed<T, A> {
         f.debug_struct("Fixed")
             .field("capacity", &self.capacity())
             .field("len", &self.amount)
-            .field("data", &DataDebugger(&self))
+            .field("data", &DataDebugger(self))
             .finish()
     }
 }

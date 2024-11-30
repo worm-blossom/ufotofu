@@ -23,3 +23,11 @@ alloc = []
 
 # Enable functionality that requires nightly Rust, such as allocator-aware APIs.
 nightly = []
+
+# docs.rs-specific configuration
+[package.metadata.docs.rs]
+# document all features
+all-features = true
+
+[lints]
+workspace = true

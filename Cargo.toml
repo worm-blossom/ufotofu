@@ -2,3 +2,6 @@
 
 members = ["ufotofu", "ufotofu_queues", "fuzz"]
 resolver = "2"
+
+[workspace.lints.clippy]
+type_complexity = "allow"

@@ -16,7 +16,7 @@ fuzz_target!(
             let mut consumed_so_far = 0;
             let mut slice_length_index = 0;
 
-            while slice_length_index < slice_lengths.len() && items[consumed_so_far..].len() > 0 {
+            while slice_length_index < slice_lengths.len() && !items[consumed_so_far..].is_empty() {
                 let slice_length: usize = core::cmp::min(
                     slice_lengths[slice_length_index].into(),
                     items.len() - consumed_so_far,

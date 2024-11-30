@@ -35,7 +35,7 @@ pub use invariant_noop::Invariant;
 #[cfg(feature = "dev")]
 mod bulk_scrambler;
 #[cfg(feature = "dev")]
-pub use bulk_scrambler::{BulkScrambler_ as BulkScrambler, BulkConsumeOperation};
+pub use bulk_scrambler::{BulkConsumeOperation, BulkScrambler_ as BulkScrambler};
 
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_consumer;

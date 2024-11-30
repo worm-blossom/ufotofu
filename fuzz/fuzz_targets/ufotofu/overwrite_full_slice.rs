@@ -11,7 +11,7 @@ fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
             let mut slice = vec![0; len];
 
             let expected_items = pro.remaining().to_vec();
-            let expected_last = pro.peek_last().unwrap().clone();
+            let expected_last = *pro.peek_last().unwrap();
 
             match pro.overwrite_full_slice(&mut slice[..]).await {
                 Ok(()) => {
