@@ -83,8 +83,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "consumer_scramble_is_transparent"
-path = "fuzz_targets/ufotofu/consumer_scramble_is_transparent.rs"
+name = "consumer_bulk_scrambler_is_mostly_transparent"
+path = "fuzz_targets/ufotofu/consumer_bulk_scrambler_is_mostly_transparent.rs"
 test = false
 doc = false
 bench = false
