@@ -6,10 +6,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/worm-blossom/ufotofu"
 description = "Abstractions for lazily consuming and producing sequences"
-exclude = [
-    "fuzz/*",
-    ".github/workflows/rust.yml",
-]
+exclude = ["fuzz/*", ".github/workflows/rust.yml"]
 
 [features]
 
@@ -25,9 +22,8 @@ alloc = []
 dev = ["dep:arbitrary"]
 
 [dependencies]
-arbitrary = { version = "1.0.2", features = ["derive"], optional = true}
+arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 either = "1.10.0"
-ufotofu_queues = { path="../ufotofu_queues", version = "0.6.0" }
 
 [dev-dependencies]
 pollster = "0.4.0"
@@ -36,3 +32,6 @@ pollster = "0.4.0"
 [package.metadata.docs.rs]
 # document all features
 all-features = true
+
+[lints]
+workspace = true

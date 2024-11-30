@@ -118,7 +118,6 @@ dependencies = [
  "arbitrary",
  "either",
  "pollster",
- "ufotofu_queues",
 ]
 
 [[package]]

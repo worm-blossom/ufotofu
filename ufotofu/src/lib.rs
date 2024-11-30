@@ -80,6 +80,8 @@ pub mod producer;
 
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_yielder;
+#[cfg(all(feature = "dev", feature = "alloc"))]
+mod fixed_queue;
 
 /// A [`Consumer`] consumes a potentially infinite sequence, one item at a time.
 ///
