@@ -18,10 +18,7 @@ fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
                     assert!(!pro.did_already_emit_last());
                     assert_eq!(&slice[..], &expected_items[..len]);
                 }
-                Err(ProduceAtLeastError {
-                    count,
-                    reason,
-                }) => {
+                Err(ProduceAtLeastError { count, reason }) => {
                     assert!(pro.did_already_emit_last());
 
                     match expected_last {
