@@ -29,7 +29,7 @@ macro_rules! invarianted_consumer_methods {
         async fn consume_full_slice<'b>(
             &mut self,
             buf: &'b [Self::Item],
-        ) -> Result<(), ufotofu::ConsumeFullSliceError<Self::Error>>
+        ) -> Result<(), ufotofu::ConsumeAtLeastError<Self::Error>>
         where
             Self::Item: Clone,
         {
@@ -106,7 +106,7 @@ macro_rules! invarianted_bulk_consumer_methods {
         async fn bulk_consume_full_slice(
             &mut self,
             buf: &[Self::Item],
-        ) -> Result<(), ufotofu::ConsumeFullSliceError<Self::Error>>
+        ) -> Result<(), ufotofu::ConsumeAtLeastError<Self::Error>>
         where
             Self::Item: Clone,
         {

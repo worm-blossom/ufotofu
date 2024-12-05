@@ -2,7 +2,7 @@
 
 use either::Either::{Left, Right};
 use libfuzzer_sys::fuzz_target;
-use ufotofu::{producer::TestProducer, OverwriteFullSliceError, Producer};
+use ufotofu::{producer::TestProducer, ProduceAtLeastError, Producer};
 
 fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
     pollster::block_on(async {
@@ -18,8 +18,8 @@ fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
                     assert!(!pro.did_already_emit_last());
                     assert_eq!(&slice[..], &expected_items[..len]);
                 }
-                Err(OverwriteFullSliceError {
-                    overwritten,
+                Err(ProduceAtLeastError {
+                    count,
                     reason,
                 }) => {
                     assert!(pro.did_already_emit_last());
@@ -29,7 +29,7 @@ fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
                         Err(err) => assert_eq!(reason, Right(err)),
                     }
 
-                    assert_eq!(&slice[..overwritten], &expected_items[..overwritten]);
+                    assert_eq!(&slice[..count], &expected_items[..count]);
                 }
             }
         }

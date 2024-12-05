@@ -28,7 +28,7 @@ macro_rules! invarianted_producer_methods {
         async fn overwrite_full_slice<'b>(
             &mut self,
             buf: &'b mut [Self::Item],
-        ) -> Result<(), ufotofu::OverwriteFullSliceError<Self::Final, Self::Error>>
+        ) -> Result<(), ufotofu::ProduceAtLeastError<Self::Final, Self::Error>>
         where
             Self::Item: Clone,
         {
@@ -108,7 +108,7 @@ macro_rules! invarianted_bulk_producer_methods {
         async fn bulk_overwrite_full_slice<'kfhwkfwe>(
             &mut self,
             buf: &'kfhwkfwe mut [Self::Item],
-        ) -> Result<(), ufotofu::OverwriteFullSliceError<Self::Final, Self::Error>>
+        ) -> Result<(), ufotofu::ProduceAtLeastError<Self::Final, Self::Error>>
         where
             Self::Item: Clone,
         {

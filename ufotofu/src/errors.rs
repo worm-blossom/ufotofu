@@ -33,6 +33,7 @@ impl<ProducerError, ConsumerError> Display for PipeError<ProducerError, Consumer
     }
 }
 
+#[cfg(feature = "std")]
 impl<ProducerError, ConsumerError> Error for PipeError<ProducerError, ConsumerError>
 where
     ProducerError: 'static + Error,
@@ -46,18 +47,19 @@ where
     }
 }
 
-/// Information you get from the `consume_full_slice` family of methods when the consumer is unable to consume the complete slice.
+/// An error emitted when a consumer is tasked to consume at least some number of items, but it could only consume a lower number of items.
 ///
 /// `E` is the `Error` type of the consumer.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ConsumeFullSliceError<E> {
+pub struct ConsumeAtLeastError<E> {
     /// The number of items that were consumed.
-    pub consumed: usize,
+    pub count: usize,
     /// Why did the consumer stop accepting items?
     pub reason: E,
 }
 
-impl<E> Error for ConsumeFullSliceError<E>
+#[cfg(feature = "std")]
+impl<E> Error for ConsumeAtLeastError<E>
 where
     E: 'static + Error,
 {
@@ -66,35 +68,36 @@ where
     }
 }
 
-impl<E> Display for ConsumeFullSliceError<E> {
+impl<E> Display for ConsumeAtLeastError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "The consumer failed to consume the complete slice, and only consumed {} items",
-            self.consumed
+            "The consumer failed to consume sufficiently many items, it only consumed {} items",
+            self.count
         )
     }
 }
 
-impl<E> ConsumeFullSliceError<E> {
+impl<E> ConsumeAtLeastError<E> {
     /// Consumes `self` and returns `self.reason`, effectively discarding `self.consumed`.
     pub fn into_reason(self) -> E {
         self.reason
     }
 }
 
-/// Information you get from the `pipe_into_slice` family of functions when the producer is unable to fill the complete slice.
+/// An error emitted when a producer is tasked to produce at least some number of items, but it could only produce a lower number of items.
 ///
-/// `'a` is the lifetime of the slice, `T` the type of items of the slice, `F` the `Final` type of the producer, and `E` the `Error` type of the producer.
+/// `F` is the `Final` type of the consumer, `E` is the `Error` type of the consumer.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OverwriteFullSliceError<F, E> {
-    /// How many items of the slice *were* overwritten successfully. Guaranteed to be strictly less than the length of the original slice.
-    pub overwritten: usize,
-    /// Did completely filling the slice fail because the producer reached its final item, or because it yielded an error?
+pub struct ProduceAtLeastError<F, E> {
+    /// How many items were produced.
+    pub count: usize,
+    /// Did producing enough items fail because the producer reached its final item, or because it yielded an error?
     pub reason: Either<F, E>,
 }
 
-impl<F, E> Error for OverwriteFullSliceError<F, E>
+#[cfg(feature = "std")]
+impl<F, E> Error for ProduceAtLeastError<F, E>
 where
     F: Debug,
     E: 'static + Error,
@@ -107,20 +110,20 @@ where
     }
 }
 
-impl<F, E> Display for OverwriteFullSliceError<F, E> {
+impl<F, E> Display for ProduceAtLeastError<F, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.reason {
             Either::Left(_) => {
-                write!(f, "The producer was unable to fill the whole slice due to emitting its final item, and stopped after overwriting {} items", self.overwritten)
+                write!(f, "The producer was unable to produce sufficiently many items due to emitting its final item, it stopped after producing {} items", self.count)
             }
             Either::Right(_) => {
-                write!(f, "The producer was unable to fill the whole slice due to an error, and stopped after overwriting {} items", self.overwritten)
+                write!(f, "The producer was unable to produce sufficiently many items due to an error, it stopped after producing {} items", self.count)
             }
         }
     }
 }
 
-impl<F, E> OverwriteFullSliceError<F, E> {
+impl<F, E> ProduceAtLeastError<F, E> {
     /// Consumes `self` and returns `self.reason`, effectively discarding `self.overwritten`.
     pub fn into_reason(self) -> Either<F, E> {
         self.reason

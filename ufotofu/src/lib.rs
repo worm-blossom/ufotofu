@@ -136,7 +136,7 @@ pub trait Consumer {
     fn consume_full_slice(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<(), ConsumeFullSliceError<Self::Error>>>
+    ) -> impl Future<Output = Result<(), ConsumeAtLeastError<Self::Error>>>
     where
         Self::Item: Clone,
     {
@@ -145,8 +145,8 @@ pub trait Consumer {
                 let item = buf[i].clone();
 
                 if let Err(err) = self.consume(item).await {
-                    return Err(ConsumeFullSliceError {
-                        consumed: i,
+                    return Err(ConsumeAtLeastError {
+                        count: i,
                         reason: err,
                     });
                 }
@@ -269,7 +269,7 @@ pub trait BulkConsumer: BufferedConsumer {
     fn bulk_consume_full_slice(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<(), ConsumeFullSliceError<Self::Error>>>
+    ) -> impl Future<Output = Result<(), ConsumeAtLeastError<Self::Error>>>
     where
         Self::Item: Clone,
     {
@@ -280,8 +280,8 @@ pub trait BulkConsumer: BufferedConsumer {
                 match self.bulk_consume(&buf[consumed_so_far..]).await {
                     Ok(consumed_count) => consumed_so_far += consumed_count,
                     Err(err) => {
-                        return Err(ConsumeFullSliceError {
-                            consumed: consumed_so_far,
+                        return Err(ConsumeAtLeastError {
+                            count: consumed_so_far,
                             reason: err,
                         });
                     }
@@ -320,6 +320,39 @@ pub trait Producer {
         &mut self,
     ) -> impl Future<Output = Result<Either<Self::Item, Self::Final>, Self::Error>>;
 
+    /// Tries to produce a regular item, and reports an error if the final item was produced instead.
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any function of this trait has returned an error,
+    /// nor after [`close`](Consumer::close) was called.
+    ///
+    /// #### Implementation Notes
+    ///
+    /// This is a trait method for convenience, you should never need to
+    /// replace the default implementation.
+    fn produce_item(
+        &mut self,
+    ) -> impl Future<Output = Result<Self::Item, ProduceAtLeastError<Self::Final, Self::Error>>>
+    {
+        async {
+            match self.produce().await {
+                Ok(Left(item)) => Ok(item),
+                Ok(Right(fin)) => Err(ProduceAtLeastError {
+                    count: 0,
+                    reason: Left(fin),
+                }),
+                Err(err) => Err(ProduceAtLeastError {
+                    count: 0,
+                    reason: Right(err),
+                }),
+            }
+        }
+    }
+
     /// Tries to completely overwrite a slice with items from a producer.
     /// Reports an error if the slice could not be overwritten completely.
     ///
@@ -338,20 +371,20 @@ pub trait Producer {
     fn overwrite_full_slice<'a>(
         &mut self,
         buf: &'a mut [Self::Item],
-    ) -> impl Future<Output = Result<(), OverwriteFullSliceError<Self::Final, Self::Error>>> {
+    ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>> {
         async {
             for i in 0..buf.len() {
                 match self.produce().await {
                     Ok(Left(item)) => buf[i] = item,
                     Ok(Right(fin)) => {
-                        return Err(OverwriteFullSliceError {
-                            overwritten: i,
+                        return Err(ProduceAtLeastError {
+                            count: i,
                             reason: Left(fin),
                         })
                     }
                     Err(err) => {
-                        return Err(OverwriteFullSliceError {
-                            overwritten: i,
+                        return Err(ProduceAtLeastError {
+                            count: i,
                             reason: Right(err),
                         })
                     }
@@ -473,7 +506,7 @@ pub trait BulkProducer: BufferedProducer {
     fn bulk_overwrite_full_slice<'a>(
         &mut self,
         buf: &'a mut [Self::Item],
-    ) -> impl Future<Output = Result<(), OverwriteFullSliceError<Self::Final, Self::Error>>>
+    ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>>
     where
         Self::Item: Clone,
     {
@@ -484,14 +517,14 @@ pub trait BulkProducer: BufferedProducer {
                 match self.bulk_produce(&mut buf[produced_so_far..]).await {
                     Ok(Left(count)) => produced_so_far += count,
                     Ok(Right(fin)) => {
-                        return Err(OverwriteFullSliceError {
-                            overwritten: produced_so_far,
+                        return Err(ProduceAtLeastError {
+                            count: produced_so_far,
                             reason: Left(fin),
                         });
                     }
                     Err(err) => {
-                        return Err(OverwriteFullSliceError {
-                            overwritten: produced_so_far,
+                        return Err(ProduceAtLeastError {
+                            count: produced_so_far,
                             reason: Right(err),
                         });
                     }
