@@ -182,16 +182,31 @@ where
     P: BulkProducer<Item = T, Final = F, Error = E>,
 {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
-        if self.last.is_some() {
-            Ok(())
-        } else {
-            // Slurp the inner producer.
-            if let Err(err) = self.inner.slurp().await {
+        // Fill queue as much as possible. The if-let is entered if the queue is empty afterward.
+        if let Some(last) = self.fill_queue().await {
+            match last {
+                Ok(fin) => {
+                    // Got a final value, which we buffer, to be emitted when the next item should be produced.
+                    self.last = Some(Ok(fin));
+                }
+                Err(err) => {
+                    // Got an error, which we can yield immediately (since we know the queue to be empty).
+                    return Err(err);
+                }
+            }
+        }
+
+        // Slurp the inner producer. If we get an error and the queue is empty, return the error.
+        if let Err(err) = self.inner.slurp().await {
+            if self.buffer.len() == 0 {
+                return Err(err);
+            } else {
                 self.last = Some(Err(err));
             }
-
-            Ok(())
         }
+
+        // If we reach this, then everything worked and nothing of note happened.
+        Ok(())
     }
 }
 
