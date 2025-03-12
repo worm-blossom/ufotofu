@@ -39,7 +39,7 @@ impl<T> IntoVec_<T> {
     /// });
     /// ```
     pub fn new() -> IntoVec_<T> {
-        Self::with_capacity(0)
+        Self::from_vec(Vec::new())
     }
 
     /// Creates a new consumer that collects data into a Vec, which starts with at least the given starting capacity.
@@ -60,9 +60,30 @@ impl<T> IntoVec_<T> {
     /// });
     /// ```
     pub fn with_capacity(capacity: usize) -> IntoVec_<T> {
+        Self::from_vec(Vec::with_capacity(capacity))
+    }
+
+    /// Creates a new consumer that collects data into a given Vec, appending to its end.
+    ///
+    /// ```
+    /// use ufotofu::consumer::*;
+    /// use ufotofu::*;
+    ///
+    /// let initial_vec = vec![1, 2, 3];
+    /// let mut into_vec = IntoVec::from_vec(initial_vec);
+    ///
+    /// pollster::block_on(async {
+    ///     assert_eq!(Ok(()), into_vec.consume(4).await);
+    ///     assert_eq!(Ok(()), into_vec.consume(7).await);
+    ///
+    ///     let collected = into_vec.into_vec();
+    ///     assert_eq!(vec![1, 2, 3, 4, 7], collected);
+    /// });
+    /// ```
+    pub fn from_vec(v: Vec<T>) -> IntoVec_<T> {
         let invariant = Invariant::new(IntoVec {
-            v: Vec::with_capacity(capacity),
-            consumed: 0,
+            consumed: v.len(),
+            v,
         });
 
         IntoVec_(invariant)
