@@ -76,6 +76,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "pipe_at_most"
+path = "fuzz_targets/ufotofu/pipe_at_most.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bulk_pipe_at_most"
+path = "fuzz_targets/ufotofu/bulk_pipe_at_most.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "consumer_bulk_scrambler_is_mostly_transparent"
 path = "fuzz_targets/ufotofu/consumer_bulk_scrambler_is_mostly_transparent.rs"
 test = false

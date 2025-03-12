@@ -29,7 +29,7 @@ fuzz_target!(
                         pro.remaining(),
                         &items[con.consumed().len()
                             + if pro.did_already_emit_last() { 0 } else { 1 }..]
-                    ); // TODO
+                    );
                 }
                 Err(PipeError::Producer(err)) => {
                     assert!(pro.did_already_emit_last());
