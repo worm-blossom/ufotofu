@@ -21,7 +21,6 @@ use crate::{BufferedConsumer, BulkConsumer, Consumer};
 #[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "dev", derive(arbitrary::Arbitrary))]
 pub struct Invariant<C> {
-    /// An implementer of the `Consumer` traits.
     inner: C,
     /// The status of the consumer. `true` while the caller may call trait
     /// methods, `false` once that becomes disallowed (because a method returned
