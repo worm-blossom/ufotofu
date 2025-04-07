@@ -18,20 +18,14 @@ macro_rules! invarianted_producer_outer_type {
 /// The method implementations of an opaque invariant wrapper around `Producer`.
 macro_rules! invarianted_producer_methods {
     () => {
-        async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>
-        where
-            Self::Item: Clone,
-        {
+        async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
             ufotofu::Producer::produce(&mut self.0).await
         }
 
         async fn overwrite_full_slice<'b>(
             &mut self,
             buf: &'b mut [Self::Item],
-        ) -> Result<(), ufotofu::ProduceAtLeastError<Self::Final, Self::Error>>
-        where
-            Self::Item: Clone,
-        {
+        ) -> Result<(), ufotofu::ProduceAtLeastError<Self::Final, Self::Error>> {
             ufotofu::Producer::overwrite_full_slice(&mut self.0, buf).await
         }
     };

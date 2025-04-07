@@ -6,6 +6,8 @@
 //!
 //! The [`FromBoxedSlice`] producer takes ownership of a boxed slice (or vector) and produces its items.
 //!
+//! The [`Empty`] producer immediately produces its final item.
+//!
 //! ## Adaptors
 //!
 //! The [`MapItem`] adaptor wraps any producer and maps its emitted items with a function.
@@ -26,6 +28,9 @@ pub use from_slice::FromSlice_ as FromSlice;
 
 mod from_boxed_slice;
 pub use from_boxed_slice::FromBoxedSlice_ as FromBoxedSlice;
+
+mod empty;
+pub use empty::Empty_ as Empty;
 
 mod map_item;
 pub use map_item::MapItem;
