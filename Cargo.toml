@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["ufotofu", "ufotofu_queues", "fuzz"]
+members = ["ufotofu", "ufotofu_queues", "ufotofu_codec", "ufotofu_codec_endian", "fuzz"]
 resolver = "2"
 
 [workspace.lints.clippy]

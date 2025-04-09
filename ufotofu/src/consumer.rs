@@ -22,6 +22,9 @@ mod macros;
 // mod into_slice;
 // pub use into_slice::IntoSlice_ as IntoSlice;
 
+mod map_final;
+pub use map_final::*;
+
 #[cfg(feature = "alloc")]
 mod into_vec;
 #[cfg(feature = "alloc")]
