@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/worm-blossom/ufotofu"
+description = "Endian-aware fixed-width integer codecs for ufotofu_codec"
 
 [features]
 
