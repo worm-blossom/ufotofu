@@ -2,6 +2,8 @@
 name = "ufotofu_codec_endian"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/worm-blossom/ufotofu"
 
 [features]
 
@@ -11,7 +13,7 @@ default = ["std"]
 std = ["arbitrary"]
 
 [dependencies]
-ufotofu = { path = "../ufotofu" }
+ufotofu = { path = "../ufotofu", version = "0.6.0" }
 either = "1.10.0"
 arbitrary = { version = "1.0.2", optional = true, features = ["derive"] }
 ufotofu_codec = { path = "../ufotofu_codec", version = "0.1.0" }
