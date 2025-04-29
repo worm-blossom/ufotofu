@@ -16,6 +16,8 @@
 //!
 //! The [`MapFinal`] adaptor wraps any producer and maps it error with a function.
 //!
+//! The [`Limit`] adaptor wraps any producer and limits how many items it may emit at most.
+//!
 //! ## Development Helpers
 //!
 //! The [Invariant] adaptor wraps any producer and makes it panic during tests when some client code violates the API contracts imposed by the producer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom producers; all producers in the ufotofu crate use this wrapper internally.
@@ -44,6 +46,9 @@ pub use map_final::MapFinal;
 
 mod map_error;
 pub use map_error::MapError;
+
+mod limit;
+pub use limit::Limit;
 
 #[cfg(test)]
 mod invariant;

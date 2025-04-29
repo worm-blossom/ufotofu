@@ -12,6 +12,8 @@
 //!
 //! The [`MapError`] adaptor wraps any consumer and maps the error it emits with a function.
 //!
+//! The [`Limit`] adaptor wraps any consumer and makes it emit an error when trying to consume too many regular items.
+//!
 //! ## Development Helpers
 //!
 //! The [Invariant] adaptor wraps any consumer and makes it panic during tests when some client code violates the API contracts imposed by the consumer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom consumers; all consumers in the ufotofu crate use this wrapper internally.
@@ -39,6 +41,9 @@ pub use map_final::MapFinal;
 
 mod map_error;
 pub use map_error::MapError;
+
+mod limit;
+pub use limit::Limit;
 
 #[cfg(test)]
 mod invariant;
