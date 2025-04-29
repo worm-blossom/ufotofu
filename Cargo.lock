@@ -39,6 +39,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
+name = "fairly_unsafe_cell"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e19e1ca8da66b9bc3c0c30551af59e29e6cd578c8d4ef232b92bb1a6a9d841c3"
+
+[[package]]
 name = "jobserver"
 version = "0.1.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -133,6 +139,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ufotofu_codec"
+version = "0.1.0"
+dependencies = [
+ "either",
+ "pollster",
+ "ufotofu",
+ "wb_async_utils",
+]
+
+[[package]]
+name = "ufotofu_codec_endian"
+version = "0.1.0"
+dependencies = [
+ "arbitrary",
+ "either",
+ "ufotofu",
+ "ufotofu_codec",
+]
+
+[[package]]
 name = "ufotofu_queues"
 version = "0.6.0"
 
@@ -141,6 +167,15 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+
+[[package]]
+name = "wb_async_utils"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0959f6010dffb28932c94fcf874ef3588aa9ca050cb0c04ac26622bfc7b2bea6"
+dependencies = [
+ "fairly_unsafe_cell",
+]
 
 [[package]]
 name = "wrapper"

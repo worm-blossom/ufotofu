@@ -1,0 +1,32 @@
+[package]
+name = "ufotofu_codec"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/worm-blossom/ufotofu"
+description = "Traits for (streaming) encoding and decoding of values using UFOTOFU"
+
+[features]
+
+default = ["std"]
+
+# Provide functionality that relies on the std library. Enabled by default.
+std = ["alloc"]
+# Provide functionality that relies on dynamic memory allocation.
+alloc = []
+# Provide test helpers.
+dev = ["std"]
+
+[dependencies]
+ufotofu = { path = "../ufotofu", features = ["dev"], version = "0.6.0"}
+either = "1.10.0"
+pollster = "0.4.0"
+wb_async_utils = { version = "0.1.0" }
+
+[lints]
+workspace = true
+
+# docs.rs-specific configuration
+[package.metadata.docs.rs]
+# document all features
+all-features = true
