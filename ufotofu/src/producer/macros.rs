@@ -22,9 +22,9 @@ macro_rules! invarianted_producer_methods {
             ufotofu::Producer::produce(&mut self.0).await
         }
 
-        async fn overwrite_full_slice<'b>(
+        async fn overwrite_full_slice(
             &mut self,
-            buf: &'b mut [Self::Item],
+            buf: &mut [Self::Item],
         ) -> Result<(), ufotofu::ProduceAtLeastError<Self::Final, Self::Error>> {
             ufotofu::Producer::overwrite_full_slice(&mut self.0, buf).await
         }
@@ -99,9 +99,9 @@ macro_rules! invarianted_bulk_producer_methods {
             ufotofu::BulkProducer::bulk_produce(&mut self.0, buf).await
         }
 
-        async fn bulk_overwrite_full_slice<'kfhwkfwe>(
+        async fn bulk_overwrite_full_slice(
             &mut self,
-            buf: &'kfhwkfwe mut [Self::Item],
+            buf: &mut [Self::Item],
         ) -> Result<(), ufotofu::ProduceAtLeastError<Self::Final, Self::Error>>
         where
             Self::Item: Clone,

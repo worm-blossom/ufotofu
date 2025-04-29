@@ -368,9 +368,9 @@ pub trait Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn overwrite_full_slice<'a>(
+    fn overwrite_full_slice(
         &mut self,
-        buf: &'a mut [Self::Item],
+        buf: &mut [Self::Item],
     ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>> {
         async {
             for i in 0..buf.len() {
@@ -503,9 +503,9 @@ pub trait BulkProducer: BufferedProducer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn bulk_overwrite_full_slice<'a>(
+    fn bulk_overwrite_full_slice(
         &mut self,
-        buf: &'a mut [Self::Item],
+        buf: &mut [Self::Item],
     ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>>
     where
         Self::Item: Clone,

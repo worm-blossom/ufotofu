@@ -143,13 +143,13 @@ invarianted_impl_bulk_producer!(FromSlice_<'a, T: Clone>);
 #[derive(Debug)]
 struct FromSlice<'a, T>(&'a [T], usize);
 
-impl<'a, T> AsRef<[T]> for FromSlice<'a, T> {
+impl<T> AsRef<[T]> for FromSlice<'_, T> {
     fn as_ref(&self) -> &[T] {
         self.0
     }
 }
 
-impl<'a, T: Clone> Producer for FromSlice<'a, T> {
+impl<T: Clone> Producer for FromSlice<'_, T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -166,14 +166,14 @@ impl<'a, T: Clone> Producer for FromSlice<'a, T> {
     }
 }
 
-impl<'a, T: Clone> BufferedProducer for FromSlice<'a, T> {
+impl<T: Clone> BufferedProducer for FromSlice<'_, T> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         // There are no effects to perform so we simply return.
         Ok(())
     }
 }
 
-impl<'a, T: Clone> BulkProducer for FromSlice<'a, T> {
+impl<T: Clone> BulkProducer for FromSlice<'_, T> {
     async fn expose_items<'b>(
         &'b mut self,
     ) -> Result<Either<&'b [Self::Item], Self::Final>, Self::Error>

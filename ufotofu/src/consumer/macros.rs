@@ -26,9 +26,9 @@ macro_rules! invarianted_consumer_methods {
             ufotofu::Consumer::close(&mut self.0, fin).await
         }
 
-        async fn consume_full_slice<'b>(
+        async fn consume_full_slice(
             &mut self,
-            buf: &'b [Self::Item],
+            buf: &[Self::Item],
         ) -> Result<(), ufotofu::ConsumeAtLeastError<Self::Error>>
         where
             Self::Item: Clone,

@@ -79,7 +79,7 @@ impl<P: BulkProducer> BulkProducer for Limit<P> {
         Self::Item: 'a,
     {
         if self.remaining == 0 {
-            return Ok(Right(None));
+            Ok(Right(None))
         } else {
             match self.inner.expose_items().await? {
                 Left(items) => Ok(Left(&items[..core::cmp::min(self.remaining, items.len())])),

@@ -68,7 +68,7 @@ impl<C: BulkConsumer> BulkConsumer for Limit<C> {
         Self::Item: 'a,
     {
         if self.remaining == 0 {
-            return Err(None);
+            Err(None)
         } else {
             let slots = self.inner.expose_slots().await?;
             let len = slots.len();
