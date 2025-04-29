@@ -12,6 +12,10 @@
 //!
 //! The [`MapItem`] adaptor wraps any producer and maps its emitted items with a function.
 //!
+//! The [`MapFinal`] adaptor wraps any producer and maps it final item with a function.
+//!
+//! The [`MapFinal`] adaptor wraps any producer and maps it error with a function.
+//!
 //! ## Development Helpers
 //!
 //! The [Invariant] adaptor wraps any producer and makes it panic during tests when some client code violates the API contracts imposed by the producer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom producers; all producers in the ufotofu crate use this wrapper internally.
@@ -34,6 +38,12 @@ pub use empty::Empty_ as Empty;
 
 mod map_item;
 pub use map_item::MapItem;
+
+mod map_final;
+pub use map_final::MapFinal;
+
+mod map_error;
+pub use map_error::MapError;
 
 #[cfg(test)]
 mod invariant;

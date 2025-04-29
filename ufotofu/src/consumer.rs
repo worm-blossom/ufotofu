@@ -8,6 +8,10 @@
 //!
 //! The [`MapItem`] adaptor wraps any consumer and maps the items it receives with a function.
 //!
+//! The [`MapFinal`] adaptor wraps any consumer and maps the final item it receives with a function.
+//!
+//! The [`MapError`] adaptor wraps any consumer and maps the error it emits with a function.
+//!
 //! ## Development Helpers
 //!
 //! The [Invariant] adaptor wraps any consumer and makes it panic during tests when some client code violates the API contracts imposed by the consumer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom consumers; all consumers in the ufotofu crate use this wrapper internally.
@@ -29,6 +33,12 @@ pub use into_vec::IntoVec_ as IntoVec;
 
 mod map_item;
 pub use map_item::MapItem;
+
+mod map_final;
+pub use map_final::MapFinal;
+
+mod map_error;
+pub use map_error::MapError;
 
 #[cfg(test)]
 mod invariant;
