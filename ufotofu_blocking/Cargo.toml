@@ -1,0 +1,14 @@
+[package]
+name = "ufotofu_blocking"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-task = "4.0.2"
+async-channel = "2.0.0"
+# futures-io = { version = "0.3.28", default-features = false, features = ["std"] }
+futures-lite = { version = "2.0.0", default-features = false }
+piper = "0.2.0"
+
+[lints]
+workspace = true
