@@ -25,6 +25,10 @@
 //! The [TestProducer] exists for testing code that interacts with arbitrary producers; it provides customisable behavior of which items to emit, when to emit the final item or an error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 //!
 //! The [BulkScrambler] exists for testing specific [`BulkProducer`](ufotofu::BulkProducer)s by exercising various interleavings of `produce`, `slurp`, and `expose_items` calls. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
+//!
+//! ## Compatibility
+//!
+//! The [`ReaderToBulkProducer`] adaptor lets you treat a [`smol::io::AsyncRead`] as a [`BulkProducer`](ufotofu::BulkProducer) of bytes, and the more efficient [`BufReaderToBulkProducer`] adaptor lets you treat a [`smol::io::AsyncBufRead`] as a [`BulkProducer`](ufotofu::BulkProducer) of bytes.
 
 #[macro_use]
 mod macros;
@@ -49,6 +53,9 @@ pub use map_error::MapError;
 
 mod limit;
 pub use limit::Limit;
+
+mod reader;
+pub use reader::{BufReaderToBulkProducer, ReaderToBulkProducer};
 
 #[cfg(test)]
 mod invariant;

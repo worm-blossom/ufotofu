@@ -24,6 +24,9 @@ dev = ["dep:arbitrary"]
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 either = "1.10.0"
+smol = "2.0.2" # TODO turn conditional
+ufotofu_queues = { path = "../ufotofu_queues"} # TODO turn conditional
+# ufotofu_queues = "0.6.0" # TODO turn conditional
 
 [dev-dependencies]
 pollster = "0.4.0"

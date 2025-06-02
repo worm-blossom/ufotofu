@@ -21,6 +21,10 @@
 //! The [TestConsumer] exists for testing code that interacts with arbitrary consumers; it provides customisable behavior of how many items to consume before emitting a configurable error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
 //!
 //! The [BulkScrambler] exists for testing specific [`BulkConsumer`](ufotofu::BulkConsumer)s by exercising various interleavings of `consume`, `flush`, and `consume_slots` calls. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
+//!
+//! ## Compatibility
+//!
+//! The [`WriterToBulkConsumer`] adaptor lets you treat a [`smol::io::AsyncWrite`] as a [`BulkConsumer`](ufotofu::BulkConsumer) of bytes.
 
 #[macro_use]
 mod macros;
@@ -44,6 +48,9 @@ pub use map_error::MapError;
 
 mod limit;
 pub use limit::Limit;
+
+mod writer;
+pub use writer::WriterToBulkConsumer;
 
 #[cfg(test)]
 mod invariant;
