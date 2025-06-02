@@ -49,7 +49,9 @@ pub use map_error::MapError;
 mod limit;
 pub use limit::Limit;
 
+#[cfg(feature = "compat")]
 mod writer;
+#[cfg(feature = "compat")]
 pub use writer::WriterToBulkConsumer;
 
 #[cfg(test)]

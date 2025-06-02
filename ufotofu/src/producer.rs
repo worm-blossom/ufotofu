@@ -54,7 +54,9 @@ pub use map_error::MapError;
 mod limit;
 pub use limit::Limit;
 
+#[cfg(feature = "compat")]
 mod reader;
+#[cfg(feature = "compat")]
 pub use reader::{BufReaderToBulkProducer, ReaderToBulkProducer};
 
 #[cfg(test)]
