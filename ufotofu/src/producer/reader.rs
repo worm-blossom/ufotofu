@@ -1,6 +1,5 @@
 use std::{
     io::{self, ErrorKind},
-    println,
 };
 
 use either::{Either, Left, Right};
@@ -146,19 +145,13 @@ where
 
     /// Signals `Final` if the inner `read` method ever produces no bytes.
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
-        println!("produce");
         match self.queue.dequeue() {
             None => {
                 // Sidestep the buffer completely. We only fill it when we need to for `BulkProducer::expose_items`.
                 let mut buf = [17; 1];
-                println!(
-                    "dequeue returned None, calling read_exact with {:?}",
-                    &mut buf[..]
-                );
                 // match self.reader.read_exact(&mut buf[..]).await {
                 match read_exact(&mut self.reader, &mut buf[..]).await {
                     Err(err) => {
-                        println!("err");
                         if err.kind() == ErrorKind::UnexpectedEof {
                             return Ok(Right(()));
                         } else {
@@ -166,13 +159,11 @@ where
                         }
                     }
                     Ok(()) => {
-                        println!("huh {:?}", buf);
                         return Ok(Left(buf[0]));
                     }
                 }
             }
             Some(byte) => {
-                println!("dequeue returned Some({})", byte);
                 return Ok(Left(byte));
             }
         }
