@@ -46,7 +46,8 @@ where
     /// Signals `Final` if the inner `read` method ever produces no bytes.
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         let mut buf = [0; 1];
-        match self.0.read_exact(&mut buf).await {
+        match read_exact(&mut self.0, &mut buf).await {
+            // match self.0.read_exact(&mut buf).await {
             Err(err) => {
                 if err.kind() == ErrorKind::UnexpectedEof {
                     return Ok(Right(()));
