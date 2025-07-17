@@ -1,6 +1,4 @@
-use std::{
-    io::{self, ErrorKind},
-};
+use std::io::{self, ErrorKind};
 
 use either::{Either, Left, Right};
 
