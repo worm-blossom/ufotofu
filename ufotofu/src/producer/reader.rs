@@ -50,14 +50,12 @@ where
             // match self.0.read_exact(&mut buf).await {
             Err(err) => {
                 if err.kind() == ErrorKind::UnexpectedEof {
-                    return Ok(Right(()));
+                    Ok(Right(()))
                 } else {
-                    return Err(err);
+                    Err(err)
                 }
             }
-            Ok(()) => {
-                return Ok(Left(buf[0]));
-            }
+            Ok(()) => Ok(Left(buf[0])),
         }
     }
 }
@@ -86,15 +84,16 @@ where
     {
         let buf = self.0.fill_buf().await?;
 
-        if buf.len() == 0 {
-            return Ok(Right(()));
+        if buf.is_empty() {
+            Ok(Right(()))
         } else {
-            return Ok(Left(self.0.fill_buf().await?));
+            Ok(Left(self.0.fill_buf().await?))
         }
     }
 
     async fn consider_produced(&mut self, amount: usize) -> Result<(), Self::Error> {
-        Ok(self.0.consume(amount))
+        self.0.consume(amount);
+        Ok(())
     }
 
     /// Signals `Final` if the inner `read` method ever produces no bytes.
@@ -105,9 +104,9 @@ where
         let amount = self.0.read(buf).await?;
 
         if amount == 0 {
-            return Ok(Right(()));
+            Ok(Right(()))
         } else {
-            return Ok(Left(amount));
+            Ok(Left(amount))
         }
     }
 }
@@ -152,19 +151,15 @@ where
                 match read_exact(&mut self.reader, &mut buf[..]).await {
                     Err(err) => {
                         if err.kind() == ErrorKind::UnexpectedEof {
-                            return Ok(Right(()));
+                            Ok(Right(()))
                         } else {
-                            return Err(err);
+                            Err(err)
                         }
                     }
-                    Ok(()) => {
-                        return Ok(Left(buf[0]));
-                    }
+                    Ok(()) => Ok(Left(buf[0])),
                 }
             }
-            Some(byte) => {
-                return Ok(Left(byte));
-            }
+            Some(byte) => Ok(Left(byte)),
         }
     }
 }
@@ -211,12 +206,12 @@ where
             let buf_slots = self.queue.expose_slots().unwrap(); // All slots are free.
 
             if self.reader.read(buf_slots).await? == 0 {
-                return Ok(Right(()));
+                Ok(Right(()))
             } else {
-                return Ok(Left(self.queue.expose_items().unwrap())); // We just filled the queue.
+                Ok(Left(self.queue.expose_items().unwrap())) // We just filled the queue.
             }
         } else {
-            return Ok(Left(self.queue.expose_items().unwrap()));
+            Ok(Left(self.queue.expose_items().unwrap()))
         }
     }
 
@@ -235,31 +230,18 @@ where
             let amount = self.reader.read(buf).await?;
 
             if amount == 0 {
-                return Ok(Right(()));
+                Ok(Right(()))
             } else {
-                return Ok(Left(amount));
+                Ok(Left(amount))
             }
         } else {
-            return Ok(Left(self.queue.bulk_dequeue(buf)));
+            Ok(Left(self.queue.bulk_dequeue(buf)))
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use crate::{consumer::WriterToBulkConsumer, Consumer};
-
-    use super::*;
-
-    use ufotofu_queues::Fixed;
-
-    use futures::join;
-    use smol::{
-        io::AsyncWriteExt,
-        net::{TcpListener, TcpStream},
-    };
 
     // See https://github.com/smol-rs/futures-lite/issues/132 , our dependencies appear to be a bit wobbly =S
 

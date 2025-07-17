@@ -164,7 +164,7 @@ impl<T: fmt::Debug> fmt::Debug for Fixed<T> {
 
 pub struct DataDebugger<'q, T>(&'q Fixed<T>);
 
-impl<'q, T: fmt::Debug> fmt::Debug for DataDebugger<'q, T> {
+impl<T: fmt::Debug> fmt::Debug for DataDebugger<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut list = f.debug_list();
 

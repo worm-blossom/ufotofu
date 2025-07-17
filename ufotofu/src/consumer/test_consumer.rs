@@ -167,9 +167,9 @@ impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
     for TestConsumer_<Item, Final, Error>
 {
     fn eq(&self, other: &Self) -> bool {
-        return self.0.as_ref().inner.as_ref() == other.0.as_ref().inner.as_ref()
+        self.0.as_ref().inner.as_ref() == other.0.as_ref().inner.as_ref()
             && self.0.as_ref().fin == other.0.as_ref().fin
-            && self.0.as_ref().error == other.0.as_ref().error;
+            && self.0.as_ref().error == other.0.as_ref().error
     }
 }
 

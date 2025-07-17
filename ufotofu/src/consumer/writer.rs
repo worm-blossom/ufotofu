@@ -52,13 +52,13 @@ where
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.flush_internal_buffer().await?;
 
-        return self.writer.write_all(&[item]).await;
+        self.writer.write_all(&[item]).await
     }
 
     /// Flushes the internal buffer and the writer.
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         self.flush_internal_buffer().await?;
-        return self.writer.close().await;
+        self.writer.close().await
     }
 }
 
@@ -69,7 +69,7 @@ where
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
         self.flush_internal_buffer().await?;
-        return self.writer.flush().await;
+        self.writer.flush().await
     }
 }
 
@@ -88,7 +88,7 @@ where
 
     async fn consume_slots(&mut self, amount: usize) -> Result<(), Self::Error> {
         self.queue.consider_enqueued(amount);
-        return Ok(());
+        Ok(())
     }
 
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
