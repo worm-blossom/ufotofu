@@ -1,4 +1,4 @@
-use std::io::{self};
+use std::{io::{self}, println};
 
 use smol::io::{AsyncWrite, AsyncWriteExt};
 use ufotofu_queues::Queue;
@@ -58,7 +58,8 @@ where
     /// Flushes the internal buffer and the writer.
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         self.flush_internal_buffer().await?;
-        return self.writer.flush().await;
+        println!("about to call self.writer.close()");
+        return self.writer.close().await;
     }
 }
 
@@ -68,6 +69,7 @@ where
     Q: Queue<Item = u8>,
 {
     async fn flush(&mut self) -> Result<(), Self::Error> {
+        self.flush_internal_buffer().await?;
         return self.writer.flush().await;
     }
 }

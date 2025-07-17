@@ -561,6 +561,7 @@ version = "0.6.5"
 dependencies = [
  "arbitrary",
  "either",
+ "futures",
  "pollster",
  "smol",
  "ufotofu_queues",

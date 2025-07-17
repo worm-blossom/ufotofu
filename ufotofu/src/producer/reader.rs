@@ -1,4 +1,7 @@
-use std::{io::{self, ErrorKind}, println};
+use std::{
+    io::{self, ErrorKind},
+    println,
+};
 
 use either::{Either, Left, Right};
 
@@ -146,11 +149,16 @@ where
         println!("produce");
         match self.queue.dequeue() {
             None => {
-                println!("dequeue returned None");
                 // Sidestep the buffer completely. We only fill it when we need to for `BulkProducer::expose_items`.
-                let mut buf = [0; 1];
-                match self.reader.read_exact(&mut buf[..]).await {
+                let mut buf = [17; 1];
+                println!(
+                    "dequeue returned None, calling read_exact with {:?}",
+                    &mut buf[..]
+                );
+                // match self.reader.read_exact(&mut buf[..]).await {
+                match read_exact(&mut self.reader, &mut buf[..]).await {
                     Err(err) => {
+                        println!("err");
                         if err.kind() == ErrorKind::UnexpectedEof {
                             return Ok(Right(()));
                         } else {
@@ -158,7 +166,7 @@ where
                         }
                     }
                     Ok(()) => {
-                        println!("huh");
+                        println!("huh {:?}", buf);
                         return Ok(Left(buf[0]));
                     }
                 }
@@ -169,6 +177,20 @@ where
             }
         }
     }
+}
+
+async fn read_exact<R>(r: &mut R, buf: &mut [u8]) -> Result<(), std::io::Error>
+where
+    R: AsyncRead + Unpin,
+{
+    let mut read = 0;
+
+    while read < buf.len() {
+        let read_in_this_call = r.read(&mut buf[read..]).await?;
+        read += read_in_this_call;
+    }
+
+    Ok(())
 }
 
 impl<R, Q> BufferedProducer for ReaderToBulkProducer<R, Q>
@@ -232,3 +254,122 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use crate::{consumer::WriterToBulkConsumer, Consumer};
+
+    use super::*;
+
+    use ufotofu_queues::Fixed;
+
+    use futures::join;
+    use smol::{
+        io::AsyncWriteExt,
+        net::{TcpListener, TcpStream},
+    };
+
+    // See https://github.com/smol-rs/futures-lite/issues/132 , our dependencies appear to be a bit wobbly =S
+
+    // #[test]
+    // fn tcp_impl_is_not_broken() {
+    //     smol::block_on(async {
+    //         let send = async {
+    //             let mut stream = TcpStream::connect("127.0.0.1:8087").await.unwrap();
+    //             stream.write_all(&[42]).await.unwrap();
+    //             println!("about to close");
+    //             assert_eq!((), stream.close().await.unwrap());
+    //             println!("closed");
+    //         };
+
+    //         let receive = async {
+    //             let listener = TcpListener::bind("127.0.0.1:8087").await.unwrap();
+    //             let (mut stream, _addr) = listener.accept().await.unwrap();
+
+    //             let mut buf = [0; 1];
+    //             assert_eq!((), stream.read_exact(&mut buf[..]).await.unwrap());
+    //             // assert!(stream.read_exact(&mut buf[..]).await.is_err());
+    //             // println!("{:?}", stream.read_exact(&mut buf[..]).await);
+    //             println!("{:?}", read_exact(&mut stream, &mut buf[..]).await);
+    //         };
+
+    //         join!(receive, send);
+    //     });
+    // }
+
+    // #[test]
+    // fn adaptor_regression_test() {
+    //     let (input, sender_queue_capacity, rec_queue_capacity) = (vec![7], 3, 3);
+
+    //     println!("\nstarted adaptor_regression_test");
+
+    //     pollster::block_on(async {
+    //         let send = async {
+    //             let stream = TcpStream::connect("127.0.0.1:8089").await.unwrap();
+
+    //             let sender_queue: Fixed<u8> = Fixed::new(sender_queue_capacity);
+    //             let mut sender = WriterToBulkConsumer::new(stream, sender_queue);
+
+    //             for datum in input.iter() {
+    //                 assert_eq!((), sender.consume(*datum).await.unwrap());
+    //                 println!("inputting {:?}", *datum);
+    //             }
+    //             println!("about to close");
+    //             assert_eq!((), sender.close(()).await.unwrap());
+    //             println!("closed");
+    //         };
+
+    //         let receive = async {
+    //             let listener = TcpListener::bind("127.0.0.1:8089").await.unwrap();
+    //             let (stream, _addr) = listener.accept().await.unwrap();
+
+    //             let rec_queue: Fixed<u8> = Fixed::new(rec_queue_capacity);
+    //             let mut receiver = ReaderToBulkProducer::new(stream, rec_queue);
+
+    //             for datum in input.iter() {
+    //                 assert_eq!(Left(*datum), receiver.produce().await.unwrap());
+    //                 println!("successfully checked we got {:?}", *datum);
+    //             }
+
+    //             println!("about to do the produce call that should yield Right(())");
+    //             assert_eq!(Right(()), receiver.produce().await.unwrap());
+    //         };
+
+    //         join!(receive, send);
+    //     });
+    // }
+}
+
+// pollster::block_on(async {
+//         let send = async {
+//             let stream = TcpStream::connect("127.0.0.1:8087").await.unwrap();
+
+//             let sender_queue: Fixed<u8> = Fixed::new(sender_queue_capacity);
+//             let sender = WriterToBulkConsumer::new(stream, sender_queue);
+//             let mut sender = consumer::BulkScrambler::new(sender, consume_ops);
+
+//             for datum in input.iter() {
+//                 assert_eq!((), sender.consume(*datum).await.unwrap());
+//             }
+//             assert_eq!((), sender.close(()).await.unwrap());
+//         };
+
+//         let receive = async {
+//             let listener = TcpListener::bind("127.0.0.1:8087").await.unwrap();
+//             let (stream, _addr) = listener.accept().await.unwrap();
+//             let stream = BufReader::new(stream);
+
+//             let receiver = BufReaderToBulkProducer::new(stream);
+//             let mut receiver = producer::BulkScrambler::new(receiver, produce_ops);
+
+//             for datum in input.iter() {
+//                 assert_eq!(Left(*datum), receiver.produce().await.unwrap());
+//             }
+
+//             assert_eq!(Right(()), receiver.produce().await.unwrap());
+//         };
+
+//         join!(receive, send);
+//     });

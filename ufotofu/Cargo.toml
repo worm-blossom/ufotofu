@@ -33,6 +33,7 @@ ufotofu_queues = { path = "../ufotofu_queues", optional = true }
 
 [dev-dependencies]
 pollster = "0.4.0"
+futures = "0.3.31"
 
 # docs.rs-specific configuration
 [package.metadata.docs.rs]

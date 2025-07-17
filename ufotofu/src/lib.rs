@@ -51,7 +51,7 @@
 //! All functionality which relies on the Rust standard library is gated behind the `std` feature flag (enabled by default).
 //!
 //! All functionality which performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
-//! 
+//!
 //! All functionality which provides interoperability with other async sequence manipulation crates is gated behind the `compat` feature flag (disabled by default).
 //!
 //! All functionality specifically designed to aid in testing and development is gated behind the `dev` feature flag (disabled by default).
