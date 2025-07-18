@@ -1,6 +1,6 @@
 [package]
 name = "ufotofu_codec"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/worm-blossom/ufotofu"
@@ -15,13 +15,14 @@ std = ["alloc"]
 # Provide functionality that relies on dynamic memory allocation.
 alloc = []
 # Provide test helpers.
-dev = ["std"]
+dev = ["std", "dep:arbitrary"]
 
 [dependencies]
-ufotofu = { path = "../ufotofu", features = ["dev"], version = "0.6.0"}
+ufotofu = { path = "../ufotofu", features = ["dev"], version = "0.6.0" }
 either = "1.10.0"
 pollster = "0.4.0"
 wb_async_utils = "0.1.3"
+arbitrary = { version = "1.4.1", optional = true }
 
 [lints]
 workspace = true
