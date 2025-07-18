@@ -6,8 +6,8 @@ use libfuzzer_sys::fuzz_target;
 use either::Either::*;
 
 use smol::net::{TcpListener, TcpStream};
-use ufotofu::consumer::{self, BulkConsumerOperation, WriterToBulkConsumer};
-use ufotofu::producer::{self, BulkProducerOperation, ReaderToBulkProducer};
+use ufotofu::consumer::{BulkConsumerOperation, WriterToBulkConsumer};
+use ufotofu::producer::{BulkProducerOperation, ReaderToBulkProducer};
 use ufotofu::{Consumer, Producer};
 
 use ufotofu_queues::Fixed;

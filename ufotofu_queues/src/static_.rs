@@ -131,7 +131,7 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for Static<T, N> {
 
 pub struct DataDebugger<'q, T, const N: usize>(&'q Static<T, N>);
 
-impl<'q, T: fmt::Debug, const N: usize> fmt::Debug for DataDebugger<'q, T, N> {
+impl<T: fmt::Debug, const N: usize> fmt::Debug for DataDebugger<'_, T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut list = f.debug_list();
 

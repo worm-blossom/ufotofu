@@ -336,7 +336,7 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Fixed<T, A> {
 pub struct DataDebugger<'q, T, A: Allocator = Global>(&'q Fixed<T, A>);
 
 #[cfg(feature = "nightly")]
-impl<'q, T: fmt::Debug, A: Allocator> fmt::Debug for DataDebugger<'q, T, A> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for DataDebugger<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut list = f.debug_list();
 
