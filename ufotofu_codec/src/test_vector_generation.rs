@@ -262,6 +262,14 @@ async fn single_test_vector_relative<T, R, ErrorReason, P: AsRef<Path>>(
             path_input.push(count.to_string());
             write_file_create_parent_dirs(&path_input, bytes).unwrap();
 
+            let mut path_input_rel = out_dir.as_ref().join("nay_relative_to");
+            path_input_rel.push(count.to_string());
+            write_file_create_parent_dirs(&path_input_rel, r.encode_into_vec().await).unwrap();
+
+            let mut path_debug_representation = out_dir.as_ref().join("nay_dbg");
+            path_debug_representation.push(count.to_string());
+            write_file_create_parent_dirs(&path_debug_representation, format!("{:#?}", r)).unwrap();
+
             let mut path_nay_reason = out_dir.as_ref().join("nay_reason");
             path_nay_reason.push(count.to_string());
             write_file_create_parent_dirs(&path_nay_reason, format!("{:#?}", reason)).unwrap();
@@ -376,6 +384,14 @@ async fn single_test_vector_canonic_relative<T, R, ErrorReason, ErrorCanonic, P:
             let mut path_input = out_dir.as_ref().join("nay");
             path_input.push(count.to_string());
             write_file_create_parent_dirs(&path_input, bytes).unwrap();
+
+            let mut path_input_rel = out_dir.as_ref().join("nay_relative_to");
+            path_input_rel.push(count.to_string());
+            write_file_create_parent_dirs(&path_input_rel, r.encode_into_vec().await).unwrap();
+
+            let mut path_debug_representation = out_dir.as_ref().join("nay_dbg");
+            path_debug_representation.push(count.to_string());
+            write_file_create_parent_dirs(&path_debug_representation, format!("{:#?}", r)).unwrap();
 
             let mut path_nay_reason = out_dir.as_ref().join("nay_reason");
             path_nay_reason.push(count.to_string());
