@@ -48,9 +48,11 @@
 //!
 //! UFOTOFU gates several features that are only interesting under certain circumstances behind feature flags. These API docs document *all* functionality, though, as if all feature flags were activated.
 //!
-//! All functionality that relies on the Rust standard library is gated behind the `std` feature flag (enabled by default).
+//! All functionality which relies on the Rust standard library is gated behind the `std` feature flag (enabled by default).
 //!
-//! All functionality that performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
+//! All functionality which performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
+//!
+//! All functionality which provides interoperability with other async sequence manipulation crates is gated behind the `compat` feature flag (disabled by default).
 //!
 //! All functionality specifically designed to aid in testing and development is gated behind the `dev` feature flag (disabled by default).
 

@@ -21,9 +21,17 @@ alloc = []
 # Provide implementations for development helpers.
 dev = ["dep:arbitrary"]
 
+# Provide adaptors for interoperability with other async reader and writer crates.
+compat = ["dep:smol", "dep:ufotofu_queues"]
+
 [dependencies]
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 either = "1.10.0"
+pin-project = "1"
+smol = { version = "2.0.2", optional = true }
+ufotofu_queues = { path = "../ufotofu_queues", optional = true }
+# ufotofu_queues = { version = "0.6.5", optional = true }
+futures = "0.3.31"
 
 [dev-dependencies]
 pollster = "0.4.0"

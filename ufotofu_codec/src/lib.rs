@@ -37,6 +37,8 @@
 //! ## Property Testing
 //!
 //! When the `dev` feature is enabled, the [`proptest`] module provides helpers for writing property tests for checking the invariants that implementations of the traits of this crate must uphold. The crate root then further provides macros for [fuzz testing](https://rust-fuzz.github.io/book/introduction.html) the properties.
+//!
+//! Additionally, the [`test_vector_generation`] module provides macros for fuzz tests which serve no purpose but to generate interesting corpora, and functions for converting these corpora into test vector files suitable for testing other implementations against the fuzzed rust implementation. See the mod docs for more information.
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -45,6 +47,9 @@ extern crate std;
 
 #[cfg(feature = "dev")]
 pub mod proptest;
+
+#[cfg(feature = "dev")]
+pub mod test_vector_generation;
 
 mod decode_error;
 pub use decode_error::{Blame, DecodeError};

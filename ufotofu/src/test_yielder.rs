@@ -52,7 +52,7 @@ impl<'a> Arbitrary<'a> for TestYielder {
 
 struct MaybeYield<'s>(&'s mut TestYielder);
 
-impl<'s> Future for MaybeYield<'s> {
+impl Future for MaybeYield<'_> {
     type Output = ();
 
     // The futures executor is implemented as a FIFO queue, so all this future

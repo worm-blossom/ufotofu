@@ -10,10 +10,12 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
 pollster = "0.4.0"
-ufotofu = { path = "../ufotofu", features = ["dev"] }
+ufotofu = { path = "../ufotofu", features = ["dev", "compat"] }
 ufotofu_queues = { path = "../ufotofu_queues", features = ["std"] }
 wrapper = "0.1.1"
 either = "1.10.0"
+smol = "2.0.2"
+futures = "0.3.31"
 
 ###########
 # ufotofu #
@@ -134,6 +136,20 @@ bench = false
 [[bin]]
 name = "from_slice"
 path = "fuzz_targets/ufotofu/from_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compat"
+path = "fuzz_targets/ufotofu/compat.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "compat_buf_read"
+path = "fuzz_targets/ufotofu/compat_buf_read.rs"
 test = false
 doc = false
 bench = false
