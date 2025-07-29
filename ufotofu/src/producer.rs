@@ -18,6 +18,10 @@
 //!
 //! The [`Limit`] adaptor wraps any producer and limits how many items it may emit at most.
 //!
+//! ## Combining Producers
+//!
+//! The [`Merge`] adaptor wraps two producers and interleaves their items, drops the first `Final` item, but forwards the first `Error`.
+//!
 //! ## Development Helpers
 //!
 //! The [Invariant] adaptor wraps any producer and makes it panic during tests when some client code violates the API contracts imposed by the producer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom producers; all producers in the ufotofu crate use this wrapper internally.
@@ -53,6 +57,11 @@ pub use map_error::MapError;
 
 mod limit;
 pub use limit::Limit;
+
+#[cfg(feature = "alloc")]
+mod merge;
+#[cfg(feature = "alloc")]
+pub use merge::Merge;
 
 #[cfg(feature = "compat")]
 mod reader;

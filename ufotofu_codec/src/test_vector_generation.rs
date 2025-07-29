@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::fs::read_dir;
 use std::path::Path;
 use std::string::ToString;
+use std::vec::Vec;
 use std::{boxed::Box, fs};
 use std::{format, io};
 
@@ -265,6 +266,99 @@ async fn single_test_vector_relative<T, R, ErrorReason, P: AsRef<Path>>(
             let mut path_input_rel = out_dir.as_ref().join("nay_relative_to");
             path_input_rel.push(count.to_string());
             write_file_create_parent_dirs(&path_input_rel, r.encode_into_vec().await).unwrap();
+
+            let mut path_debug_representation = out_dir.as_ref().join("nay_dbg");
+            path_debug_representation.push(count.to_string());
+            write_file_create_parent_dirs(&path_debug_representation, format!("{:#?}", r)).unwrap();
+
+            let mut path_nay_reason = out_dir.as_ref().join("nay_reason");
+            path_nay_reason.push(count.to_string());
+            write_file_create_parent_dirs(&path_nay_reason, format!("{:#?}", reason)).unwrap();
+        }
+    }
+}
+
+/// Given the path to a fuzz corpus created with the [`fuzz_relative_corpus`] macro, this function writes to the `out_dir` a set of test vectors. Takes a function for encoding relative values instead of requiring `Encodable`.
+pub async fn generate_test_vectors_relative_custom_serialisation<
+    T,
+    R,
+    ErrorReason,
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+>(
+    corpus_dir: P1,
+    out_dir: P2,
+    encode_r: fn(&R) -> Vec<u8>,
+) where
+    T: Encodable + RelativeDecodable<R, ErrorReason> + Debug,
+    R: Debug + for<'a> Arbitrary<'a>,
+    ErrorReason: Debug,
+{
+    let mut i = 0;
+
+    for corpus_file in read_dir(corpus_dir).unwrap() {
+        let data = fs::read(corpus_file.unwrap().path()).unwrap();
+        single_test_vector_relative_custom_serialisation::<T, R, ErrorReason, _>(
+            &data[..],
+            out_dir.as_ref(),
+            i,
+            encode_r,
+        )
+        .await;
+        i += 1;
+    }
+}
+
+/// Takes the bytes of a corpus file of a `fuzz_relative_corpus` macro, the directory in which to place test vector data, and a counter to number the generated vector, and writes the test vector data to the file system. Takes a function for encoding relative values instead of requiring `Encodable`.
+async fn single_test_vector_relative_custom_serialisation<T, R, ErrorReason, P: AsRef<Path>>(
+    unstructured_bytes: &[u8],
+    out_dir: P,
+    count: usize,
+    encode_r: fn(&R) -> Vec<u8>,
+) where
+    T: Encodable + RelativeDecodable<R, ErrorReason> + Debug,
+    R: Debug + for<'a> Arbitrary<'a>,
+    ErrorReason: Debug,
+{
+    let mut u = Unstructured::new(unstructured_bytes);
+    let (bytes, r): (Box<[u8]>, R) = Arbitrary::arbitrary(&mut u).unwrap();
+
+    match T::relative_decode_from_slice(&bytes[..], &r).await {
+        Ok(decoded) => {
+            let mut path_input = out_dir.as_ref().join("yay");
+            path_input.push(count.to_string());
+            write_file_create_parent_dirs(&path_input, bytes).unwrap();
+
+            let mut path_input_rel = out_dir.as_ref().join("yay_relative_to");
+            path_input_rel.push(count.to_string());
+            write_file_create_parent_dirs(&path_input_rel, encode_r(&r)).unwrap();
+
+            let pair = EncodedPair {
+                actual_value: decoded,
+                relative_to: r,
+            };
+
+            let mut path_debug_representation = out_dir.as_ref().join("dbg");
+            path_debug_representation.push(count.to_string());
+            write_file_create_parent_dirs(&path_debug_representation, format!("{:#?}", pair))
+                .unwrap();
+
+            let mut path_reencoded = out_dir.as_ref().join("reencoded");
+            path_reencoded.push(count.to_string());
+            write_file_create_parent_dirs(
+                &path_reencoded,
+                pair.actual_value.encode_into_vec().await,
+            )
+            .unwrap();
+        }
+        Err(reason) => {
+            let mut path_input = out_dir.as_ref().join("nay");
+            path_input.push(count.to_string());
+            write_file_create_parent_dirs(&path_input, bytes).unwrap();
+
+            let mut path_input_rel = out_dir.as_ref().join("nay_relative_to");
+            path_input_rel.push(count.to_string());
+            write_file_create_parent_dirs(&path_input_rel, encode_r(&r)).unwrap();
 
             let mut path_debug_representation = out_dir.as_ref().join("nay_dbg");
             path_debug_representation.push(count.to_string());
