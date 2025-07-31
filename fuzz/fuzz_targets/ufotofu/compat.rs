@@ -24,8 +24,6 @@ fuzz_target!(|data: (
     let sender_queue_capacity = sender_queue_capacity.clamp(1, 2048);
     let rec_queue_capacity = rec_queue_capacity.clamp(1, 2048);
 
-    println!("input {:?}", input);
-
     pollster::block_on(async {
         let send = async {
             let stream = TcpStream::connect("127.0.0.1:8087").await.unwrap();
