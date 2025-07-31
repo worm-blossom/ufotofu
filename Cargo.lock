@@ -577,7 +577,7 @@ checksum = "e672c95779cf947c5311f83787af4fa8fffd12fb27e4993211a84bdfd9610f9c"
 
 [[package]]
 name = "ufotofu"
-version = "0.6.5"
+version = "0.6.6"
 dependencies = [
  "arbitrary",
  "either",
@@ -585,7 +585,7 @@ dependencies = [
  "pin-project",
  "pollster",
  "smol",
- "ufotofu_queues",
+ "ufotofu_queues 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -598,7 +598,7 @@ dependencies = [
  "pollster",
  "smol",
  "ufotofu",
- "ufotofu_queues",
+ "ufotofu_queues 0.6.0",
  "wrapper",
 ]
 
@@ -626,6 +626,12 @@ dependencies = [
 [[package]]
 name = "ufotofu_queues"
 version = "0.6.0"
+
+[[package]]
+name = "ufotofu_queues"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9abd2f0123cc71fa3adf9329b85d9eb863874e489744803f3a41fff59b56968d"
 
 [[package]]
 name = "unicode-ident"
