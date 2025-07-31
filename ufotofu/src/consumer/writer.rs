@@ -32,10 +32,15 @@ where
 {
     async fn flush_internal_buffer(&mut self) -> Result<(), io::Error> {
         loop {
-            match self.queue.expose_items() {
+            let written = match self.queue.expose_items() {
                 None => return Ok(()),
-                Some(queue) => self.writer.write_all(queue).await?,
-            }
+                Some(queue) => {
+                    self.writer.write_all(queue).await?;
+                    queue.len()
+                }
+            };
+
+            self.queue.consider_dequeued(written);
         }
     }
 }
@@ -93,6 +98,15 @@ where
 
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
         self.flush_internal_buffer().await?;
-        self.writer.write(buf).await
+        let written_amount = self.writer.write(buf).await?;
+
+        if written_amount == 0 {
+            Err(io::Error::new(
+                io::ErrorKind::WriteZero,
+                "wrapped writer wrote zero bytes",
+            ))
+        } else {
+            Ok(written_amount)
+        }
     }
 }

@@ -46,8 +46,7 @@ where
     /// Signals `Final` if the inner `read` method ever produces no bytes.
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         let mut buf = [0; 1];
-        match read_exact(&mut self.0, &mut buf).await {
-            // match self.0.read_exact(&mut buf).await {
+        match self.0.read_exact(&mut buf).await {
             Err(err) => {
                 if err.kind() == ErrorKind::UnexpectedEof {
                     Ok(Right(()))
@@ -147,8 +146,7 @@ where
             None => {
                 // Sidestep the buffer completely. We only fill it when we need to for `BulkProducer::expose_items`.
                 let mut buf = [17; 1];
-                // match self.reader.read_exact(&mut buf[..]).await {
-                match read_exact(&mut self.reader, &mut buf[..]).await {
+                match self.reader.read_exact(&mut buf[..]).await {
                     Err(err) => {
                         if err.kind() == ErrorKind::UnexpectedEof {
                             Ok(Right(()))
@@ -162,20 +160,6 @@ where
             Some(byte) => Ok(Left(byte)),
         }
     }
-}
-
-async fn read_exact<R>(r: &mut R, buf: &mut [u8]) -> Result<(), std::io::Error>
-where
-    R: AsyncRead + Unpin,
-{
-    let mut read = 0;
-
-    while read < buf.len() {
-        let read_in_this_call = r.read(&mut buf[read..]).await?;
-        read += read_in_this_call;
-    }
-
-    Ok(())
 }
 
 impl<R, Q> BufferedProducer for ReaderToBulkProducer<R, Q>
@@ -205,9 +189,12 @@ where
             // No buffered items, so buffer some and then expose them.
             let buf_slots = self.queue.expose_slots().unwrap(); // All slots are free.
 
-            if self.reader.read(buf_slots).await? == 0 {
+            let num_read_bytes = self.reader.read(buf_slots).await?;
+
+            if num_read_bytes == 0 {
                 Ok(Right(()))
             } else {
+                self.queue.consider_enqueued(num_read_bytes);
                 Ok(Left(self.queue.expose_items().unwrap())) // We just filled the queue.
             }
         } else {
@@ -245,73 +232,123 @@ mod tests {
 
     // See https://github.com/smol-rs/futures-lite/issues/132 , our dependencies appear to be a bit wobbly =S
 
-    // #[test]
-    // fn tcp_impl_is_not_broken() {
-    //     smol::block_on(async {
-    //         let send = async {
-    //             let mut stream = TcpStream::connect("127.0.0.1:8087").await.unwrap();
-    //             stream.write_all(&[42]).await.unwrap();
-    //             println!("about to close");
-    //             assert_eq!((), stream.close().await.unwrap());
-    //             println!("closed");
-    //         };
+    use std::{println, vec};
 
-    //         let receive = async {
-    //             let listener = TcpListener::bind("127.0.0.1:8087").await.unwrap();
-    //             let (mut stream, _addr) = listener.accept().await.unwrap();
+    use either::Either::{Left, Right};
+    use futures::join;
 
-    //             let mut buf = [0; 1];
-    //             assert_eq!((), stream.read_exact(&mut buf[..]).await.unwrap());
-    //             // assert!(stream.read_exact(&mut buf[..]).await.is_err());
-    //             // println!("{:?}", stream.read_exact(&mut buf[..]).await);
-    //             println!("{:?}", read_exact(&mut stream, &mut buf[..]).await);
-    //         };
+    use smol::net::{TcpListener, TcpStream};
 
-    //         join!(receive, send);
-    //     });
-    // }
+    use smol::io::{AsyncReadExt, AsyncWriteExt};
+    use ufotofu_queues::Fixed;
 
-    // #[test]
-    // fn adaptor_regression_test() {
-    //     let (input, sender_queue_capacity, rec_queue_capacity) = (vec![7], 3, 3);
+    use crate::consumer::WriterToBulkConsumer;
+    use crate::producer::ReaderToBulkProducer;
+    use crate::{Consumer, Producer};
 
-    //     println!("\nstarted adaptor_regression_test");
+    #[test]
+    fn tcp_impl_is_not_broken() {
+        smol::block_on(async {
+            let send = async {
+                let mut stream = TcpStream::connect("127.0.0.1:8087").await.unwrap();
+                stream.write_all(&[42]).await.unwrap();
+                // println!("about to close");
+                assert_eq!((), stream.close().await.unwrap());
+                // println!("closed");
+            };
 
-    //     pollster::block_on(async {
-    //         let send = async {
-    //             let stream = TcpStream::connect("127.0.0.1:8089").await.unwrap();
+            let receive = async {
+                let listener = TcpListener::bind("127.0.0.1:8087").await.unwrap();
+                let (mut stream, _addr) = listener.accept().await.unwrap();
 
-    //             let sender_queue: Fixed<u8> = Fixed::new(sender_queue_capacity);
-    //             let mut sender = WriterToBulkConsumer::new(stream, sender_queue);
+                let mut buf = [0; 1];
+                assert_eq!((), stream.read_exact(&mut buf[..]).await.unwrap());
+                assert!(stream.read_exact(&mut buf[..]).await.is_err());
+                println!("{:?}", stream.read_exact(&mut buf[..]).await);
+            };
 
-    //             for datum in input.iter() {
-    //                 assert_eq!((), sender.consume(*datum).await.unwrap());
-    //                 println!("inputting {:?}", *datum);
-    //             }
-    //             println!("about to close");
-    //             assert_eq!((), sender.close(()).await.unwrap());
-    //             println!("closed");
-    //         };
+            join!(receive, send);
+        });
+    }
 
-    //         let receive = async {
-    //             let listener = TcpListener::bind("127.0.0.1:8089").await.unwrap();
-    //             let (stream, _addr) = listener.accept().await.unwrap();
+    #[test]
+    fn adaptor_regression_test() {
+        let (input, sender_queue_capacity, rec_queue_capacity) = (vec![7], 3, 3);
 
-    //             let rec_queue: Fixed<u8> = Fixed::new(rec_queue_capacity);
-    //             let mut receiver = ReaderToBulkProducer::new(stream, rec_queue);
+        println!("\nstarted adaptor_regression_test");
 
-    //             for datum in input.iter() {
-    //                 assert_eq!(Left(*datum), receiver.produce().await.unwrap());
-    //                 println!("successfully checked we got {:?}", *datum);
-    //             }
+        pollster::block_on(async {
+            let send = async {
+                let stream = TcpStream::connect("127.0.0.1:8089").await.unwrap();
 
-    //             println!("about to do the produce call that should yield Right(())");
-    //             assert_eq!(Right(()), receiver.produce().await.unwrap());
-    //         };
+                let sender_queue: Fixed<u8> = Fixed::new(sender_queue_capacity);
+                let mut sender = WriterToBulkConsumer::new(stream, sender_queue);
 
-    //         join!(receive, send);
-    //     });
-    // }
+                for datum in input.iter() {
+                    assert_eq!((), sender.consume(*datum).await.unwrap());
+                }
+                assert_eq!((), sender.close(()).await.unwrap());
+            };
+
+            let receive = async {
+                let listener = TcpListener::bind("127.0.0.1:8089").await.unwrap();
+                let (stream, _addr) = listener.accept().await.unwrap();
+
+                let rec_queue: Fixed<u8> = Fixed::new(rec_queue_capacity);
+                let mut receiver = ReaderToBulkProducer::new(stream, rec_queue);
+
+                for datum in input.iter() {
+                    assert_eq!(Left(*datum), receiver.produce().await.unwrap());
+                }
+
+                assert_eq!(Right(()), receiver.produce().await.unwrap());
+            };
+
+            join!(receive, send);
+        });
+    }
+
+    #[test]
+    fn adaptor_regression_test2() {
+        let (input, sender_queue_capacity, rec_queue_capacity) = (vec![7], 3, 3);
+
+        println!("\nstarted adaptor_regression_test");
+
+        pollster::block_on(async {
+            let send = async {
+                let stream = TcpStream::connect("127.0.0.1:8090").await.unwrap();
+
+                let sender_queue: Fixed<u8> = Fixed::new(sender_queue_capacity);
+                let mut sender = WriterToBulkConsumer::new(stream, sender_queue);
+
+                for datum in input.iter() {
+                    assert_eq!((), sender.consume(*datum).await.unwrap());
+                    println!("inputting {:?}", *datum);
+                }
+                println!("about to close");
+                assert_eq!((), sender.close(()).await.unwrap());
+                println!("closed");
+            };
+
+            let receive = async {
+                let listener = TcpListener::bind("127.0.0.1:8090").await.unwrap();
+                let (stream, _addr) = listener.accept().await.unwrap();
+
+                let rec_queue: Fixed<u8> = Fixed::new(rec_queue_capacity);
+                let mut receiver = ReaderToBulkProducer::new(stream, rec_queue);
+
+                for datum in input.iter() {
+                    assert_eq!(Left(*datum), receiver.produce().await.unwrap());
+                    println!("successfully checked we got {:?}", *datum);
+                }
+
+                println!("about to do the produce call that should yield Right(())");
+                assert_eq!(Right(()), receiver.produce().await.unwrap());
+            };
+
+            join!(receive, send);
+        });
+    }
 }
 
 // pollster::block_on(async {
