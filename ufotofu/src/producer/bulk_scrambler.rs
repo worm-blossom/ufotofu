@@ -8,7 +8,7 @@ use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-use crate::fixed_queue::Fixed;
+use ufotofu_queues::{Fixed, Queue};
 use arbitrary::Arbitrary;
 use either::Either::{self, *};
 
