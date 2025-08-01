@@ -8,8 +8,8 @@ use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-use crate::fixed_queue::Fixed;
 use arbitrary::Arbitrary;
+use ufotofu_queues::{Fixed, Queue};
 
 use crate::consumer::Invariant;
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
