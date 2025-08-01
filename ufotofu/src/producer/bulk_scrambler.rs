@@ -8,9 +8,9 @@ use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-use ufotofu_queues::{Fixed, Queue};
 use arbitrary::Arbitrary;
 use either::Either::{self, *};
+use ufotofu_queues::{Fixed, Queue};
 
 use crate::producer::Invariant;
 use crate::{BufferedProducer, BulkProducer, Producer};
