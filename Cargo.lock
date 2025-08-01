@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "ufotofu_codec"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "arbitrary",
  "either",
@@ -635,9 +635,9 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "wb_async_utils"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bde870d22fde63569d9c9ded9b811ac2f5f70f28019c7a1a28cb8bd3c44e3c6c"
+checksum = "29d07b9a0090d19edefbe07a6f7b19e7ba3f883dc2ef69f31e4edcb366b36ad8"
 dependencies = [
  "fairly_unsafe_cell",
 ]
