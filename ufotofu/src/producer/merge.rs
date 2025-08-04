@@ -7,10 +7,8 @@ use crate::Producer;
 
 /// The [`Merge`] adaptor wraps two producers and interleaves their items, drops the first `Final` item, but forwards the first `Error`.
 pub struct Merge<P1, P2, Item, Final, Error> {
-    produce_future1:
-        Option<ReusableLocalBoxFuture<(Result<Either<P1::Item, P1::Final>, P1::Error>, P1)>>,
-    produce_future2:
-        Option<ReusableLocalBoxFuture<(Result<Either<P2::Item, P2::Final>, P2::Error>, P2)>>,
+    produce_future1: Option<ReusableLocalBoxFuture<(Result<Either<Item, Final>, Error>, P1)>>,
+    produce_future2: Option<ReusableLocalBoxFuture<(Result<Either<Item, Final>, Error>, P2)>>,
 }
 
 impl<P1, P2, Item, Final, Error> Merge<P1, P2, Item, Final, Error>
