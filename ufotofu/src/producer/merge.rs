@@ -6,14 +6,21 @@ use reusable_box_future::ReusableLocalBoxFuture;
 use crate::Producer;
 
 /// The [`Merge`] adaptor wraps two producers and interleaves their items, drops the first `Final` item, but forwards the first `Error`.
-pub struct Merge<P1: Producer, P2: Producer> {
+pub struct Merge<P1, P2, Item, Final, Error> {
     produce_future1:
         Option<ReusableLocalBoxFuture<(Result<Either<P1::Item, P1::Final>, P1::Error>, P1)>>,
     produce_future2:
         Option<ReusableLocalBoxFuture<(Result<Either<P2::Item, P2::Final>, P2::Error>, P2)>>,
 }
 
-impl<P1: Producer + 'static, P2: Producer + 'static> Merge<P1, P2> {
+impl<P1, P2, Item, Final, Error> Merge<P1, P2, Item, Final, Error>
+where
+    P1: Producer<Item = Item, Final = Final, Error = Error> + 'static,
+    P2: Producer<Item = Item, Final = Final, Error = Error> + 'static,
+    Item: 'static,
+    Final: 'static,
+    Error: 'static,
+{
     /// Returns a producer which wraps two producers and interleaves their items, drops the first `Final` item, but forwards the first `Error`.
     pub fn new(mut p1: P1, mut p2: P2) -> Self {
         Merge {
@@ -27,13 +34,13 @@ impl<P1: Producer + 'static, P2: Producer + 'static> Merge<P1, P2> {
     }
 }
 
-impl<
-        P1: Producer<Item = Item, Final = Final, Error = Error> + 'static,
-        P2: Producer<Item = Item, Final = Final, Error = Error> + 'static,
-        Item: 'static,
-        Final: 'static,
-        Error: 'static,
-    > Producer for Merge<P1, P2>
+impl<P1, P2, Item, Final, Error> Producer for Merge<P1, P2, Item, Final, Error>
+where
+    P1: Producer<Item = Item, Final = Final, Error = Error> + 'static,
+    P2: Producer<Item = Item, Final = Final, Error = Error> + 'static,
+    Item: 'static,
+    Final: 'static,
+    Error: 'static,
 {
     type Item = Item;
     type Final = Final;

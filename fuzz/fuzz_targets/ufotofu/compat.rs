@@ -6,8 +6,8 @@ use libfuzzer_sys::fuzz_target;
 use either::Either::*;
 
 use smol::net::{TcpListener, TcpStream};
-use ufotofu::consumer::{BulkConsumerOperation, WriterToBulkConsumer};
-use ufotofu::producer::{BulkProducerOperation, ReaderToBulkProducer};
+use ufotofu::consumer::{self, BulkConsumerOperation, WriterToBulkConsumer};
+use ufotofu::producer::{self, BulkProducerOperation, ReaderToBulkProducer};
 use ufotofu::{Consumer, Producer};
 
 use ufotofu_queues::Fixed;
@@ -24,19 +24,16 @@ fuzz_target!(|data: (
     let sender_queue_capacity = sender_queue_capacity.clamp(1, 2048);
     let rec_queue_capacity = rec_queue_capacity.clamp(1, 2048);
 
-    println!("input {:?}", input);
-
     pollster::block_on(async {
         let send = async {
             let stream = TcpStream::connect("127.0.0.1:8087").await.unwrap();
 
             let sender_queue: Fixed<u8> = Fixed::new(sender_queue_capacity);
-            let mut sender = WriterToBulkConsumer::new(stream, sender_queue);
-            // let mut sender = consumer::BulkScrambler::new(sender, consume_ops);
+            let sender = WriterToBulkConsumer::new(stream, sender_queue);
+            let mut sender = consumer::BulkScrambler::new(sender, consume_ops);
 
             for datum in input.iter() {
                 assert_eq!((), sender.consume(*datum).await.unwrap());
-                println!("inputting {:?}", *datum);
             }
             assert_eq!((), sender.close(()).await.unwrap());
         };
@@ -46,12 +43,11 @@ fuzz_target!(|data: (
             let (stream, _addr) = listener.accept().await.unwrap();
 
             let rec_queue: Fixed<u8> = Fixed::new(rec_queue_capacity);
-            let mut receiver = ReaderToBulkProducer::new(stream, rec_queue);
-            // let mut receiver = producer::BulkScrambler::new(receiver, produce_ops);
+            let receiver = ReaderToBulkProducer::new(stream, rec_queue);
+            let mut receiver = producer::BulkScrambler::new(receiver, produce_ops);
 
             for datum in input.iter() {
                 assert_eq!(Left(*datum), receiver.produce().await.unwrap());
-                println!("successfully checked we got {:?}", *datum);
             }
 
             assert_eq!(Right(()), receiver.produce().await.unwrap());
