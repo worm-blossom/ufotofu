@@ -1,6 +1,3 @@
-use alloc::boxed::Box;
-use core::{future::Future, pin::Pin};
-
 use either::Either::{self, Right};
 
 use futures::future::select;
@@ -43,48 +40,42 @@ impl<
     type Error = Error;
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
-        todo!("use ReusableLocalBoxFuture");
-
-        // loop {
-        //     match (self.produce_future1.take(), self.produce_future2.take()) {
-        //         (None, None) => {
-        //             panic!("Must not call produce after a producer emitted its final item")
-        //         }
-        //         (Some(fut), None) => {
-        //             let (result, mut p1) = fut.await;
-        //             self.produce_future1 = Some(Box::pin(async move { (p1.produce().await, p1) }));
-        //             return result;
-        //         }
-        //         (None, Some(fut)) => {
-        //             let (result, mut p2) = fut.await;
-        //             self.produce_future2 = Some(Box::pin(async move { (p2.produce().await, p2) }));
-        //             return result;
-        //         }
-        //         (Some(fut1), Some(fut2)) => match select(fut1, fut2).await {
-        //             futures::future::Either::Left(((result, mut p1), fut2)) => {
-        //                 self.produce_future1 =
-        //                     Some(Box::pin(async move { (p1.produce().await, p1) }));
-        //                 self.produce_future2 = Some(Box::pin(fut2));
-        //                 if let Ok(Right(_fin)) = result {
-        //                     self.produce_future1 = None;
-        //                     // continue to next iteration of the loop, i.e., ignore this final value
-        //                 } else {
-        //                     return result;
-        //                 }
-        //             }
-        //             futures::future::Either::Right(((result, mut p2), fut1)) => {
-        //                 self.produce_future2 =
-        //                     Some(Box::pin(async move { (p2.produce().await, p2) }));
-        //                 self.produce_future1 = Some(Box::pin(fut1));
-        //                 if let Ok(Right(_fin)) = result {
-        //                     self.produce_future2 = None;
-        //                     // continue to next iteration of the loop, i.e., ignore this final value
-        //                 } else {
-        //                     return result;
-        //                 }
-        //             }
-        //         },
-        //     }
-        // }
+        loop {
+            match (self.produce_future1.as_mut(), self.produce_future2.as_mut()) {
+                (None, None) => {
+                    panic!("Must not call produce after a producer emitted its final item")
+                }
+                (Some(fut), None) => {
+                    let (result, mut p1) = (&mut *fut).await;
+                    fut.set(async move { (p1.produce().await, p1) });
+                    return result;
+                }
+                (None, Some(fut)) => {
+                    let (result, mut p2) = (&mut *fut).await;
+                    fut.set(async move { (p2.produce().await, p2) });
+                    return result;
+                }
+                (Some(fut1), Some(fut2)) => match select(&mut *fut1, &mut *fut2).await {
+                    futures::future::Either::Left(((result, mut p1), _fut2)) => {
+                        fut1.set(async move { (p1.produce().await, p1) });
+                        if let Ok(Right(_fin)) = result {
+                            self.produce_future1 = None;
+                            // continue to next iteration of the loop, i.e., ignore this final value
+                        } else {
+                            return result;
+                        }
+                    }
+                    futures::future::Either::Right(((result, mut p2), _fut1)) => {
+                        fut2.set(async move { (p2.produce().await, p2) });
+                        if let Ok(Right(_fin)) = result {
+                            self.produce_future2 = None;
+                            // continue to next iteration of the loop, i.e., ignore this final value
+                        } else {
+                            return result;
+                        }
+                    }
+                },
+            }
+        }
     }
 }
