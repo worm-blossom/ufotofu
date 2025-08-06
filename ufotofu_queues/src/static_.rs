@@ -34,6 +34,17 @@ impl<T: Default, const N: usize> Static<T, N> {
 }
 
 impl<T, const N: usize> Static<T, N> {
+    /// Creates a statically-fixed-capacity queue, using the given function to initially fill the queue (this is merely an internal operation to satisfy the type checker, these values are never actually dequeued).
+    pub fn new_with_manual_tmps<TmpFun: FnMut() -> T>(mut create_tmp_value: TmpFun) -> Self {
+        Static {
+            data: core::array::from_fn(|_| create_tmp_value()),
+            read: 0,
+            amount: 0,
+        }
+    }
+}
+
+impl<T, const N: usize> Static<T, N> {
     fn is_data_contiguous(&self) -> bool {
         self.read + self.amount < N
     }

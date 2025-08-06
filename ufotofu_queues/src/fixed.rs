@@ -65,6 +65,39 @@ impl<T: Default> Fixed<T> {
     }
 }
 
+impl<T> Fixed<T> {
+    /// Creates a fixed-capacity queue, using the given function to initially fill the queue (this is merely an internal operation to satisfy the type checker, these values are never actually dequeued). Panics if the initial memory allocation fails.
+    pub fn new_with_manual_tmps<TmpFun: FnMut() -> T>(
+        capacity: usize,
+        create_tmp_value: TmpFun,
+    ) -> Self {
+        let mut v = Vec::with_capacity(capacity);
+        v.resize_with(capacity, create_tmp_value);
+
+        Fixed {
+            data: v.into_boxed_slice(),
+            read: 0,
+            amount: 0,
+        }
+    }
+
+    #[cfg(feature = "nightly")]
+    /// Tries to create a fixed-capacity queue, using the given function to initially fill the queue (this is merely an internal operation to satisfy the type checker, these values are never actually dequeued). If the initial memory allocation fails, returns `None` instead.
+    pub fn try_new_with_manual_tmps<TmpFun: FnMut() -> T>(
+        capacity: usize,
+        create_tmp_value: TmpFun,
+    ) -> Option<Self> {
+        let mut v = Vec::try_with_capacity(capacity).ok()?;
+        v.resize_with(capacity, create_tmp_value);
+
+        Some(Fixed {
+            data: v.into_boxed_slice(),
+            read: 0,
+            amount: 0,
+        })
+    }
+}
+
 #[cfg(not(feature = "nightly"))]
 impl<T> Fixed<T> {
     fn is_data_contiguous(&self) -> bool {
@@ -121,6 +154,41 @@ impl<T: Default, A: Allocator> Fixed<T, A> {
     pub fn try_new_in(capacity: usize, alloc: A) -> Option<Self> {
         let mut v = Vec::try_with_capacity_in(capacity, alloc).ok()?;
         v.resize_with(capacity, Default::default);
+
+        Some(Fixed {
+            data: v.into_boxed_slice(),
+            read: 0,
+            amount: 0,
+        })
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<T: Default, A: Allocator> Fixed<T, A> {
+    /// Creates a fixed-capacity queue with a given memory allocator, using the given function to initially fill the queue (this is merely an internal operation to satisfy the type checker, these values are never actually dequeued). Panics if the initial memory allocation fails.
+    pub fn new_in_with_manual_tmps<TmpFun: FnMut() -> T>(
+        capacity: usize,
+        create_tmp_value: TmpFun,
+        alloc: A,
+    ) -> Self {
+        let mut v = Vec::with_capacity_in(capacity, alloc);
+        v.resize_with(capacity, create_tmp_value);
+
+        Fixed {
+            data: v.into_boxed_slice(),
+            read: 0,
+            amount: 0,
+        }
+    }
+
+    /// Tries to create a fixed-capacity queue, using the given function to initially fill the queue (this is merely an internal operation to satisfy the type checker, these values are never actually dequeued). If the initial memory allocation fails, returns `None` instead.
+    pub fn try_new_in_with_manual_tmps<TmpFun: FnMut() -> T>(
+        capacity: usize,
+        create_tmp_value: TmpFun,
+        alloc: A,
+    ) -> Option<Self> {
+        let mut v = Vec::try_with_capacity_in(capacity, alloc).ok()?;
+        v.resize_with(capacity, create_tmp_value);
 
         Some(Fixed {
             data: v.into_boxed_slice(),
