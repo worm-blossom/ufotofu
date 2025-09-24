@@ -17,51 +17,51 @@ either = "1.10.0"
 smol = "2.0.2"
 futures = "0.3.31"
 
-###########
-# ufotofu #
-###########
+# ###########
+# # ufotofu #
+# ###########
 
-[[bin]]
-name = "consume_full_slice"
-path = "fuzz_targets/ufotofu/consume_full_slice.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "consume_full_slice"
+# path = "fuzz_targets/ufotofu/consume_full_slice.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "bulk_consume"
-path = "fuzz_targets/ufotofu/bulk_consume.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "bulk_consume"
+# path = "fuzz_targets/ufotofu/bulk_consume.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "bulk_consume_full_slice"
-path = "fuzz_targets/ufotofu/bulk_consume_full_slice.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "bulk_consume_full_slice"
+# path = "fuzz_targets/ufotofu/bulk_consume_full_slice.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "overwrite_full_slice"
-path = "fuzz_targets/ufotofu/overwrite_full_slice.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "overwrite_full_slice"
+# path = "fuzz_targets/ufotofu/overwrite_full_slice.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "bulk_produce"
-path = "fuzz_targets/ufotofu/bulk_produce.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "bulk_produce"
+# path = "fuzz_targets/ufotofu/bulk_produce.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "bulk_overwrite_full_slice"
-path = "fuzz_targets/ufotofu/bulk_overwrite_full_slice.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "bulk_overwrite_full_slice"
+# path = "fuzz_targets/ufotofu/bulk_overwrite_full_slice.rs"
+# test = false
+# doc = false
+# bench = false
 
 [[bin]]
 name = "pipe"
@@ -70,128 +70,128 @@ test = false
 doc = false
 bench = false
 
-[[bin]]
-name = "bulk_pipe"
-path = "fuzz_targets/ufotofu/bulk_pipe.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "bulk_pipe"
+# path = "fuzz_targets/ufotofu/bulk_pipe.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "pipe_at_most"
-path = "fuzz_targets/ufotofu/pipe_at_most.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "pipe_at_most"
+# path = "fuzz_targets/ufotofu/pipe_at_most.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "bulk_pipe_at_most"
-path = "fuzz_targets/ufotofu/bulk_pipe_at_most.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "bulk_pipe_at_most"
+# path = "fuzz_targets/ufotofu/bulk_pipe_at_most.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "consumer_bulk_scrambler_is_mostly_transparent"
-path = "fuzz_targets/ufotofu/consumer_bulk_scrambler_is_mostly_transparent.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "consumer_bulk_scrambler_is_mostly_transparent"
+# path = "fuzz_targets/ufotofu/consumer_bulk_scrambler_is_mostly_transparent.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "producer_bulk_scrambler_is_transparent"
-path = "fuzz_targets/ufotofu/producer_bulk_scrambler_is_transparent.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "producer_bulk_scrambler_is_transparent"
+# path = "fuzz_targets/ufotofu/producer_bulk_scrambler_is_transparent.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "consumer_invariant_is_transparent"
-path = "fuzz_targets/ufotofu/consumer_invariant_is_transparent.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "consumer_invariant_is_transparent"
+# path = "fuzz_targets/ufotofu/consumer_invariant_is_transparent.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "producer_invariant_is_transparent"
-path = "fuzz_targets/ufotofu/producer_invariant_is_transparent.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "producer_invariant_is_transparent"
+# path = "fuzz_targets/ufotofu/producer_invariant_is_transparent.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "into_vec"
-path = "fuzz_targets/ufotofu/into_vec.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "into_vec"
+# path = "fuzz_targets/ufotofu/into_vec.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "from_boxed_slice"
-path = "fuzz_targets/ufotofu/from_boxed_slice.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "from_boxed_slice"
+# path = "fuzz_targets/ufotofu/from_boxed_slice.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "from_slice"
-path = "fuzz_targets/ufotofu/from_slice.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "from_slice"
+# path = "fuzz_targets/ufotofu/from_slice.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "compat"
-path = "fuzz_targets/ufotofu/compat.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "compat"
+# path = "fuzz_targets/ufotofu/compat.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "compat_buf_read"
-path = "fuzz_targets/ufotofu/compat_buf_read.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "compat_buf_read"
+# path = "fuzz_targets/ufotofu/compat_buf_read.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "producer_merge"
-path = "fuzz_targets/ufotofu/producer_merge.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "producer_merge"
+# path = "fuzz_targets/ufotofu/producer_merge.rs"
+# test = false
+# doc = false
+# bench = false
 
-####################
-## ufotofu_queues ##
-####################
+# ####################
+# ## ufotofu_queues ##
+# ####################
 
-[[bin]]
-name = "queues_fixed_bulk"
-path = "fuzz_targets/queues/fixed_bulk.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "queues_fixed_bulk"
+# path = "fuzz_targets/queues/fixed_bulk.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "queues_fixed_enqueue_dequeue"
-path = "fuzz_targets/queues/fixed_enqueue_dequeue.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "queues_fixed_enqueue_dequeue"
+# path = "fuzz_targets/queues/fixed_enqueue_dequeue.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "queues_static_bulk"
-path = "fuzz_targets/queues/static_bulk.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "queues_static_bulk"
+# path = "fuzz_targets/queues/static_bulk.rs"
+# test = false
+# doc = false
+# bench = false
 
-[[bin]]
-name = "queues_static_enqueue_dequeue"
-path = "fuzz_targets/queues/static_enqueue_dequeue.rs"
-test = false
-doc = false
-bench = false
+# [[bin]]
+# name = "queues_static_enqueue_dequeue"
+# path = "fuzz_targets/queues/static_enqueue_dequeue.rs"
+# test = false
+# doc = false
+# bench = false
 
 [lints]
 workspace = true

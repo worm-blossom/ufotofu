@@ -70,17 +70,17 @@ use either::Either::{self, *};
 // convenient some day.
 extern crate self as ufotofu;
 
-#[macro_use]
-mod common_macros;
+// #[macro_use]
+// mod common_macros;
 
 mod errors;
 pub use errors::*;
 
-pub mod consumer;
-pub mod producer;
+// pub mod consumer;
+// pub mod producer;
 
-#[cfg(all(feature = "dev", feature = "alloc"))]
-mod test_yielder;
+// #[cfg(all(feature = "dev", feature = "alloc"))]
+// mod test_yielder;
 
 /// A [`Consumer`] consumes a potentially infinite sequence, one item at a time.
 ///
@@ -457,6 +457,21 @@ where
     C: BulkConsumer<Item = P::Item, Final = P::Final>,
 {
     debug_assert!(buf.len() > 0);
+
+    loop {
+        match producer.bulk_produce(buf).await {
+            Err(err) => return Err(PipeError::Producer(err)),
+            Ok(Right(fin)) => {
+                return consumer.close(fin).await.map_err(PipeError::Consumer);
+            }
+            Ok(Left(amount)) => {
+                consumer
+                    .bulk_consume_full_slice(&buf[..amount])
+                    .await
+                    .map_err(|err| PipeError::Consumer(err.reason))?;
+            }
+        }
+    }
 }
 
 // /// Pipes at most `count` many items from a [`Producer`] into a [`Consumer`],
