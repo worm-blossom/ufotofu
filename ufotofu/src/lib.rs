@@ -63,8 +63,12 @@ extern crate alloc;
 
 use core::cmp::min;
 use core::future::Future;
+// use ufotofu_macros::consume;
 
-use either::Either::{self, *};
+// We reexport Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
+#[doc(hidden)]
+pub use either::Either;
+use Either::*;
 
 // This allows macros to use `ufotofu` instead of `crate`, which might become
 // convenient some day.
@@ -81,6 +85,145 @@ pub use errors::*;
 
 // #[cfg(all(feature = "dev", feature = "alloc"))]
 // mod test_yielder;
+
+#[macro_use]
+mod public_macros {
+    #[macro_export]
+    /// [TODO] document this.
+    macro_rules! consume {
+        ($item:pat in $producer:expr => $handle_item:block) => {
+            loop {
+                match $crate::Producer::produce($producer).await? {
+                    $crate::Either::Left($item) => $handle_item
+                    $crate::Either::Right(()) => break,
+                }
+            }
+        };
+
+        ($item:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block) => {
+            loop {
+                match $crate::Producer::produce($producer).await? {
+                    $crate::Either::Left($item) => $handle_item
+                    $crate::Either::Right($fin) => {
+                        let ret = $final_block;
+                        break ret;
+                    }
+                }
+            }
+        };
+
+        ($item:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block) => {
+            loop {
+                match $crate::Producer::produce($producer).await {
+                    core::result::Result::Ok($crate::Either::Left($item)) => $handle_item
+                    core::result::Result::Ok($crate::Either::Right(())) => break,
+                    core::result::Result::Err($err) => {
+                        let ret = $catch_block;
+                        break ret;
+                    }
+                }
+            }
+        };
+
+        ($item:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block catch $err:pat => $catch_block:block) => {
+            loop {
+                match $crate::Producer::produce($producer).await {
+                    core::result::Result::Ok($crate::Either::Left($item)) => $handle_item
+                    core::result::Result::Ok($crate::Either::Right($fin)) => {
+                        break $final_block;
+                    }
+                    core::result::Result::Err($err) => {
+                        break $catch_block;
+                    }
+                }
+            }
+        };
+
+        ($item:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block final $fin:pat => $final_block:block) => {
+            loop {
+                match $crate::Producer::produce($producer).await {
+                    core::result::Result::Ok($crate::Either::Left($item)) => $handle_item
+                    core::result::Result::Ok($crate::Either::Right($fin)) => {
+                        let ret = $final_block;
+                        break ret;
+                    }
+                    core::result::Result::Err($err) => {
+                        let ret = $catch_block;
+                        break ret;
+                    }
+                }
+            }
+        };
+    }
+
+    // #[macro_export]
+    // /// [TODO] document this.
+    // macro_rules! bulk_consume {
+    //     ($items:pat in $producer:expr => $handle_item:block) => {
+    //         loop {
+    //             match $crate::Producer::bulk_produce($producer).await? {
+    //                 $crate::Either::Left($items) => $handle_item
+    //                 $crate::Either::Right(()) => break,
+    //             }
+    //         }
+    //     };
+
+    //     ($items:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block) => {
+    //         loop {
+    //             match $crate::Producer::bulk_produce($producer).await? {
+    //                 $crate::Either::Left($items) => $handle_item
+    //                 $crate::Either::Right($fin) => {
+    //                     let ret = $final_block;
+    //                     break ret;
+    //                 }
+    //             }
+    //         }
+    //     };
+
+    //     ($items:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block) => {
+    //         loop {
+    //             match $crate::Producer::bulk_produce($producer).await {
+    //                 core::result::Result::Ok($crate::Either::Left($items)) => $handle_item
+    //                 core::result::Result::Ok($crate::Either::Right(())) => break,
+    //                 core::result::Result::Err($err) => {
+    //                     let ret = $catch_block;
+    //                     break ret;
+    //                 }
+    //             }
+    //         }
+    //     };
+
+    //     ($items:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block catch $err:pat => $catch_block:block) => {
+    //         loop {
+    //             match $crate::Producer::bulk_produce($producer).await {
+    //                 core::result::Result::Ok($crate::Either::Left($items)) => $handle_item
+    //                 core::result::Result::Ok($crate::Either::Right($fin)) => {
+    //                     break $final_block;
+    //                 }
+    //                 core::result::Result::Err($err) => {
+    //                     break $catch_block;
+    //                 }
+    //             }
+    //         }
+    //     };
+
+    //     ($items:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block final $fin:pat => $final_block:block) => {
+    //         loop {
+    //             match $crate::Producer::bulk_produce($producer).await {
+    //                 core::result::Result::Ok($crate::Either::Left($items)) => $handle_item
+    //                 core::result::Result::Ok($crate::Either::Right($fin)) => {
+    //                     let ret = $final_block;
+    //                     break ret;
+    //                 }
+    //                 core::result::Result::Err($err) => {
+    //                     let ret = $catch_block;
+    //                     break ret;
+    //                 }
+    //             }
+    //         }
+    //     };
+    // }
+}
 
 /// A [`Consumer`] consumes a potentially infinite sequence, one item at a time.
 ///
@@ -406,6 +549,25 @@ pub trait BulkProducer: Producer {
     }
 }
 
+// /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
+// /// on the consumer with the final value emitted by the producer.
+// pub async fn pipe<P, C>(
+//     producer: &mut P,
+//     consumer: &mut C,
+// ) -> Result<(), PipeError<P::Error, C::Error>>
+// where
+//     P: Producer,
+//     C: Consumer<Item = P::Item, Final = P::Final>,
+// {
+//     consume![item in producer => {
+//         consumer.consume(item).await.map_err(PipeError::Consumer)?;
+//     } final fin => {
+//         Ok(consumer.close(fin).await.map_err(PipeError::Consumer)?)
+//     } catch err => {
+//         Err(PipeError::Producer(err))
+//     }]
+// }
+
 /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
 /// on the consumer with the final value emitted by the producer.
 pub async fn pipe<P, C>(
@@ -416,31 +578,13 @@ where
     P: Producer,
     C: Consumer<Item = P::Item, Final = P::Final>,
 {
-    loop {
-        match producer.produce().await {
-            Ok(Either::Left(item)) => {
-                match consumer.consume(item).await {
-                    Ok(()) => {
-                        // No-op, continues with next loop iteration.
-                    }
-                    Err(consumer_error) => {
-                        return Err(PipeError::Consumer(consumer_error));
-                    }
-                }
-            }
-            Ok(Either::Right(final_value)) => match consumer.close(final_value).await {
-                Ok(()) => {
-                    return Ok(());
-                }
-                Err(consumer_error) => {
-                    return Err(PipeError::Consumer(consumer_error));
-                }
-            },
-            Err(producer_error) => {
-                return Err(PipeError::Producer(producer_error));
-            }
-        }
-    }
+    consume![item in producer => {
+        consumer.consume(item).await.map_err(PipeError::Consumer)?;
+    } final fin => {
+        Ok(consumer.close(fin).await.map_err(PipeError::Consumer)?)
+    } catch err => {
+        Err(PipeError::Producer(err))
+    }]
 }
 
 /// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using the non-empty slice as an intermediate buffer.
