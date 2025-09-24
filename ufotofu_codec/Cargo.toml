@@ -18,7 +18,7 @@ alloc = []
 dev = ["std", "dep:arbitrary"]
 
 [dependencies]
-ufotofu = { path = "../ufotofu", features = ["dev"], version = "0.7.0" }
+ufotofu = { path = "../ufotofu", features = ["dev"], version = "0.8.0" }
 either = "1.10.0"
 pollster = "0.4.0"
 wb_async_utils = "0.2.0"

@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use core::fmt;
+use core::{cmp::min, fmt};
 
 use crate::Queue;
 
@@ -72,6 +72,31 @@ impl<T, const N: usize> Static<T, N> {
     fn write_to(&self) -> usize {
         (self.read + self.amount) % N
     }
+
+    fn expose_slots(&mut self) -> Option<&mut [T]> {
+        if self.amount == N {
+            None
+        } else {
+            Some(self.writeable_slice())
+        }
+    }
+
+    fn consider_enqueued(&mut self, amount: usize) {
+        self.amount += amount;
+    }
+
+    fn expose_items(&mut self) -> Option<&[T]> {
+        if self.amount == 0 {
+            None
+        } else {
+            Some(self.readable_slice())
+        }
+    }
+
+    fn consider_dequeued(&mut self, amount: usize) {
+        self.read = (self.read + amount) % N;
+        self.amount -= amount;
+    }
 }
 
 impl<T: Clone, const N: usize> Queue for Static<T, N> {
@@ -92,16 +117,17 @@ impl<T: Clone, const N: usize> Queue for Static<T, N> {
         }
     }
 
-    fn expose_slots(&mut self) -> Option<&mut [T]> {
-        if self.amount == N {
-            None
-        } else {
-            Some(self.writeable_slice())
-        }
-    }
+    fn bulk_enqueue(&mut self, buffer: &[Self::Item]) -> usize {
+        match self.expose_slots() {
+            None => 0,
+            Some(slots) => {
+                let amount = min(slots.len(), buffer.len());
+                slots[..amount].clone_from_slice(&buffer[..amount]);
+                self.consider_enqueued(amount);
 
-    fn consider_enqueued(&mut self, amount: usize) {
-        self.amount += amount;
+                amount
+            }
+        }
     }
 
     fn dequeue(&mut self) -> Option<T> {
@@ -117,17 +143,17 @@ impl<T: Clone, const N: usize> Queue for Static<T, N> {
         }
     }
 
-    fn expose_items(&mut self) -> Option<&[T]> {
-        if self.amount == 0 {
-            None
-        } else {
-            Some(self.readable_slice())
-        }
-    }
+    fn bulk_dequeue(&mut self, buffer: &mut [Self::Item]) -> usize {
+        match self.expose_items() {
+            None => 0,
+            Some(slots) => {
+                let amount = min(slots.len(), buffer.len());
+                buffer[..amount].clone_from_slice(&slots[..amount]);
+                self.consider_dequeued(amount);
 
-    fn consider_dequeued(&mut self, amount: usize) {
-        self.read = (self.read + amount) % N;
-        self.amount -= amount;
+                amount
+            }
+        }
     }
 }
 
@@ -217,41 +243,6 @@ mod tests {
 
         // The queue is now empty.
         assert!(queue.dequeue().is_none());
-    }
-
-    #[test]
-    fn returnes_none_on_enqueue_slots_when_none_are_available() {
-        // Create a fixed queue that exposes four slots.
-        let mut queue: Static<u8, 4> = Static::new();
-
-        // Copy data to two of the available slots and call `consider_queued`.
-        let data = b"tofu";
-        let slots = queue.expose_slots().unwrap();
-        slots[0..2].copy_from_slice(&data[0..2]);
-        queue.consider_enqueued(2);
-
-        // Copy data to two of the available slots and call `consider_queued`.
-        let slots = queue.expose_slots().unwrap();
-        slots[0..2].copy_from_slice(&data[0..2]);
-        queue.consider_enqueued(2);
-
-        // Make a third call to `expose_slots` after all available slots have been used.
-        assert!(queue.expose_slots().is_none());
-    }
-
-    #[test]
-    fn returns_none_on_dequeue_slots_when_none_are_available() {
-        // Create a fixed queue that exposes four slots.
-        let mut queue: Static<u8, 4> = Static::new();
-
-        let data = b"tofu";
-        let _amount = queue.bulk_enqueue(data);
-
-        let _slots = queue.expose_items().unwrap();
-        queue.consider_dequeued(4);
-
-        // Make a second call to `expose_items` after all available slots have been used.
-        assert!(queue.expose_items().is_none());
     }
 
     #[test]

@@ -6,7 +6,6 @@
 //!
 //! UFOTOFU provides APIs for lazily producing or consuming sequences of arbitrary length, serving as async redesigns of traits such as [`Iterator`], [`io::Read`](std::io::Read), or [`io::Write`](std::io::Write). Highlights include
 //!
-//! - bulk data transfer without temporary buffers,
 //! - freely choosable error and item types, even for readers and writers,
 //! - meaningful subtyping relations between streams and readers, and between sinks and writers,
 //! - the ability to represent finite and infinite sequences on the type level, and
@@ -26,7 +25,7 @@
 //!
 //! Consumers often buffer items in an internal queue before performing side-effects on data in larger chunks, such as writing data to the network only once a full packet can be filled. The [`BufferedConsumer`] trait extends the [`Consumer`] trait to allow client code to trigger effectful flushing of internal buffers. Dually, the [`BufferedProducer`] trait extends the [`Producer`] trait to allow client code to trigger effectful prefetching of data into internal buffers.
 //!
-//! Finally, the [`BulkProducer`] and [`BulkConsumer`] traits extend [`BufferedProducer`] and [`BufferedConsumer`] respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [`bulk_pipe`] function leverages this ability to efficiently pipe data — unlike when using the standard library's [Read](std::io::Read) and [Write](std::io::Write) traits, this is possible without allocating an auxiliary buffer.
+//! Finally, the [`BulkProducer`] and [`BulkConsumer`] traits extend [`BufferedProducer`] and [`BufferedConsumer`] respectively with the ability to operate on whole slices of items at a time, similar to [`std::io::Read`] and [`std::io::Write`]. The [`bulk_pipe`] function leverages this ability to efficiently pipe data.
 //!
 //! ## Async Conventions
 //!
@@ -121,9 +120,6 @@ pub trait Consumer {
     /// Tries to consume (clones of) *all* items in the given slice.
     /// Reports an error if the slice could not be consumed completely.
     ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    ///
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
@@ -180,46 +176,8 @@ pub trait BufferedConsumer: Consumer {
 /// A [`Consumer`] that is able to consume several items with a single function call, in order to
 /// improve on the efficiency of the [`Consumer`] trait. Semantically, there must be no
 /// difference between consuming items in bulk or one item at a time.
-pub trait BulkConsumer: BufferedConsumer {
-    /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
-    ///
-    /// Exposes a non-empty slice of memory for client code to fill with items that should
-    /// be consumed.
-    ///
-    /// The consumer should expose the largest contiguous slice it can expose efficiently.
-    /// It should not perform copies to increase the size of the slice. Client code must be
-    /// able to make progress even if this function always returns slices of size one.
-    ///
-    /// After this function returns an error, no further functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
-    fn expose_slots<'a>(
-        &'a mut self,
-    ) -> impl Future<Output = Result<&'a mut [Self::Item], Self::Error>>
-    where
-        Self::Item: 'a;
-
-    /// A low-level method for consuming multiple items at a time. If you are only *working* with consumers (rather than *implementing* them), you will probably want to ignore this method and use [BulkConsumer::bulk_consume] instead.
-    ///
-    /// Instructs the consumer to consume the first `amount` many items of the slots
-    /// it has most recently exposed. The semantics must be equivalent to those of [`consume`](Consumer::consume)
-    /// being called `amount` many times with exactly those items.
-    ///
-    /// After this function returns an error, no further functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must have written into (at least) the `amount` many first slots that
-    /// were most recently exposed.
-    ///
-    /// Must not be called after any function of this trait has returned an error, nor after
-    /// [`close`](Consumer::close) was called.
-    fn consume_slots(&mut self, amount: usize) -> impl Future<Output = Result<(), Self::Error>>;
-
-    /// Consumes a non-zero number of items by reading them from a given buffer and returning how
+pub trait BulkConsumer: Consumer {
+    /// Consumes a non-zero number of items by reading them from a given non-empty buffer, and returning how
     /// many items were consumed.
     ///
     /// After this function returns an error, no further functions of this trait may be invoked.
@@ -229,33 +187,13 @@ pub trait BulkConsumer: BufferedConsumer {
     /// Must not be called after any function of this trait has returned an error, nor after
     /// [`close`](Consumer::close) was called.
     ///
-    /// #### Implementation Notes
-    ///
-    /// The default implementation orchestrates [`expose_slots`](BulkConsumer::expose_slots) and [`consume_slots`](BulkConsumer::consume_slots) in a
-    /// straightforward manner. Only provide your own implementation if you can do better
-    /// than that.
     fn bulk_consume(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<usize, Self::Error>>
-    where
-        Self::Item: Clone,
-    {
-        async {
-            let slots = self.expose_slots().await?;
-            let amount = min(slots.len(), buf.len());
-            slots[0..amount].clone_from_slice(&buf[0..amount]);
-            self.consume_slots(amount).await?;
+    ) -> impl Future<Output = Result<usize, Self::Error>>;
 
-            Ok(amount)
-        }
-    }
-
-    /// Tries to bulk-consume (copies of) *all* items in the given slice.
+    /// Tries to bulk-consume *all* items in the given slice.
     /// Reports an error if the slice could not be consumed completely.
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
     ///
     /// #### Invariants
     ///
@@ -269,10 +207,7 @@ pub trait BulkConsumer: BufferedConsumer {
     fn bulk_consume_full_slice(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<(), ConsumeAtLeastError<Self::Error>>>
-    where
-        Self::Item: Clone,
-    {
+    ) -> impl Future<Output = Result<(), ConsumeAtLeastError<Self::Error>>> {
         async {
             let mut consumed_so_far = 0;
 
@@ -322,9 +257,6 @@ pub trait Producer {
 
     /// Tries to produce a regular item, and reports an error if the final item was produced instead.
     ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    ///
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned an error,
@@ -355,9 +287,6 @@ pub trait Producer {
 
     /// Tries to completely overwrite a slice with items from a producer.
     /// Reports an error if the slice could not be overwritten completely.
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
     ///
     /// #### Invariants
     ///
@@ -414,45 +343,9 @@ pub trait BufferedProducer: Producer {
 /// A [`Producer`] that is able to produce several items with a single function call, in order to
 /// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
 /// between producing items in bulk or one item at a time.
-pub trait BulkProducer: BufferedProducer {
-    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] instead.
-    ///
-    /// Exposes a non-empty slice of items to be produced (or the final value, or an error).
-    /// The items in the slice must not have been emitted by [`produce`](Producer::produce) before.
-    ///
-    /// The producer should expose the largest contiguous slice it can expose efficiently.
-    /// It should not perform copies to increase the size of the slice. Client code must be
-    /// able to make progress even if this function always returns slices of size one.
-    ///
-    /// After this function returns the final item, or after it returns an error, no further
-    /// functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
-    fn expose_items<'a>(
-        &'a mut self,
-    ) -> impl Future<Output = Result<Either<&'a [Self::Item], Self::Final>, Self::Error>>
-    where
-        Self::Item: 'a;
-
-    /// A low-level method for producing multiple items at a time. If you are only *working* with producers (rather than *implementing* them), you will probably want to ignore this method and use [BulkProducer::bulk_produce] instead.
-    ///
-    /// Marks `amount` many items as having been produced. Future calls to [`produce`](Producer::produce) and to
-    /// [`expose_items`](BulkProducer::expose_items) must act as if [`produce`](Producer::produce) had been called `amount` many times.
-    ///
-    /// After this function returns an error, no further functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Callers must not mark items as produced that had not previously been exposed by [`expose_items`](BulkProducer::expose_items).
-    ///
-    /// Must not be called after any function of this trait returned a final item or an error.
-    fn consider_produced(&mut self, amount: usize)
-        -> impl Future<Output = Result<(), Self::Error>>;
-
+pub trait BulkProducer: Producer {
     /// Produces a non-zero number of items by writing them into a given buffer and returning how
-    /// many items were produced.
+    /// many items were produced. The contents of the passed buffer do not influence the behaviour of this method.
     ///
     /// After this function returns the final item, or after it returns an error, no further
     /// functions of this trait may be invoked.
@@ -460,39 +353,19 @@ pub trait BulkProducer: BufferedProducer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
+    ///
+    /// Despite implementations of this method ignoring the contents of `buf`, `buf` must still contain initialised memory.
     ///
     /// #### Implementation Notes
     ///
-    /// The default implementation orchestrates [`expose_items`](BulkProducer::expose_items) and [`consider_produced`](BulkProducer::consider_produced) in a
-    /// straightforward manner. Only provide your own implementation if you can do better
-    /// than that.
+    /// This function must not read the contents of `buf`; its observable semantics must not depend on the contents of `buf` (with the sole exception of running the desctructors of items in `buf` it overwrites).
     fn bulk_produce(
         &mut self,
         buf: &mut [Self::Item],
-    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>>
-    where
-        Self::Item: Clone,
-    {
-        async {
-            match self.expose_items().await? {
-                Either::Left(slots) => {
-                    let amount = min(slots.len(), buf.len());
-                    buf[0..amount].clone_from_slice(&slots[0..amount]);
-
-                    self.consider_produced(amount).await?;
-
-                    Ok(Either::Left(amount))
-                }
-                Either::Right(final_value) => Ok(Either::Right(final_value)),
-            }
-        }
-    }
+    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>>;
 
     /// Tries to completely overwrite a slice with items from a bulk producer.
     /// Reports an error if the slice could not be overwritten completely.
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
     ///
     /// #### Invariants
     ///
@@ -506,10 +379,7 @@ pub trait BulkProducer: BufferedProducer {
     fn bulk_overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],
-    ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>>
-    where
-        Self::Item: Clone,
-    {
+    ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>> {
         async {
             let mut produced_so_far = 0;
 
@@ -573,133 +443,110 @@ where
     }
 }
 
-/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`]
-/// using [`consumer.bulk_consume`](BulkConsumer::bulk_consume). Then calls [`close`](Consumer::close) on the consumer with the final value
+/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using the non-empty slice as an intermediate buffer.
+/// Then calls [`close`](Consumer::close) on the consumer with the final value
 /// emitted by the producer.
 pub async fn bulk_pipe<P, C>(
     producer: &mut P,
     consumer: &mut C,
+    buf: &mut [P::Item],
 ) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: BulkProducer,
     P::Item: Clone,
     C: BulkConsumer<Item = P::Item, Final = P::Final>,
 {
-    loop {
-        match producer.expose_items().await {
-            Ok(Either::Left(slots)) => {
-                let amount = match consumer.bulk_consume(slots).await {
-                    Ok(amount) => amount,
-                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
-                };
-                match producer.consider_produced(amount).await {
-                    Ok(()) => {
-                        // No-op, continues with next loop iteration.
-                    }
-                    Err(producer_error) => return Err(PipeError::Producer(producer_error)),
-                };
-            }
-            Ok(Either::Right(final_value)) => {
-                match consumer.close(final_value).await {
-                    Ok(()) => return Ok(()),
-                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
-                };
-            }
-            Err(producer_error) => {
-                return Err(PipeError::Producer(producer_error));
-            }
-        }
-    }
+    debug_assert!(buf.len() > 0);
 }
 
-/// Pipes at most `count` many items from a [`Producer`] into a [`Consumer`],
-/// and reports how many items were piped.
-/// The producer has emitted its final item (which was then used to close the
-/// consumer) if and only if the number of returned items is strictly less
-/// than `count`.
-pub async fn pipe_at_most<P, C>(
-    producer: &mut P,
-    consumer: &mut C,
-    count: usize,
-) -> Result<usize, PipeError<P::Error, C::Error>>
-where
-    P: Producer,
-    C: Consumer<Item = P::Item, Final = P::Final>,
-{
-    let mut piped = 0;
-    while piped < count {
-        match producer.produce().await {
-            Ok(Either::Left(item)) => {
-                match consumer.consume(item).await {
-                    Ok(()) => {
-                        piped += 1;
-                        // Then continues with next loop iteration.
-                    }
-                    Err(consumer_error) => {
-                        return Err(PipeError::Consumer(consumer_error));
-                    }
-                }
-            }
-            Ok(Either::Right(final_value)) => match consumer.close(final_value).await {
-                Ok(()) => {
-                    return Ok(piped);
-                }
-                Err(consumer_error) => {
-                    return Err(PipeError::Consumer(consumer_error));
-                }
-            },
-            Err(producer_error) => {
-                return Err(PipeError::Producer(producer_error));
-            }
-        }
-    }
+// /// Pipes at most `count` many items from a [`Producer`] into a [`Consumer`],
+// /// and reports how many items were piped.
+// /// The producer has emitted its final item (which was then used to close the
+// /// consumer) if and only if the number of returned items is strictly less
+// /// than `count`.
+// pub async fn pipe_at_most<P, C>(
+//     producer: &mut P,
+//     consumer: &mut C,
+//     count: usize,
+// ) -> Result<usize, PipeError<P::Error, C::Error>>
+// where
+//     P: Producer,
+//     C: Consumer<Item = P::Item, Final = P::Final>,
+// {
+//     let mut piped = 0;
+//     while piped < count {
+//         match producer.produce().await {
+//             Ok(Either::Left(item)) => {
+//                 match consumer.consume(item).await {
+//                     Ok(()) => {
+//                         piped += 1;
+//                         // Then continues with next loop iteration.
+//                     }
+//                     Err(consumer_error) => {
+//                         return Err(PipeError::Consumer(consumer_error));
+//                     }
+//                 }
+//             }
+//             Ok(Either::Right(final_value)) => match consumer.close(final_value).await {
+//                 Ok(()) => {
+//                     return Ok(piped);
+//                 }
+//                 Err(consumer_error) => {
+//                     return Err(PipeError::Consumer(consumer_error));
+//                 }
+//             },
+//             Err(producer_error) => {
+//                 return Err(PipeError::Producer(producer_error));
+//             }
+//         }
+//     }
 
-    Ok(piped)
-}
+//     Ok(piped)
+// }
 
-/// Efficiently pipes at most `count` many items from a [`BulkProducer`] into a [`BulkConsumer`] [`consumer.bulk_consume`](BulkConsumer::bulk_consume),
-/// and reports how many items were piped.
-/// The producer has emitted its final item (which was then used to close the
-/// consumer) if and only if the number of returned items is strictly less
-/// than `count`.
-pub async fn bulk_pipe_at_most<P, C>(
-    producer: &mut P,
-    consumer: &mut C,
-    count: usize,
-) -> Result<usize, PipeError<P::Error, C::Error>>
-where
-    P: BulkProducer,
-    P::Item: Clone,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
-{
-    let mut piped = 0;
-    while piped < count {
-        match producer.expose_items().await {
-            Ok(Either::Left(slots)) => {
-                let max_slots = min(count - piped, slots.len());
-                let amount = match consumer.bulk_consume(&slots[..max_slots]).await {
-                    Ok(amount) => amount,
-                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
-                };
-                match producer.consider_produced(amount).await {
-                    Ok(()) => {
-                        piped += amount;
-                        // Then continues with next loop iteration.
-                    }
-                    Err(producer_error) => return Err(PipeError::Producer(producer_error)),
-                };
-            }
-            Ok(Either::Right(final_value)) => {
-                match consumer.close(final_value).await {
-                    Ok(()) => return Ok(piped),
-                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
-                };
-            }
-            Err(producer_error) => {
-                return Err(PipeError::Producer(producer_error));
-            }
-        }
-    }
+// /// Efficiently pipes at most `count` many items from a [`BulkProducer`] into a [`BulkConsumer`] [`consumer.bulk_consume`](BulkConsumer::bulk_consume),
+// /// and reports how many items were piped.
+// /// The producer has emitted its final item (which was then used to close the
+// /// consumer) if and only if the number of returned items is strictly less
+// /// than `count`.
+// pub async fn bulk_pipe_at_most<P, C>(
+//     producer: &mut P,
+//     consumer: &mut C,
+//     count: usize,
+// ) -> Result<usize, PipeError<P::Error, C::Error>>
+// where
+//     P: BulkProducer,
+//     P::Item: Clone,
+//     C: BulkConsumer<Item = P::Item, Final = P::Final>,
+// {
+//     let mut piped = 0;
+//     while piped < count {
+//         match producer.expose_items().await {
+//             Ok(Either::Left(slots)) => {
+//                 let max_slots = min(count - piped, slots.len());
+//                 let amount = match consumer.bulk_consume(&slots[..max_slots]).await {
+//                     Ok(amount) => amount,
+//                     Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
+//                 };
+//                 match producer.consider_produced(amount).await {
+//                     Ok(()) => {
+//                         piped += amount;
+//                         // Then continues with next loop iteration.
+//                     }
+//                     Err(producer_error) => return Err(PipeError::Producer(producer_error)),
+//                 };
+//             }
+//             Ok(Either::Right(final_value)) => {
+//                 match consumer.close(final_value).await {
+//                     Ok(()) => return Ok(piped),
+//                     Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
+//                 };
+//             }
+//             Err(producer_error) => {
+//                 return Err(PipeError::Producer(producer_error));
+//             }
+//         }
+//     }
 
-    Ok(piped)
-}
+//     Ok(piped)
+// }
