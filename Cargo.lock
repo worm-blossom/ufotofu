@@ -716,7 +716,6 @@ dependencies = [
 name = "ufotofu_macros"
 version = "0.1.0"
 dependencies = [
- "either",
  "proc-macro-crate",
  "proc-macro2",
  "quote",

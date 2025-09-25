@@ -1,6 +1,7 @@
 #![no_std]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::type_complexity)]
+#![allow(async_fn_in_trait)]
 
 //! # UFOTOFU
 //!
@@ -61,21 +62,14 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-use core::cmp::min;
 use core::future::Future;
 // use ufotofu_macros::consume;
 
 // We reexport Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
 #[doc(hidden)]
 pub use either::Either;
+use ufotofu_macros::consume;
 use Either::*;
-
-// This allows macros to use `ufotofu` instead of `crate`, which might become
-// convenient some day.
-extern crate self as ufotofu;
-
-// #[macro_use]
-// mod common_macros;
 
 mod errors;
 pub use errors::*;
@@ -86,145 +80,6 @@ pub use errors::*;
 // #[cfg(all(feature = "dev", feature = "alloc"))]
 // mod test_yielder;
 
-#[macro_use]
-mod public_macros {
-    #[macro_export]
-    /// [TODO] document this.
-    macro_rules! consume {
-        ($item:pat in $producer:expr => $handle_item:block) => {
-            loop {
-                match $crate::Producer::produce($producer).await? {
-                    $crate::Either::Left($item) => $handle_item
-                    $crate::Either::Right(()) => break,
-                }
-            }
-        };
-
-        ($item:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block) => {
-            loop {
-                match $crate::Producer::produce($producer).await? {
-                    $crate::Either::Left($item) => $handle_item
-                    $crate::Either::Right($fin) => {
-                        let ret = $final_block;
-                        break ret;
-                    }
-                }
-            }
-        };
-
-        ($item:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block) => {
-            loop {
-                match $crate::Producer::produce($producer).await {
-                    core::result::Result::Ok($crate::Either::Left($item)) => $handle_item
-                    core::result::Result::Ok($crate::Either::Right(())) => break,
-                    core::result::Result::Err($err) => {
-                        let ret = $catch_block;
-                        break ret;
-                    }
-                }
-            }
-        };
-
-        ($item:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block catch $err:pat => $catch_block:block) => {
-            loop {
-                match $crate::Producer::produce($producer).await {
-                    core::result::Result::Ok($crate::Either::Left($item)) => $handle_item
-                    core::result::Result::Ok($crate::Either::Right($fin)) => {
-                        break $final_block;
-                    }
-                    core::result::Result::Err($err) => {
-                        break $catch_block;
-                    }
-                }
-            }
-        };
-
-        ($item:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block final $fin:pat => $final_block:block) => {
-            loop {
-                match $crate::Producer::produce($producer).await {
-                    core::result::Result::Ok($crate::Either::Left($item)) => $handle_item
-                    core::result::Result::Ok($crate::Either::Right($fin)) => {
-                        let ret = $final_block;
-                        break ret;
-                    }
-                    core::result::Result::Err($err) => {
-                        let ret = $catch_block;
-                        break ret;
-                    }
-                }
-            }
-        };
-    }
-
-    // #[macro_export]
-    // /// [TODO] document this.
-    // macro_rules! bulk_consume {
-    //     ($items:pat in $producer:expr => $handle_item:block) => {
-    //         loop {
-    //             match $crate::Producer::bulk_produce($producer).await? {
-    //                 $crate::Either::Left($items) => $handle_item
-    //                 $crate::Either::Right(()) => break,
-    //             }
-    //         }
-    //     };
-
-    //     ($items:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block) => {
-    //         loop {
-    //             match $crate::Producer::bulk_produce($producer).await? {
-    //                 $crate::Either::Left($items) => $handle_item
-    //                 $crate::Either::Right($fin) => {
-    //                     let ret = $final_block;
-    //                     break ret;
-    //                 }
-    //             }
-    //         }
-    //     };
-
-    //     ($items:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block) => {
-    //         loop {
-    //             match $crate::Producer::bulk_produce($producer).await {
-    //                 core::result::Result::Ok($crate::Either::Left($items)) => $handle_item
-    //                 core::result::Result::Ok($crate::Either::Right(())) => break,
-    //                 core::result::Result::Err($err) => {
-    //                     let ret = $catch_block;
-    //                     break ret;
-    //                 }
-    //             }
-    //         }
-    //     };
-
-    //     ($items:pat in $producer:expr => $handle_item:block final $fin:pat => $final_block:block catch $err:pat => $catch_block:block) => {
-    //         loop {
-    //             match $crate::Producer::bulk_produce($producer).await {
-    //                 core::result::Result::Ok($crate::Either::Left($items)) => $handle_item
-    //                 core::result::Result::Ok($crate::Either::Right($fin)) => {
-    //                     break $final_block;
-    //                 }
-    //                 core::result::Result::Err($err) => {
-    //                     break $catch_block;
-    //                 }
-    //             }
-    //         }
-    //     };
-
-    //     ($items:pat in $producer:expr => $handle_item:block catch $err:pat => $catch_block:block final $fin:pat => $final_block:block) => {
-    //         loop {
-    //             match $crate::Producer::bulk_produce($producer).await {
-    //                 core::result::Result::Ok($crate::Either::Left($items)) => $handle_item
-    //                 core::result::Result::Ok($crate::Either::Right($fin)) => {
-    //                     let ret = $final_block;
-    //                     break ret;
-    //                 }
-    //                 core::result::Result::Err($err) => {
-    //                     let ret = $catch_block;
-    //                     break ret;
-    //                 }
-    //             }
-    //         }
-    //     };
-    // }
-}
-
 /// A [`Consumer`] consumes a potentially infinite sequence, one item at a time.
 ///
 /// The sequence consists of an arbitrary number of values of type [`Self::Item`], followed by
@@ -232,6 +87,7 @@ mod public_macros {
 /// [`Infallible`](core::convert::Infallible) for [`Self::Final`].
 ///
 /// A consumer may signal an error of type [`Self::Error`] instead of consuming any item (whether repeated or final).
+#[must_use = "consumers are lazy and do nothing unless produced into"]
 pub trait Consumer {
     /// The sequence consumed by this consumer starts with *arbitrarily many* values of this type.
     type Item;
@@ -248,7 +104,7 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait returned an error,
     /// nor after [`close`](Consumer::close) was called.
-    fn consume(&mut self, item: Self::Item) -> impl Future<Output = Result<(), Self::Error>>;
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error>;
 
     /// Attempts to consume the final item.
     ///
@@ -258,7 +114,7 @@ pub trait Consumer {
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after [`close`](Consumer::close) was called.
-    fn close(&mut self, fin: Self::Final) -> impl Future<Output = Result<(), Self::Error>>;
+    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error>;
 
     /// Tries to consume (clones of) *all* items in the given slice.
     /// Reports an error if the slice could not be consumed completely.
@@ -272,27 +128,58 @@ pub trait Consumer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn consume_full_slice(
+    async fn consume_full_slice(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<(), ConsumeAtLeastError<Self::Error>>>
+    ) -> Result<(), ConsumeAtLeastError<Self::Error>>
     where
         Self::Item: Clone,
     {
-        async {
-            for i in 0..buf.len() {
-                let item = buf[i].clone();
+        for i in 0..buf.len() {
+            let item = buf[i].clone();
 
-                if let Err(err) = self.consume(item).await {
-                    return Err(ConsumeAtLeastError {
-                        count: i,
-                        reason: err,
-                    });
-                }
+            if let Err(err) = self.consume(item).await {
+                return Err(ConsumeAtLeastError {
+                    count: i,
+                    reason: err,
+                });
             }
-
-            Ok(())
         }
+
+        Ok(())
+    }
+}
+
+impl<C: Consumer> Consumer for &mut C {
+    type Item = C::Item;
+
+    type Final = C::Final;
+
+    type Error = C::Error;
+
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+        (*self).consume(item).await
+    }
+
+    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+        (*self).close(fin).await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<C: Consumer> Consumer for alloc::boxed::Box<C> {
+    type Item = C::Item;
+
+    type Final = C::Final;
+
+    type Error = C::Error;
+
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+        self.as_mut().consume(item).await
+    }
+
+    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+        self.as_mut().close(fin).await
     }
 }
 
@@ -313,7 +200,20 @@ pub trait BufferedConsumer: Consumer {
     ///
     /// Must not be called after any function of this trait has returned an error,
     /// nor after [`close`](Consumer::close) was called.
-    fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>>;
+    async fn flush(&mut self) -> Result<(), Self::Error>;
+}
+
+impl<C: BufferedConsumer> BufferedConsumer for &mut C {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        (*self).flush().await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<C: BufferedConsumer> BufferedConsumer for alloc::boxed::Box<C> {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        self.as_mut().flush().await
+    }
 }
 
 /// A [`Consumer`] that is able to consume several items with a single function call, in order to
@@ -330,10 +230,7 @@ pub trait BulkConsumer: Consumer {
     /// Must not be called after any function of this trait has returned an error, nor after
     /// [`close`](Consumer::close) was called.
     ///
-    fn bulk_consume(
-        &mut self,
-        buf: &[Self::Item],
-    ) -> impl Future<Output = Result<usize, Self::Error>>;
+    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error>;
 
     /// Tries to bulk-consume *all* items in the given slice.
     /// Reports an error if the slice could not be consumed completely.
@@ -347,27 +244,38 @@ pub trait BulkConsumer: Consumer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn bulk_consume_full_slice(
+    async fn bulk_consume_full_slice(
         &mut self,
         buf: &[Self::Item],
-    ) -> impl Future<Output = Result<(), ConsumeAtLeastError<Self::Error>>> {
-        async {
-            let mut consumed_so_far = 0;
+    ) -> Result<(), ConsumeAtLeastError<Self::Error>> {
+        let mut consumed_so_far = 0;
 
-            while consumed_so_far < buf.len() {
-                match self.bulk_consume(&buf[consumed_so_far..]).await {
-                    Ok(consumed_count) => consumed_so_far += consumed_count,
-                    Err(err) => {
-                        return Err(ConsumeAtLeastError {
-                            count: consumed_so_far,
-                            reason: err,
-                        });
-                    }
+        while consumed_so_far < buf.len() {
+            match self.bulk_consume(&buf[consumed_so_far..]).await {
+                Ok(consumed_count) => consumed_so_far += consumed_count,
+                Err(err) => {
+                    return Err(ConsumeAtLeastError {
+                        count: consumed_so_far,
+                        reason: err,
+                    });
                 }
             }
-
-            Ok(())
         }
+
+        Ok(())
+    }
+}
+
+impl<C: BulkConsumer> BulkConsumer for &mut C {
+    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
+        (*self).bulk_consume(buf).await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<C: BulkConsumer> BulkConsumer for alloc::boxed::Box<C> {
+    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
+        self.as_mut().bulk_consume(buf).await
     }
 }
 
@@ -378,6 +286,7 @@ pub trait BulkConsumer: Consumer {
 /// [`Infallible`](core::convert::Infallible) for [`Self::Final`].
 ///
 /// A producer may signal an error of type [`Self::Error`] instead of producing an item (whether repeated or final).
+#[must_use = "producers are lazy and do nothing unless consumed"]
 pub trait Producer {
     /// The sequence produced by this producer starts with *arbitrarily many* values of this type.
     type Item;
@@ -394,9 +303,7 @@ pub trait Producer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
-    fn produce(
-        &mut self,
-    ) -> impl Future<Output = Result<Either<Self::Item, Self::Final>, Self::Error>>;
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
 
     /// Tries to produce a regular item, and reports an error if the final item was produced instead.
     ///
@@ -409,22 +316,19 @@ pub trait Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn produce_item(
+    async fn produce_item(
         &mut self,
-    ) -> impl Future<Output = Result<Self::Item, ProduceAtLeastError<Self::Final, Self::Error>>>
-    {
-        async {
-            match self.produce().await {
-                Ok(Left(item)) => Ok(item),
-                Ok(Right(fin)) => Err(ProduceAtLeastError {
-                    count: 0,
-                    reason: Left(fin),
-                }),
-                Err(err) => Err(ProduceAtLeastError {
-                    count: 0,
-                    reason: Right(err),
-                }),
-            }
+    ) -> Result<Self::Item, ProduceAtLeastError<Self::Final, Self::Error>> {
+        match self.produce().await {
+            Ok(Left(item)) => Ok(item),
+            Ok(Right(fin)) => Err(ProduceAtLeastError {
+                count: 0,
+                reason: Left(fin),
+            }),
+            Err(err) => Err(ProduceAtLeastError {
+                count: 0,
+                reason: Right(err),
+            }),
         }
     }
 
@@ -440,31 +344,54 @@ pub trait Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn overwrite_full_slice(
+    async fn overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],
-    ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>> {
-        async {
-            for i in 0..buf.len() {
-                match self.produce().await {
-                    Ok(Left(item)) => buf[i] = item,
-                    Ok(Right(fin)) => {
-                        return Err(ProduceAtLeastError {
-                            count: i,
-                            reason: Left(fin),
-                        })
-                    }
-                    Err(err) => {
-                        return Err(ProduceAtLeastError {
-                            count: i,
-                            reason: Right(err),
-                        })
-                    }
+    ) -> Result<(), ProduceAtLeastError<Self::Final, Self::Error>> {
+        for i in 0..buf.len() {
+            match self.produce().await {
+                Ok(Left(item)) => buf[i] = item,
+                Ok(Right(fin)) => {
+                    return Err(ProduceAtLeastError {
+                        count: i,
+                        reason: Left(fin),
+                    })
+                }
+                Err(err) => {
+                    return Err(ProduceAtLeastError {
+                        count: i,
+                        reason: Right(err),
+                    })
                 }
             }
-
-            Ok(())
         }
+
+        Ok(())
+    }
+}
+
+impl<P: Producer> Producer for &mut P {
+    type Item = P::Item;
+
+    type Final = P::Final;
+
+    type Error = P::Error;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        (*self).produce().await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<P: Producer> Producer for alloc::boxed::Box<P> {
+    type Item = P::Item;
+
+    type Final = P::Final;
+
+    type Error = P::Error;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        self.as_mut().produce().await
     }
 }
 
@@ -480,7 +407,20 @@ pub trait BufferedProducer: Producer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
-    fn slurp(&mut self) -> impl Future<Output = Result<(), Self::Error>>;
+    async fn slurp(&mut self) -> Result<(), Self::Error>;
+}
+
+impl<P: BufferedProducer> BufferedProducer for &mut P {
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        (*self).slurp().await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        self.as_mut().slurp().await
+    }
 }
 
 /// A [`Producer`] that is able to produce several items with a single function call, in order to
@@ -502,10 +442,10 @@ pub trait BulkProducer: Producer {
     /// #### Implementation Notes
     ///
     /// This function must not read the contents of `buf`; its observable semantics must not depend on the contents of `buf` (with the sole exception of running the desctructors of items in `buf` it overwrites).
-    fn bulk_produce(
+    async fn bulk_produce(
         &mut self,
         buf: &mut [Self::Item],
-    ) -> impl Future<Output = Result<Either<usize, Self::Final>, Self::Error>>;
+    ) -> Result<Either<usize, Self::Final>, Self::Error>;
 
     /// Tries to completely overwrite a slice with items from a bulk producer.
     /// Reports an error if the slice could not be overwritten completely.
@@ -519,54 +459,52 @@ pub trait BulkProducer: Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
-    fn bulk_overwrite_full_slice(
+    async fn bulk_overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],
-    ) -> impl Future<Output = Result<(), ProduceAtLeastError<Self::Final, Self::Error>>> {
-        async {
-            let mut produced_so_far = 0;
+    ) -> Result<(), ProduceAtLeastError<Self::Final, Self::Error>> {
+        let mut produced_so_far = 0;
 
-            while produced_so_far < buf.len() {
-                match self.bulk_produce(&mut buf[produced_so_far..]).await {
-                    Ok(Left(count)) => produced_so_far += count,
-                    Ok(Right(fin)) => {
-                        return Err(ProduceAtLeastError {
-                            count: produced_so_far,
-                            reason: Left(fin),
-                        });
-                    }
-                    Err(err) => {
-                        return Err(ProduceAtLeastError {
-                            count: produced_so_far,
-                            reason: Right(err),
-                        });
-                    }
+        while produced_so_far < buf.len() {
+            match self.bulk_produce(&mut buf[produced_so_far..]).await {
+                Ok(Left(count)) => produced_so_far += count,
+                Ok(Right(fin)) => {
+                    return Err(ProduceAtLeastError {
+                        count: produced_so_far,
+                        reason: Left(fin),
+                    });
+                }
+                Err(err) => {
+                    return Err(ProduceAtLeastError {
+                        count: produced_so_far,
+                        reason: Right(err),
+                    });
                 }
             }
-
-            Ok(())
         }
+
+        Ok(())
     }
 }
 
-// /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
-// /// on the consumer with the final value emitted by the producer.
-// pub async fn pipe<P, C>(
-//     producer: &mut P,
-//     consumer: &mut C,
-// ) -> Result<(), PipeError<P::Error, C::Error>>
-// where
-//     P: Producer,
-//     C: Consumer<Item = P::Item, Final = P::Final>,
-// {
-//     consume![item in producer => {
-//         consumer.consume(item).await.map_err(PipeError::Consumer)?;
-//     } final fin => {
-//         Ok(consumer.close(fin).await.map_err(PipeError::Consumer)?)
-//     } catch err => {
-//         Err(PipeError::Producer(err))
-//     }]
-// }
+impl<P: BulkProducer> BulkProducer for &mut P {
+    async fn bulk_produce(
+        &mut self,
+        buf: &mut [Self::Item],
+    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        (*self).bulk_produce(buf).await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<P: BulkProducer> BulkProducer for alloc::boxed::Box<P> {
+    async fn bulk_produce(
+        &mut self,
+        buf: &mut [Self::Item],
+    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        self.as_mut().bulk_produce(buf).await
+    }
+}
 
 /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
 /// on the consumer with the final value emitted by the producer.
@@ -578,12 +516,10 @@ where
     P: Producer,
     C: Consumer<Item = P::Item, Final = P::Final>,
 {
-    consume![item in producer => {
-        consumer.consume(item).await.map_err(PipeError::Consumer)?;
-    } final fin => {
-        Ok(consumer.close(fin).await.map_err(PipeError::Consumer)?)
-    } catch err => {
-        Err(PipeError::Producer(err))
+    consume![producer {
+        item it => consumer.consume(it).await.map_err(PipeError::Consumer)?,
+        final fin => Ok(consumer.close(fin).await.map_err(PipeError::Consumer)?),
+        error err => Err(PipeError::Producer(err)),
     }]
 }
 
