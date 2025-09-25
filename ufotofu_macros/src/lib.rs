@@ -131,10 +131,13 @@ pub fn consume(input: TokenStream) -> TokenStream {
     let expanded = match (final_case, error_case) {
         (None, None) => {
             quote! {
-                loop {
-                    match #ufotofu_crate::Producer::produce(#producer).await? {
-                        #ufotofu_crate::Either::Left(#item) => #item_code
-                        #ufotofu_crate::Either::Right(()) => break,
+                {
+                    let mut  p = #ufotofu_crate::IntoProducer::into_producer(#producer);
+                    loop {
+                        match #ufotofu_crate::Producer::produce(&mut p).await? {
+                            #ufotofu_crate::Either::Left(#item) => #item_code
+                            #ufotofu_crate::Either::Right(()) => break,
+                        }
                     }
                 }
             }
@@ -147,10 +150,13 @@ pub fn consume(input: TokenStream) -> TokenStream {
             None,
         ) => {
             quote! {
-                loop {
-                    match #ufotofu_crate::Producer::produce(#producer).await? {
-                        #ufotofu_crate::Either::Left(#item) => #item_code
-                        #ufotofu_crate::Either::Right(#fin) => {#[allow(unused)] break #fin_code}
+                {
+                    let mut  p = #ufotofu_crate::IntoProducer::into_producer(#producer);
+                    loop {
+                        match #ufotofu_crate::Producer::produce(&mut p).await? {
+                            #ufotofu_crate::Either::Left(#item) => #item_code
+                            #ufotofu_crate::Either::Right(#fin) => {#[allow(unused)] break #fin_code}
+                        }
                     }
                 }
             }
@@ -163,11 +169,14 @@ pub fn consume(input: TokenStream) -> TokenStream {
             }),
         ) => {
             quote! {
-                loop {
-                    match #ufotofu_crate::Producer::produce(#producer).await {
-                        core::result::Result::Ok(#ufotofu_crate::Either::Left(#item)) => #item_code
-                        core::result::Result::Ok(#ufotofu_crate::Either::Right(())) => break,
-                        core::result::Result::Err(#err) => {#[allow(unused)] break #err_code}
+                {
+                    let mut  p = #ufotofu_crate::IntoProducer::into_producer(#producer);
+                    loop {
+                        match #ufotofu_crate::Producer::produce(&mut p).await {
+                            core::result::Result::Ok(#ufotofu_crate::Either::Left(#item)) => #item_code
+                            core::result::Result::Ok(#ufotofu_crate::Either::Right(())) => break,
+                            core::result::Result::Err(#err) => {#[allow(unused)] break #err_code}
+                        }
                     }
                 }
             }
@@ -183,11 +192,14 @@ pub fn consume(input: TokenStream) -> TokenStream {
             }),
         ) => {
             quote! {
-                loop {
-                    match #ufotofu_crate::Producer::produce(#producer).await {
-                        core::result::Result::Ok(#ufotofu_crate::Either::Left(#item)) => #item_code
-                        core::result::Result::Ok(#ufotofu_crate::Either::Right(#fin)) => {#[allow(unused)] break #fin_code}
-                        core::result::Result::Err(#err) => {#[allow(unused)] break #err_code}
+                {
+                    let mut  p = #ufotofu_crate::IntoProducer::into_producer(#producer);
+                    loop {
+                        match #ufotofu_crate::Producer::produce(&mut p).await {
+                            core::result::Result::Ok(#ufotofu_crate::Either::Left(#item)) => #item_code
+                            core::result::Result::Ok(#ufotofu_crate::Either::Right(#fin)) => {#[allow(unused)] break #fin_code}
+                            core::result::Result::Err(#err) => {#[allow(unused)] break #err_code}
+                        }
                     }
                 }
             }

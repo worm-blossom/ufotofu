@@ -62,14 +62,12 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-use core::future::Future;
-// use ufotofu_macros::consume;
-
 // We reexport Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
 #[doc(hidden)]
 pub use either::Either;
-use ufotofu_macros::consume;
 use Either::*;
+
+pub use ufotofu_macros::consume;
 
 mod errors;
 pub use errors::*;
@@ -183,6 +181,39 @@ impl<C: Consumer> Consumer for alloc::boxed::Box<C> {
     }
 }
 
+/// Conversion into a [`Consumer`].
+///
+/// By implementing `IntoConsumer` for a type, you define how it will be
+/// converted to a consumer.
+/// ```
+pub trait IntoConsumer {
+    /// The type of repeated items being consumed.
+    type Item;
+
+    /// The type of the final value being consumed.
+    type Final;
+
+    /// The type of errors the consumer may emit.
+    type Error;
+
+    type IntoConsumer: Consumer<Item = Self::Item, Final = Self::Final, Error = Self::Error>;
+
+    /// Creates a consumer from a value.
+    fn into_consumer(self) -> Self::IntoConsumer;
+}
+
+impl<C: Consumer> IntoConsumer for C {
+    type Item = C::Item;
+    type Final = C::Final;
+    type Error = C::Error;
+    type IntoConsumer = C;
+
+    #[inline]
+    fn into_consumer(self) -> C {
+        self
+    }
+}
+
 /// A [`Consumer`] that can delay performing side-effects when consuming items.
 ///
 /// It must not delay performing side-effects when being closed. In other words,
@@ -215,6 +246,15 @@ impl<C: BufferedConsumer> BufferedConsumer for alloc::boxed::Box<C> {
         self.as_mut().flush().await
     }
 }
+
+/// Conversion into a [`BufferedConsumer`].
+///
+/// By implementing `IntoBufferedConsumer` for a type, you define how it will be
+/// converted to a buffered consumer.
+/// ```
+pub trait IntoBufferedConsumer: IntoConsumer<IntoConsumer: BufferedConsumer> {}
+
+impl<C: BufferedConsumer> IntoBufferedConsumer for C {}
 
 /// A [`Consumer`] that is able to consume several items with a single function call, in order to
 /// improve on the efficiency of the [`Consumer`] trait. Semantically, there must be no
@@ -278,6 +318,15 @@ impl<C: BulkConsumer> BulkConsumer for alloc::boxed::Box<C> {
         self.as_mut().bulk_consume(buf).await
     }
 }
+
+/// Conversion into a [`BulkConsumer`].
+///
+/// By implementing `IntoBulkConsumer` for a type, you define how it will be
+/// converted to a bulk consumer.
+/// ```
+pub trait IntoBulkConsumer: IntoConsumer<IntoConsumer: BulkConsumer> {}
+
+impl<C: BulkConsumer> IntoBulkConsumer for C {}
 
 /// A [`Producer`] produces a potentially infinite sequence, one item at a time.
 ///
@@ -395,6 +444,42 @@ impl<P: Producer> Producer for alloc::boxed::Box<P> {
     }
 }
 
+/// Conversion into a [`Producer`].
+///
+/// By implementing `IntoProducer` for a type, you define how it will be
+/// converted to a producer. This is common for types which describe a
+/// collection of some kind.
+///
+/// One benefit of implementing `IntoIterator` is that your type will [work
+/// with the `consume!` macro](crate::consume).
+pub trait IntoProducer {
+    /// The type of repeated items being produced.
+    type Item;
+
+    /// The type of the final value being produced.
+    type Final;
+
+    /// The type of errors the producer may emit.
+    type Error;
+
+    type IntoProducer: Producer<Item = Self::Item, Final = Self::Final, Error = Self::Error>;
+
+    /// Creates a producer from a value.
+    fn into_producer(self) -> Self::IntoProducer;
+}
+
+impl<P: Producer> IntoProducer for P {
+    type Item = P::Item;
+    type Final = P::Final;
+    type Error = P::Error;
+    type IntoProducer = P;
+
+    #[inline]
+    fn into_producer(self) -> P {
+        self
+    }
+}
+
 /// A [`Producer`] that can eagerly perform side-effects to prepare values for later yielding.
 pub trait BufferedProducer: Producer {
     /// Asks the producer to prepare some values for yielding.
@@ -422,6 +507,13 @@ impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
         self.as_mut().slurp().await
     }
 }
+
+/// Conversion into a [`BufferedProducer`].
+///
+/// By implementing `IntoBufferedProducer` for a type, you define how it will be
+/// converted to a buffered producer.
+/// ```
+pub trait IntoBufferedProducer: IntoProducer<IntoProducer: BufferedProducer> {}
 
 /// A [`Producer`] that is able to produce several items with a single function call, in order to
 /// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
@@ -506,16 +598,21 @@ impl<P: BulkProducer> BulkProducer for alloc::boxed::Box<P> {
     }
 }
 
+/// Conversion into a [`BulkProducer`].
+///
+/// By implementing `IntoBulkProducer` for a type, you define how it will be
+/// converted to a bulk producer.
+/// ```
+pub trait IntoBulkProducer: IntoProducer<IntoProducer: BulkProducer> {}
+
 /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
 /// on the consumer with the final value emitted by the producer.
-pub async fn pipe<P, C>(
-    producer: &mut P,
-    consumer: &mut C,
-) -> Result<(), PipeError<P::Error, C::Error>>
+pub async fn pipe<P, C>(producer: P, consumer: C) -> Result<(), PipeError<P::Error, C::Error>>
 where
-    P: Producer,
-    C: Consumer<Item = P::Item, Final = P::Final>,
+    P: IntoProducer,
+    C: IntoConsumer<Item = P::Item, Final = P::Final>,
 {
+    let mut consumer = consumer.into_consumer();
     consume![producer {
         item it => consumer.consume(it).await.map_err(PipeError::Consumer)?,
         final fin => Ok(consumer.close(fin).await.map_err(PipeError::Consumer)?),
@@ -527,16 +624,18 @@ where
 /// Then calls [`close`](Consumer::close) on the consumer with the final value
 /// emitted by the producer.
 pub async fn bulk_pipe<P, C>(
-    producer: &mut P,
-    consumer: &mut C,
+    producer: P,
+    consumer: C,
     buf: &mut [P::Item],
 ) -> Result<(), PipeError<P::Error, C::Error>>
 where
-    P: BulkProducer,
-    P::Item: Clone,
-    C: BulkConsumer<Item = P::Item, Final = P::Final>,
+    P: IntoBulkProducer<Item: Clone>,
+    C: IntoBulkConsumer<Item = P::Item, Final = P::Final>,
 {
     debug_assert!(buf.len() > 0);
+
+    let mut producer = producer.into_producer();
+    let mut consumer = consumer.into_consumer();
 
     loop {
         match producer.bulk_produce(buf).await {
@@ -568,6 +667,7 @@ where
 //     P: Producer,
 //     C: Consumer<Item = P::Item, Final = P::Final>,
 // {
+//      TODO use IntoProducer and IntoConsumer here
 //     let mut piped = 0;
 //     while piped < count {
 //         match producer.produce().await {
