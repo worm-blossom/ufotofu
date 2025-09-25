@@ -123,23 +123,22 @@ mod macros {
 
 // Slice
 
-#[cfg(feature = "alloc")]
-impl<'a, T> IntoProducer for &'a Box<[T]> {
+impl<'a, T> IntoProducer for &'a [T] {
     type Item = &'a T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a Box<[T]> as IntoIterator>::IntoIter>;
+    type IntoProducer = IteratorAsProducer<<&'a [T] as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
     }
 }
 
-impl<'a, T> IntoProducer for &'a [T] {
-    type Item = &'a T;
+impl<'a, T> IntoProducer for &'a mut [T] {
+    type Item = &'a mut T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a [T] as IntoIterator>::IntoIter>;
+    type IntoProducer = IteratorAsProducer<<&'a mut [T] as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
@@ -160,11 +159,12 @@ impl<T> IntoProducer for Box<[T]> {
     }
 }
 
-impl<'a, T> IntoProducer for &'a mut [T] {
-    type Item = &'a mut T;
+#[cfg(feature = "alloc")]
+impl<'a, T> IntoProducer for &'a Box<[T]> {
+    type Item = &'a T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut [T] as IntoIterator>::IntoIter>;
+    type IntoProducer = IteratorAsProducer<<&'a Box<[T]> as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
@@ -215,6 +215,125 @@ impl<'a, T, const N: usize> IntoProducer for &'a mut [T; N] {
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+/////////////////
+// Zero-Or-One //
+/////////////////
+
+// Option
+
+implementIntoProducerForIntoIteratorType!(Option<T>; T);
+
+impl<'a, T> IntoProducer for &'a Option<T> {
+    type Item = &'a T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a Option<T> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+impl<'a, T> IntoProducer for &'a mut Option<T> {
+    type Item = &'a mut T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut Option<T> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// Result
+
+impl<T, E> IntoProducer for Result<T, E> {
+    type Item = T;
+    type Final = ();
+    type Error = E;
+    type IntoProducer = ResultProducer<T, E>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        ResultProducer(Some(self))
+    }
+}
+
+pub struct ResultProducer<T, E>(Option<Result<T, E>>);
+
+impl<T, E> Producer for ResultProducer<T, E> {
+    type Item = T;
+
+    type Final = ();
+
+    type Error = E;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        match self.0.take() {
+            Some(Ok(it)) => Ok(Left(it)),
+            Some(Err(err)) => Err(err),
+            None => Ok(Right(())),
+        }
+    }
+}
+
+impl<'a, T, E> IntoProducer for &'a Result<T, E> {
+    type Item = &'a T;
+    type Final = ();
+    type Error = &'a E;
+    type IntoProducer = ResultProducerRef<'a, T, E>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        ResultProducerRef(Some(self))
+    }
+}
+
+pub struct ResultProducerRef<'a, T, E>(Option<&'a Result<T, E>>);
+
+impl<'a, T, E> Producer for ResultProducerRef<'a, T, E> {
+    type Item = &'a T;
+
+    type Final = ();
+
+    type Error = &'a E;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        match self.0.take() {
+            Some(Ok(it)) => Ok(Left(it)),
+            Some(Err(err)) => Err(err),
+            None => Ok(Right(())),
+        }
+    }
+}
+
+impl<'a, T, E> IntoProducer for &'a mut Result<T, E> {
+    type Item = &'a mut T;
+    type Final = ();
+    type Error = &'a mut E;
+    type IntoProducer = ResultProducerMut<'a, T, E>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        ResultProducerMut(Some(self))
+    }
+}
+
+pub struct ResultProducerMut<'a, T, E>(Option<&'a mut Result<T, E>>);
+
+impl<'a, T, E> Producer for ResultProducerMut<'a, T, E> {
+    type Item = &'a mut T;
+
+    type Final = ();
+
+    type Error = &'a mut E;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        match self.0.take() {
+            Some(Ok(it)) => Ok(Left(it)),
+            Some(Err(err)) => Err(err),
+            None => Ok(Right(())),
+        }
     }
 }
 
