@@ -117,29 +117,11 @@ mod macros {
     }
 }
 
-#[cfg(feature = "std")]
-impl<'a> IntoProducer for &'a Path {
-    type Item = &'a OsStr;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a Path as IntoIterator>::IntoIter>;
+////////////
+// Slices //
+////////////
 
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a> IntoProducer for &'a PathBuf {
-    type Item = &'a OsStr;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a PathBuf as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
+// Slice
 
 #[cfg(feature = "alloc")]
 impl<'a, T> IntoProducer for &'a Box<[T]> {
@@ -147,6 +129,42 @@ impl<'a, T> IntoProducer for &'a Box<[T]> {
     type Final = ();
     type Error = Infallible;
     type IntoProducer = IteratorAsProducer<<&'a Box<[T]> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+impl<'a, T> IntoProducer for &'a [T] {
+    type Item = &'a T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a [T] as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// Boxed Slice
+
+#[cfg(feature = "alloc")]
+impl<T> IntoProducer for Box<[T]> {
+    type Item = T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<Box<[T]> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(<Box<[T]> as IntoIterator>::into_iter(self))
+    }
+}
+
+impl<'a, T> IntoProducer for &'a mut [T] {
+    type Item = &'a mut T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut [T] as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
@@ -165,178 +183,13 @@ impl<'a, T> IntoProducer for &'a mut Box<[T]> {
     }
 }
 
-#[cfg(feature = "std")]
-impl<'a, K, V> IntoProducer for &'a BTreeMap<K, V> {
-    type Item = (&'a K, &'a V);
+// Array
+
+impl<T, const N: usize> IntoProducer for [T; N] {
+    type Item = T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a BTreeMap<K, V> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K, V> IntoProducer for &'a mut BTreeMap<K, V> {
-    type Item = (&'a K, &'a mut V);
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut BTreeMap<K, V> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K, V, S> IntoProducer for &'a HashMap<K, V, S> {
-    type Item = (&'a K, &'a V);
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a HashMap<K, V, S> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K, V, S> IntoProducer for &'a mut HashMap<K, V, S> {
-    type Item = (&'a K, &'a mut V);
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut HashMap<K, V, S> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-impl<'a, T> IntoProducer for &'a [T] {
-    type Item = &'a T;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a [T] as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-impl<'a, T> IntoProducer for &'a mut [T] {
-    type Item = &'a mut T;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut [T] as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K> IntoProducer for &'a BTreeSet<K> {
-    type Item = &'a K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a BTreeSet<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K> IntoProducer for &'a BinaryHeap<K> {
-    type Item = &'a K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a BinaryHeap<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K> IntoProducer for &'a LinkedList<K> {
-    type Item = &'a K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a LinkedList<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K> IntoProducer for &'a VecDeque<K> {
-    type Item = &'a K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a VecDeque<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<'a, K> IntoProducer for &'a Vec<K> {
-    type Item = &'a K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a Vec<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K> IntoProducer for &'a mut LinkedList<K> {
-    type Item = &'a mut K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut LinkedList<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<'a, K> IntoProducer for &'a mut Vec<K> {
-    type Item = &'a mut K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut Vec<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K> IntoProducer for &'a mut VecDeque<K> {
-    type Item = &'a mut K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a mut VecDeque<K> as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
-
-#[cfg(feature = "std")]
-impl<'a, K, S> IntoProducer for &'a HashSet<K, S> {
-    type Item = &'a K;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<&'a HashSet<K, S> as IntoIterator>::IntoIter>;
+    type IntoProducer = IteratorAsProducer<<[T; N] as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
@@ -365,47 +218,228 @@ impl<'a, T, const N: usize> IntoProducer for &'a mut [T; N] {
     }
 }
 
+/////////////////
+// Collections //
+/////////////////
+
+// Vec
+
 #[cfg(feature = "alloc")]
-impl<T> IntoProducer for Box<[T]> {
-    type Item = T;
+implementIntoProducerForIntoIteratorType!(Vec<T>; T);
+
+#[cfg(feature = "alloc")]
+impl<'a, K> IntoProducer for &'a Vec<K> {
+    type Item = &'a K;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<Box<[T]> as IntoIterator>::IntoIter>;
+    type IntoProducer = IteratorAsProducer<<&'a Vec<K> as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(<Box<[T]> as IntoIterator>::into_iter(self))
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'a, K> IntoProducer for &'a mut Vec<K> {
+    type Item = &'a mut K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut Vec<K> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// VecDeque
+
+#[cfg(feature = "std")]
+implementIntoProducerForIntoIteratorType!(VecDeque<T>; T);
+
+#[cfg(feature = "std")]
+impl<'a, K> IntoProducer for &'a VecDeque<K> {
+    type Item = &'a K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a VecDeque<K> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
     }
 }
 
 #[cfg(feature = "std")]
-implementIntoProducerForIntoIteratorType!(BTreeMap<K, V>; (K, V));
+impl<'a, K> IntoProducer for &'a mut VecDeque<K> {
+    type Item = &'a mut K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut VecDeque<K> as IntoIterator>::IntoIter>;
 
-#[cfg(feature = "std")]
-implementIntoProducerForIntoIteratorType!(HashMap<K, V, S>; (K, V));
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
 
-#[cfg(feature = "std")]
-implementIntoProducerForIntoIteratorType!(BTreeSet<T>; T);
-
-#[cfg(feature = "std")]
-implementIntoProducerForIntoIteratorType!(BinaryHeap<T>; T);
+// Linked List
 
 #[cfg(feature = "std")]
 implementIntoProducerForIntoIteratorType!(LinkedList<T>; T);
 
 #[cfg(feature = "std")]
-implementIntoProducerForIntoIteratorType!(VecDeque<T>; T);
+impl<'a, K> IntoProducer for &'a LinkedList<K> {
+    type Item = &'a K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a LinkedList<K> as IntoIterator>::IntoIter>;
 
-#[cfg(feature = "alloc")]
-implementIntoProducerForIntoIteratorType!(Vec<T>; T);
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, K> IntoProducer for &'a mut LinkedList<K> {
+    type Item = &'a mut K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut LinkedList<K> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// BinaryHeap
+
+#[cfg(feature = "std")]
+implementIntoProducerForIntoIteratorType!(BinaryHeap<T>; T);
+
+#[cfg(feature = "std")]
+impl<'a, K> IntoProducer for &'a BinaryHeap<K> {
+    type Item = &'a K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a BinaryHeap<K> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// BTreeSet
+
+#[cfg(feature = "std")]
+implementIntoProducerForIntoIteratorType!(BTreeSet<T>; T);
+
+#[cfg(feature = "std")]
+impl<'a, K> IntoProducer for &'a BTreeSet<K> {
+    type Item = &'a K;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a BTreeSet<K> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// BTreeMap
+
+#[cfg(feature = "std")]
+implementIntoProducerForIntoIteratorType!(BTreeMap<K, V>; (K, V));
+
+#[cfg(feature = "std")]
+impl<'a, K, V> IntoProducer for &'a BTreeMap<K, V> {
+    type Item = (&'a K, &'a V);
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a BTreeMap<K, V> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, K, V> IntoProducer for &'a mut BTreeMap<K, V> {
+    type Item = (&'a K, &'a mut V);
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut BTreeMap<K, V> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// HashSet
 
 #[cfg(feature = "std")]
 implementIntoProducerForIntoIteratorType!(HashSet<T, S>; T);
 
-impl<T, const N: usize> IntoProducer for [T; N] {
-    type Item = T;
+#[cfg(feature = "std")]
+impl<'a, K, S> IntoProducer for &'a HashSet<K, S> {
+    type Item = &'a K;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<[T; N] as IntoIterator>::IntoIter>;
+    type IntoProducer = IteratorAsProducer<<&'a HashSet<K, S> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+// HashMap
+
+#[cfg(feature = "std")]
+implementIntoProducerForIntoIteratorType!(HashMap<K, V, S>; (K, V));
+
+#[cfg(feature = "std")]
+impl<'a, K, V, S> IntoProducer for &'a HashMap<K, V, S> {
+    type Item = (&'a K, &'a V);
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a HashMap<K, V, S> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, K, V, S> IntoProducer for &'a mut HashMap<K, V, S> {
+    type Item = (&'a K, &'a mut V);
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a mut HashMap<K, V, S> as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+///////////////////////////
+// Misc Standard Library //
+///////////////////////////
+
+#[cfg(feature = "std")]
+impl<'a> IntoProducer for &'a Path {
+    type Item = &'a OsStr;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a Path as IntoIterator>::IntoIter>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IteratorAsProducer::new(self.into_iter())
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a> IntoProducer for &'a PathBuf {
+    type Item = &'a OsStr;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IteratorAsProducer<<&'a PathBuf as IntoIterator>::IntoIter>;
 
     fn into_producer(self) -> Self::IntoProducer {
         IteratorAsProducer::new(self.into_iter())
