@@ -1,98 +1,16 @@
-// //! Useful functionality for working with producers.
-// //!
-// //! ## Obtaining Producers
-// //!
-// //! The [`FromSlice`] producer produces the items of a slice.
-// //!
-// //! The [`FromBoxedSlice`] producer takes ownership of a boxed slice (or vector) and produces its items.
-// //!
-// //! The [`Empty`] producer immediately produces its final item.
-// //!
-// //! ## Adaptors
-// //!
-// //! The [`MapItem`] adaptor wraps any producer and maps its emitted items with a function.
-// //!
-// //! The [`MapFinal`] adaptor wraps any producer and maps it final item with a function.
-// //!
-// //! The [`MapFinal`] adaptor wraps any producer and maps it error with a function.
-// //!
-// //! The [`Limit`] adaptor wraps any producer and limits how many items it may emit at most.
-// //!
-// //! ## Combining Producers
-// //!
-// //! The [`Merge`] adaptor wraps two producers and interleaves their items, drops the first `Final` item, but forwards the first `Error`.
-// //!
-// //! ## Development Helpers
-// //!
-// //! The [Invariant] adaptor wraps any producer and makes it panic during tests when some client code violates the API contracts imposed by the producer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom producers; all producers in the ufotofu crate use this wrapper internally.
-// //!
-// //! The [TestProducer] exists for testing code that interacts with arbitrary producers; it provides customisable behavior of which items to emit, when to emit the final item or an error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
-// //!
-// //! The [BulkScrambler] exists for testing specific [`BulkProducer`](ufotofu::BulkProducer)s by exercising various interleavings of `produce`, `slurp`, and `expose_items` calls. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
-// //!
-// //! ## Compatibility
-// //!
-// //! The [`ReaderToBulkProducer`] adaptor lets you treat a [`smol::io::AsyncRead`] as a [`BulkProducer`](ufotofu::BulkProducer) of bytes, and the more efficient [`BufReaderToBulkProducer`] adaptor lets you treat a [`smol::io::AsyncBufRead`] as a [`BulkProducer`](ufotofu::BulkProducer) of bytes.
+//! Useful functionality for working with producers, beyond the [`ProducerExt`], [`BufferedProducerExt`], and [`BulkProducerExt`] traits.
 
 use either::Either::{self, *};
 
 use crate::errors::*;
 
-// #[macro_use]
-// mod macros;
-
-// mod from_slice;
-// pub use from_slice::FromSlice_ as FromSlice;
-
-// mod from_boxed_slice;
-// pub use from_boxed_slice::FromBoxedSlice_ as FromBoxedSlice;
-
-// mod empty;
-// pub use empty::Empty_ as Empty;
-
-// mod map_item;
-// pub use map_item::MapItem;
-
-// mod map_final;
-// pub use map_final::MapFinal;
-
-// mod map_error;
-// pub use map_error::MapError;
-
-// mod limit;
-// pub use limit::Limit;
-
 mod iterator_as_producer;
 pub use iterator_as_producer::*;
 
-// #[cfg(feature = "alloc")]
-// mod merge;
-// #[cfg(feature = "alloc")]
-// pub use merge::Merge;
-
-// #[cfg(feature = "compat")]
-// mod reader;
-// #[cfg(feature = "compat")]
-// pub use reader::{BufReaderToBulkProducer, ReaderToBulkProducer};
-
-// #[cfg(test)]
-// mod invariant;
-// #[cfg(not(test))]
-// mod invariant_noop;
-// #[cfg(test)]
-// pub use invariant::Invariant;
-// #[cfg(not(test))]
-// pub use invariant_noop::Invariant;
-
-// #[cfg(feature = "dev")]
-// mod bulk_scrambler;
-// #[cfg(feature = "dev")]
-// pub use bulk_scrambler::{BulkProducerOperation, BulkScrambler_ as BulkScrambler};
-
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// mod test_producer;
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// pub use test_producer::{TestProducerBuilder, TestProducer_ as TestProducer};
+#[cfg(feature = "alloc")]
+mod vec_producer;
+#[cfg(feature = "alloc")]
+pub use vec_producer::*;
 
 /// A [`Producer`] produces a potentially infinite sequence, one item at a time.
 ///
@@ -119,70 +37,6 @@ pub trait Producer {
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
-
-    /// Tries to produce a regular item, and reports an error if the final item was produced instead.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    async fn produce_item(
-        &mut self,
-    ) -> Result<Self::Item, ProduceAtLeastError<Self::Final, Self::Error>> {
-        match self.produce().await {
-            Ok(Left(item)) => Ok(item),
-            Ok(Right(fin)) => Err(ProduceAtLeastError {
-                count: 0,
-                reason: Left(fin),
-            }),
-            Err(err) => Err(ProduceAtLeastError {
-                count: 0,
-                reason: Right(err),
-            }),
-        }
-    }
-
-    /// Tries to completely overwrite a slice with items from a producer.
-    /// Reports an error if the slice could not be overwritten completely.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    async fn overwrite_full_slice(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<(), ProduceAtLeastError<Self::Final, Self::Error>> {
-        for i in 0..buf.len() {
-            match self.produce().await {
-                Ok(Left(item)) => buf[i] = item,
-                Ok(Right(fin)) => {
-                    return Err(ProduceAtLeastError {
-                        count: i,
-                        reason: Left(fin),
-                    })
-                }
-                Err(err) => {
-                    return Err(ProduceAtLeastError {
-                        count: i,
-                        reason: Right(err),
-                    })
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl<P: Producer> Producer for &mut P {
@@ -276,10 +130,10 @@ impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
 
 /// Conversion into a [`BufferedProducer`].
 ///
-/// By implementing `IntoBufferedProducer` for a type, you define how it will be
-/// converted to a buffered producer.
-/// ```
+/// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a buffered producer.
 pub trait IntoBufferedProducer: IntoProducer<IntoProducer: BufferedProducer> {}
+
+impl<P> IntoBufferedProducer for P where P: IntoProducer<IntoProducer: BufferedProducer> {}
 
 /// A [`Producer`] that is able to produce several items with a single function call, in order to
 /// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
@@ -304,45 +158,6 @@ pub trait BulkProducer: Producer {
         &mut self,
         buf: &mut [Self::Item],
     ) -> Result<Either<usize, Self::Final>, Self::Error>;
-
-    /// Tries to completely overwrite a slice with items from a bulk producer.
-    /// Reports an error if the slice could not be overwritten completely.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    async fn bulk_overwrite_full_slice(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<(), ProduceAtLeastError<Self::Final, Self::Error>> {
-        let mut produced_so_far = 0;
-
-        while produced_so_far < buf.len() {
-            match self.bulk_produce(&mut buf[produced_so_far..]).await {
-                Ok(Left(count)) => produced_so_far += count,
-                Ok(Right(fin)) => {
-                    return Err(ProduceAtLeastError {
-                        count: produced_so_far,
-                        reason: Left(fin),
-                    });
-                }
-                Err(err) => {
-                    return Err(ProduceAtLeastError {
-                        count: produced_so_far,
-                        reason: Right(err),
-                    });
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl<P: BulkProducer> BulkProducer for &mut P {
@@ -366,7 +181,60 @@ impl<P: BulkProducer> BulkProducer for alloc::boxed::Box<P> {
 
 /// Conversion into a [`BulkProducer`].
 ///
-/// By implementing `IntoBulkProducer` for a type, you define how it will be
-/// converted to a bulk producer.
-/// ```
+/// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a bulk producer.
 pub trait IntoBulkProducer: IntoProducer<IntoProducer: BulkProducer> {}
+
+impl<P> IntoBulkProducer for P where P: IntoProducer<IntoProducer: BulkProducer> {}
+
+// #[macro_use]
+// mod macros;
+
+// mod from_slice;
+// pub use from_slice::FromSlice_ as FromSlice;
+
+// mod from_boxed_slice;
+// pub use from_boxed_slice::FromBoxedSlice_ as FromBoxedSlice;
+
+// mod empty;
+// pub use empty::Empty_ as Empty;
+
+// mod map_item;
+// pub use map_item::MapItem;
+
+// mod map_final;
+// pub use map_final::MapFinal;
+
+// mod map_error;
+// pub use map_error::MapError;
+
+// mod limit;
+// pub use limit::Limit;
+
+// #[cfg(feature = "alloc")]
+// mod merge;
+// #[cfg(feature = "alloc")]
+// pub use merge::Merge;
+
+// #[cfg(feature = "compat")]
+// mod reader;
+// #[cfg(feature = "compat")]
+// pub use reader::{BufReaderToBulkProducer, ReaderToBulkProducer};
+
+// #[cfg(test)]
+// mod invariant;
+// #[cfg(not(test))]
+// mod invariant_noop;
+// #[cfg(test)]
+// pub use invariant::Invariant;
+// #[cfg(not(test))]
+// pub use invariant_noop::Invariant;
+
+// #[cfg(feature = "dev")]
+// mod bulk_scrambler;
+// #[cfg(feature = "dev")]
+// pub use bulk_scrambler::{BulkProducerOperation, BulkScrambler_ as BulkScrambler};
+
+// #[cfg(all(feature = "dev", feature = "alloc"))]
+// mod test_producer;
+// #[cfg(all(feature = "dev", feature = "alloc"))]
+// pub use test_producer::{TestProducerBuilder, TestProducer_ as TestProducer};

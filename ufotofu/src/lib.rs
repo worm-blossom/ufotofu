@@ -3,6 +3,45 @@
 #![allow(clippy::type_complexity)]
 #![allow(async_fn_in_trait)]
 
+//! Abstractions for asynchronously working with series of data ("streams" and "sinks").
+//!
+//! This crate provides alternatives to some abstractions of the popular [`futures`](https://docs.rs/futures/latest/futures) crate:
+//!
+//! - [`Producer`] and [`Consumer`] replace [`Stream`](https://docs.rs/futures/latest/futures/prelude/trait.Stream.html) and [`Sink`](https://docs.rs/futures/latest/futures/prelude/trait.Sink.html), and
+//! - [`BulkProducer`] and [`BulkConsumer`] replace [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html) [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
+//!
+//! See the [`producer`] and [`consumer`] modules for ground-up introductions to the designs.  
+//! Read on for the core design choices which distinguish `ufotofu` from the `futures` crate:
+//!
+//! ## Fundamental Design Choices
+//!
+//! - Async trait methods, no poll-based interfaces.
+//! - `nostd` by default.
+//! - Fatal errors, no resumption of processing after an error was signalled.
+//! - Full generics for bulk operations, no restriction to `u8` and `io::Error`.
+//! - Bulk processing generalises item-by-item processing; the bulk traits extend the item-by-item traits.
+//! - Bulk operations work with non-empty slices and must process nonzero quantities of items.
+//! - Buffering is abstracted-over in traits, not provided by concrete structs.
+//! - Emphasis on producer-consumer duality, neither is more expressive than the other.
+//! - Producers emit a dedicated final value, consumers receive a dedicated value when closed.
+//! - British spelling.
+//!
+//! ## Caveats
+//!
+//! Ufotofu makes some simplifying assumptions, which may render it unsuitable for you. Each assumption removes significant complexity around working with async Rust, but constrains applicability.
+//!
+//! - The futures returned by async ufotofu methods are `!Send`, they cannot be run on multi-threaded executors.
+//! - Dropping any method-returned future before polling it to completion will leave the original object in an undefined state; subsequent method calls may display arbitrary (but always safe) behaviour.
+//! - Unwinding any panic may leave ufotofu values in an undefined state. Do not attempt to recover from panics when using ufotofu.
+//!
+//! ## Crate Organisation
+//!
+//! [TODO]
+//!
+//! ## Feature Flags
+//!
+//! [TODO]
+
 //! # UFOTOFU
 //!
 //! UFOTOFU provides APIs for lazily producing or consuming sequences of arbitrary length, serving as async redesigns of traits such as [`Iterator`], [`io::Read`](std::io::Read), or [`io::Write`](std::io::Write). Highlights include
@@ -40,9 +79,11 @@
 //!
 //! - Traits for producing sequences: [`Producer`], [`BufferedProducer`], and [`BulkProducer`].
 //! - Traits for consuming sequences: [`Consumer`], [`BufferedConsumer`], and [`BulkConsumer`].
+//! - Traits for converting values into consumers and producers: [`IntoProducer`], [`IntoBufferedProducer`], [`IntoBulkProducer`], [`IntoConsumer`], [`IntoBufferedConsumer`], and [`IntoBulkConsumer`].
+//! - Extension traits which add to the core traits a variety of helpful methods: [`ProducerExt`], [`BufferedProducerExt`], [`BulkProducerExt`], [`ConsumerExt`], [`BufferedConsumerExt`], and [`BulkConsumerExt`].
 //! - Piping data: [`pipe`] and [`bulk_pipe`].
 //!
-//! Further functionality, specific to producers and consumers respectively, is exposed in the [`producer`] and [`consumer`] modules.
+//! Further functionality, specific to producers and consumers respectively, is exposed in the [`producer`] and [`consumer`] modules. Types used by the extention traits are exposed in the [`producer_ext`] and [`consumer_ext`] modules.
 //!
 //! ## Feature Flags
 //!
@@ -50,11 +91,11 @@
 //!
 //! All functionality which relies on the Rust standard library is gated behind the `std` feature flag (enabled by default).
 //!
-//! All functionality which performs dynamic memory allocations is gated behind the `alloc` feature flag (disabled by default, implied by the `std` feature).
-//!
-//! All functionality which provides interoperability with other async sequence manipulation crates is gated behind the `compat` feature flag (disabled by default).
+//! All functionality which performs dynamic memory allocations is gated behind the `alloc` feature flag (enabled by default, implied by the `std` feature).
 //!
 //! All functionality specifically designed to aid in testing and development is gated behind the `dev` feature flag (disabled by default).
+// //!
+// //! All functionality which provides interoperability with other async sequence manipulation crates is gated behind the `compat` feature flag (disabled by default).
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -62,7 +103,7 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-// We reexport Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
+// We re-export Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
 #[doc(hidden)]
 pub use either::Either;
 use Either::*;
@@ -72,20 +113,42 @@ pub use ufotofu_macros::consume;
 mod errors;
 pub use errors::*;
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-use core::convert::Infallible;
-
 pub mod producer;
 use producer::*;
-pub use producer::{BufferedProducer, BulkProducer, IntoProducer, Producer};
+pub use producer::{
+    BufferedProducer, BulkProducer, IntoBufferedProducer, IntoBulkProducer, IntoProducer, Producer,
+};
+
+pub mod producer_ext;
+pub use producer_ext::{BulkProducerExt, ProducerExt};
 
 pub mod consumer;
 use consumer::*;
-pub use consumer::{BufferedConsumer, BulkConsumer, Consumer, IntoConsumer};
+pub use consumer::{
+    BufferedConsumer, BulkConsumer, Consumer, IntoBufferedConsumer, IntoBulkConsumer, IntoConsumer,
+};
 
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// mod test_yielder;
+pub mod consumer_ext;
+pub use consumer_ext::{BulkConsumerExt, ConsumerExt};
+
+#[cfg(all(feature = "dev", feature = "alloc"))]
+mod test_yielder;
+
+/// A “prelude” for crates using the `ufotofu` crate.
+///
+/// This prelude is similar to the standard library’s prelude in that you’ll almost always want to import its entire contents, but unlike the standard library’s prelude you’ll have to do so manually:
+///
+/// use ufotofu::prelude::*;
+///
+/// The prelude may grow over time.
+pub mod prelude {
+    pub use crate::{
+        consume, consumer, producer, BufferedConsumer, BufferedProducer, BulkConsumer,
+        BulkConsumerExt, BulkProducer, BulkProducerExt, Consumer, ConsumerExt,
+        IntoBufferedConsumer, IntoBufferedProducer, IntoBulkConsumer, IntoBulkProducer,
+        IntoConsumer, IntoProducer, Producer, ProducerExt,
+    };
+}
 
 /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
 /// on the consumer with the final value emitted by the producer.

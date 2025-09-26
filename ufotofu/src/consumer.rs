@@ -1,77 +1,4 @@
-// //! Useful functionality for working with consumers.
-// //!
-// //! ## Obtaining Consumers
-// //!
-// //! The [`IntoVec`] consumer consumes an arbitrary number of items and can be turned into a [`Vec`](std::vec::Vec) of all consumed items.
-// //!
-// //! ## Adaptors
-// //!
-// //! The [`MapItem`] adaptor wraps any consumer and maps the items it receives with a function.
-// //!
-// //! The [`MapFinal`] adaptor wraps any consumer and maps the final item it receives with a function.
-// //!
-// //! The [`MapError`] adaptor wraps any consumer and maps the error it emits with a function.
-// //!
-// //! The [`Limit`] adaptor wraps any consumer and makes it emit an error when trying to consume too many regular items.
-// //!
-// //! ## Development Helpers
-// //!
-// //! The [Invariant] adaptor wraps any consumer and makes it panic during tests when some client code violates the API contracts imposed by the consumer traits. In production builds, the wrapper does nothing and compiles away without any overhead. We recommend using this wrapper as an implementation detail of all custom consumers; all consumers in the ufotofu crate use this wrapper internally.
-// //!
-// //! The [TestConsumer] exists for testing code that interacts with arbitrary consumers; it provides customisable behavior of how many items to consume before emitting a configurable error, and varies the sizes of bulk buffers it exposes. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
-// //!
-// //! The [BulkScrambler] exists for testing specific [`BulkConsumer`](ufotofu::BulkConsumer)s by exercising various interleavings of `consume`, `flush`, and `consume_slots` calls. To generate various configurations, we recommed using a [fuzzer](https://rust-fuzz.github.io/book/introduction.html).
-// //!
-// //! ## Compatibility
-// //!
-// //! The [`WriterToBulkConsumer`] adaptor lets you treat a [`smol::io::AsyncWrite`] as a [`BulkConsumer`](ufotofu::BulkConsumer) of bytes.
-
-// #[macro_use]
-// mod macros;
-
-// // mod into_slice;
-// // pub use into_slice::IntoSlice_ as IntoSlice;
-
-// #[cfg(feature = "alloc")]
-// mod into_vec;
-// #[cfg(feature = "alloc")]
-// pub use into_vec::IntoVec_ as IntoVec;
-
-// mod map_item;
-// pub use map_item::MapItem;
-
-// mod map_final;
-// pub use map_final::MapFinal;
-
-// mod map_error;
-// pub use map_error::MapError;
-
-// mod limit;
-// pub use limit::Limit;
-
-// #[cfg(feature = "compat")]
-// mod writer;
-// #[cfg(feature = "compat")]
-// pub use writer::WriterToBulkConsumer;
-
-// #[cfg(test)]
-// mod invariant;
-// #[cfg(not(test))]
-// mod invariant_noop;
-// #[cfg(test)]
-// pub use invariant::Invariant;
-// #[cfg(not(test))]
-// pub use invariant_noop::Invariant;
-
-// #[cfg(feature = "dev")]
-// mod bulk_scrambler;
-// #[cfg(feature = "dev")]
-// pub use bulk_scrambler::{BulkConsumerOperation, BulkScrambler_ as BulkScrambler};
-
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// mod test_consumer;
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// pub use test_consumer::{TestConsumerBuilder, TestConsumer_ as TestConsumer};
+//! Useful functionality for working with consumers, beyond the [`ConsumerExt`], [`BufferedConsumerExt`], and [`BulkConsumerExt`] traits.
 
 use crate::errors::*;
 
@@ -110,39 +37,6 @@ pub trait Consumer {
     /// Must not be called after any function of this trait has returned an error,
     /// nor after [`close`](Consumer::close) was called.
     async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error>;
-
-    /// Tries to consume (clones of) *all* items in the given slice.
-    /// Reports an error if the slice could not be consumed completely.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    async fn consume_full_slice(
-        &mut self,
-        buf: &[Self::Item],
-    ) -> Result<(), ConsumeAtLeastError<Self::Error>>
-    where
-        Self::Item: Clone,
-    {
-        for i in 0..buf.len() {
-            let item = buf[i].clone();
-
-            if let Err(err) = self.consume(item).await {
-                return Err(ConsumeAtLeastError {
-                    count: i,
-                    reason: err,
-                });
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl<C: Consumer> Consumer for &mut C {
@@ -182,7 +76,6 @@ impl<C: Consumer> Consumer for alloc::boxed::Box<C> {
 ///
 /// By implementing `IntoConsumer` for a type, you define how it will be
 /// converted to a consumer.
-/// ```
 pub trait IntoConsumer {
     /// The type of repeated items being consumed.
     type Item;
@@ -246,12 +139,10 @@ impl<C: BufferedConsumer> BufferedConsumer for alloc::boxed::Box<C> {
 
 /// Conversion into a [`BufferedConsumer`].
 ///
-/// By implementing `IntoBufferedConsumer` for a type, you define how it will be
-/// converted to a buffered consumer.
-/// ```
+/// This trait is automatically implemented by implementing [`IntoConsumer`] with the associated consumer being a buffered consumer.
 pub trait IntoBufferedConsumer: IntoConsumer<IntoConsumer: BufferedConsumer> {}
 
-impl<C: BufferedConsumer> IntoBufferedConsumer for C {}
+impl<C> IntoBufferedConsumer for C where C: IntoConsumer<IntoConsumer: BufferedConsumer> {}
 
 /// A [`Consumer`] that is able to consume several items with a single function call, in order to
 /// improve on the efficiency of the [`Consumer`] trait. Semantically, there must be no
@@ -268,39 +159,6 @@ pub trait BulkConsumer: Consumer {
     /// [`close`](Consumer::close) was called.
     ///
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error>;
-
-    /// Tries to bulk-consume *all* items in the given slice.
-    /// Reports an error if the slice could not be consumed completely.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
-    ///
-    /// #### Implementation Notes
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    async fn bulk_consume_full_slice(
-        &mut self,
-        buf: &[Self::Item],
-    ) -> Result<(), ConsumeAtLeastError<Self::Error>> {
-        let mut consumed_so_far = 0;
-
-        while consumed_so_far < buf.len() {
-            match self.bulk_consume(&buf[consumed_so_far..]).await {
-                Ok(consumed_count) => consumed_so_far += consumed_count,
-                Err(err) => {
-                    return Err(ConsumeAtLeastError {
-                        count: consumed_so_far,
-                        reason: err,
-                    });
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 impl<C: BulkConsumer> BulkConsumer for &mut C {
@@ -318,9 +176,54 @@ impl<C: BulkConsumer> BulkConsumer for alloc::boxed::Box<C> {
 
 /// Conversion into a [`BulkConsumer`].
 ///
-/// By implementing `IntoBulkConsumer` for a type, you define how it will be
-/// converted to a bulk consumer.
-/// ```
+/// This trait is automatically implemented by implementing [`IntoConsumer`] with the associated consumer being a bulk consumer.
 pub trait IntoBulkConsumer: IntoConsumer<IntoConsumer: BulkConsumer> {}
 
-impl<C: BulkConsumer> IntoBulkConsumer for C {}
+impl<C> IntoBulkConsumer for C where C: IntoConsumer<IntoConsumer: BulkConsumer> {}
+
+// #[macro_use]
+// mod macros;
+
+// // mod into_slice;
+// // pub use into_slice::IntoSlice_ as IntoSlice;
+
+// #[cfg(feature = "alloc")]
+// mod into_vec;
+// #[cfg(feature = "alloc")]
+// pub use into_vec::IntoVec_ as IntoVec;
+
+// mod map_item;
+// pub use map_item::MapItem;
+
+// mod map_final;
+// pub use map_final::MapFinal;
+
+// mod map_error;
+// pub use map_error::MapError;
+
+// mod limit;
+// pub use limit::Limit;
+
+// #[cfg(feature = "compat")]
+// mod writer;
+// #[cfg(feature = "compat")]
+// pub use writer::WriterToBulkConsumer;
+
+// #[cfg(test)]
+// mod invariant;
+// #[cfg(not(test))]
+// mod invariant_noop;
+// #[cfg(test)]
+// pub use invariant::Invariant;
+// #[cfg(not(test))]
+// pub use invariant_noop::Invariant;
+
+// #[cfg(feature = "dev")]
+// mod bulk_scrambler;
+// #[cfg(feature = "dev")]
+// pub use bulk_scrambler::{BulkConsumerOperation, BulkScrambler_ as BulkScrambler};
+
+// #[cfg(all(feature = "dev", feature = "alloc"))]
+// mod test_consumer;
+// #[cfg(all(feature = "dev", feature = "alloc"))]
+// pub use test_consumer::{TestConsumerBuilder, TestConsumer_ as TestConsumer};

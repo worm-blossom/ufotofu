@@ -24,6 +24,11 @@ impl<I> IteratorAsProducer<I> {
     pub fn new(iter: I) -> Self {
         Self(iter)
     }
+
+    /// Retrieves the wrapped value.
+    pub fn into_inner(self) -> I {
+        self.0
+    }
 }
 
 impl<I> Producer for IteratorAsProducer<I>
@@ -53,6 +58,11 @@ impl<I> InfiniteIteratorAsProducer<I> {
     /// Wrap an infinite iterator to use it as a producer.
     pub fn new(iter: I) -> Self {
         Self(iter)
+    }
+
+    /// Retrieves the wrapped value.
+    pub fn into_inner(self) -> I {
+        self.0
     }
 }
 
@@ -343,8 +353,7 @@ impl<'a, T, E> Producer for ResultProducerMut<'a, T, E> {
 
 // Vec
 
-#[cfg(feature = "alloc")]
-implementIntoProducerForIntoIteratorType!(Vec<T>; T);
+// IntoProducer for Vec<T> is defined in `vec_producer`.
 
 #[cfg(feature = "alloc")]
 impl<'a, K> IntoProducer for &'a Vec<K> {
