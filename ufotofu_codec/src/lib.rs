@@ -67,3 +67,16 @@
 // pub use relative_encode::*;
 
 // pub mod adaptors;
+
+use ufotofu::prelude::*;
+fn test() {
+    pollster::block_on(async {
+        consume![vec![1, 2, 4] {
+            item it => print!("{it}, "),
+            final () => println!("and done!"),
+        }];
+
+        // Prints `1, 2, 4, and done!`.
+        Result::<(), Infallible>::Ok(())
+    });
+}

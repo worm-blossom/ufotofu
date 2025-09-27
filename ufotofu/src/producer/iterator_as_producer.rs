@@ -2,7 +2,7 @@ use core::convert::Infallible;
 
 use either::Either::{self, *};
 
-use crate::{IntoProducer, Producer};
+use crate::{producer::vec_producer, IntoProducer, Producer};
 
 #[cfg(feature = "alloc")]
 use alloc::{boxed::Box, vec::Vec};
@@ -158,14 +158,28 @@ impl<'a, T> IntoProducer for &'a mut [T] {
 // Boxed Slice
 
 #[cfg(feature = "alloc")]
+pub struct BoxedSliceIntoProducer<T>(vec_producer::IntoProducer<T>);
+
+#[cfg(feature = "alloc")]
+impl<T> Producer for BoxedSliceIntoProducer<T> {
+    type Item = T;
+    type Final = ();
+    type Error = Infallible;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        self.0.produce().await
+    }
+}
+
+#[cfg(feature = "alloc")]
 impl<T> IntoProducer for Box<[T]> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<Box<[T]> as IntoIterator>::IntoIter>;
+    type IntoProducer = BoxedSliceIntoProducer<T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(<Box<[T]> as IntoIterator>::into_iter(self))
+        BoxedSliceIntoProducer(self.into_vec().into_producer())
     }
 }
 
@@ -195,16 +209,7 @@ impl<'a, T> IntoProducer for &'a mut Box<[T]> {
 
 // Array
 
-impl<T, const N: usize> IntoProducer for [T; N] {
-    type Item = T;
-    type Final = ();
-    type Error = Infallible;
-    type IntoProducer = IteratorAsProducer<<[T; N] as IntoIterator>::IntoIter>;
-
-    fn into_producer(self) -> Self::IntoProducer {
-        IteratorAsProducer::new(self.into_iter())
-    }
-}
+// IntoProducer for `[T; N]` is defined in `array_producer`.
 
 impl<'a, T, const N: usize> IntoProducer for &'a [T; N] {
     type Item = &'a T;

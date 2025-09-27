@@ -36,6 +36,17 @@ impl<T> Producer for IntoProducer<T> {
     }
 }
 
+impl<T> crate::IntoProducer for Vec<T> {
+    type Item = T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IntoProducer<T>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IntoProducer(IteratorAsProducer::new(self.into_iter()))
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 // The below is how this *should* be implemented, allowing for `IntoBulkProducer`. //
 // Blocked on https://github.com/rust-lang/rust/issues/65816                       //

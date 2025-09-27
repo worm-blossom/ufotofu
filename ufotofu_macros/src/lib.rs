@@ -210,6 +210,7 @@ pub fn consume(input: TokenStream) -> TokenStream {
 }
 
 fn get_ufotofu_crate() -> proc_macro2::TokenStream {
+    // quote! { ufotofu }
     match crate_name("ufotofu").expect("ufotofu is present in `Cargo.toml`") {
         FoundCrate::Itself => quote!(crate),
         FoundCrate::Name(name) => {

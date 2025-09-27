@@ -1,4 +1,122 @@
-//! Useful functionality for working with producers, beyond the [`ProducerExt`], [`BufferedProducerExt`], and [`BulkProducerExt`] traits.
+//! Producers — values that asynchronously yield a sequence of items.
+//!
+//! [`Producer`] is an asynchronous generalisation of [`Iterator`]; a producer lazily produces a sequence of items. There are three core differences between [`Iterator::next`] and the analogous [`Producer::produce`]:
+//!
+//! - `produce` is asynchronous;
+//! - `produce` returns a result, allowing it to report fatal errors; and
+//! - `produce` uses an [`Either`] to distinguish between repeated items ([`Left`]) and the final item ([`Right`]).
+//!
+//! ```
+//! use ufotofu::prelude::*;
+//! # pollster::block_on(async{
+//! let mut my_first_producer = [1, 2, 4].into_producer();
+//!
+//! assert_eq!(my_first_producer.produce().await?, Left(1));
+//! assert_eq!(my_first_producer.produce().await?, Left(2));
+//! assert_eq!(my_first_producer.produce().await?, Left(4));
+//! assert_eq!(my_first_producer.produce().await?, Right(()));
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! ```
+//!
+//! Whereas an iterator yields a sequence of arbitrarily many values of type [`Iterator::Item`] followed by up to one value of type `()`, a producer yields a sequence of arbitrarily many values of type [`Producer::Item`] followed by either up to one value of type [`Producer::Final`] or by up to one value of type [`Producer::Error`]. Producers with `Final = ()` and `Error = Infallible` are effectively asynchronous iterators.
+//!
+//! [TODO no use after error or final]
+//!
+//! <br/>
+//!
+//! The [`consume`](crate::consume) macro provides a handy generalisation of `for` loop syntax. It can handle not only repeated items but optionally also final values and errors. The following example handles repeated items and the final item, and transparently propagates errors.
+//!
+//! ```
+//! use ufotofu::prelude::*;
+//! # fn main() {
+//! # pollster::block_on(async{
+//!
+//! // The macro converts `[1, 2, 4]` into a producer.
+//! consume![[1, 2, 4] {
+//!     item it => print!("{it}, "),
+//!     // We could remove the next line to simply ignore the final item.
+//!     final () => println!("and done!"),
+//!     // The following line would “catch” and print any producer error.
+//!     // error err => println!({err}),
+//! }];
+//! // Prints `1, 2, 4, and done!`.
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! # }
+//! ```
+//!
+//! The [`IntoProducer`] trait describes types which can be converted into producers. In the preceding example, this trait allowed the `consume!` macro to convert the array `[1, 2, 4]` into a producer of these three items. The standard library counterpart to `IntoProducer` is [`IntoIterator`].
+//!
+//! <br/>
+//!
+//! Every producer automatically implements the [`ProducerExt`] trait, which provides a host of useful methods for working with producers. [TODO add proper example]
+//!
+//! ```
+//! use ufotofu::prelude::*;
+//! # pollster::block_on(async{
+//! let mut p = [1, 2, 4].into_producer();
+//!
+//! assert_eq!(p.produce().await?, Left(1));
+//! assert_eq!(p.produce().await?, Left(2));
+//! assert_eq!(p.produce().await?, Left(4));
+//! assert_eq!(p.produce().await?, Right(()));
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! ```
+//!
+//! <br/>
+//!
+//! ---
+//!
+//! <br/>
+//!
+//! Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes an `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
+//!
+//! - `bulk_produce` is asynchronous;
+//! - `bulk_produce` can either fill the slice with regular items, yield an error, or yield the final item;
+//! - `bulk_produce` works with arbitrary `Producer::Item` and `Producer::Error` types, not just `u8` and `io::Error`; and
+//! - `bulk_produce` must not be called with an empty buffer, and it must write at least one item (when not signalling the end of the sequence with a final item or an error).
+//!
+//! ```
+//! use ufotofu::prelude::*;
+//! # pollster::block_on(async{
+//! let mut p = [1, 2, 4].into_producer();
+//! let mut buf = [0, 0];
+//!
+//! assert_eq!(p.bulk_produce(&mut buf[..]).await?, Left(2));
+//! assert_eq!(buf, [1, 2]);
+//! assert_eq!(p.bulk_produce(&mut buf[..]).await?, Left(1));
+//! assert_eq!(buf, [4, 2]);
+//! assert_eq!(p.bulk_produce(&mut buf[..]).await?, Right(()));
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! ```
+//!
+//! <br/>
+//!
+//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of the appropriate methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible. [TODO proper example]
+//!
+//! ```
+//! use ufotofu::prelude::*;
+//! # pollster::block_on(async{
+//! let mut p = [1, 2, 4].into_producer();
+//!
+//! assert_eq!(p.produce().await?, Left(1));
+//! assert_eq!(p.produce().await?, Left(2));
+//! assert_eq!(p.produce().await?, Left(4));
+//! assert_eq!(p.produce().await?, Right(()));
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! ```
+//!
+//! <br/>
+//!
+//! ---
+//!
+//! <br/>
+//!
+//! [TODO] BufferedProducer
 
 use either::Either::{self, *};
 
@@ -7,10 +125,16 @@ use crate::errors::*;
 mod iterator_as_producer;
 pub use iterator_as_producer::*;
 
+mod clone_from_slice;
+pub use clone_from_slice::*;
+
 #[cfg(feature = "alloc")]
 mod vec_producer;
 #[cfg(feature = "alloc")]
 pub use vec_producer::*;
+
+mod array_producer;
+pub use array_producer::*;
 
 /// A [`Producer`] produces a potentially infinite sequence, one item at a time.
 ///

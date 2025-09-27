@@ -10,7 +10,7 @@
 //! - [`Producer`] and [`Consumer`] replace [`Stream`](https://docs.rs/futures/latest/futures/prelude/trait.Stream.html) and [`Sink`](https://docs.rs/futures/latest/futures/prelude/trait.Sink.html), and
 //! - [`BulkProducer`] and [`BulkConsumer`] replace [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html) [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
 //!
-//! See the [`producer`] and [`consumer`] modules for ground-up introductions to the designs.  
+//! See the [`producer`] and [`consumer`] modules for thorough introductions to the designs.  
 //! Read on for the core design choices which distinguish `ufotofu` from the `futures` crate:
 //!
 //! ## Fundamental Design Choices
@@ -148,6 +148,10 @@ pub mod prelude {
         IntoBufferedConsumer, IntoBufferedProducer, IntoBulkConsumer, IntoBulkProducer,
         IntoConsumer, IntoProducer, Producer, ProducerExt,
     };
+
+    pub use either::Either::{self, Left, Right};
+
+    pub use core::convert::Infallible;
 }
 
 /// Pipes as many items as possible from a [`Producer`] into a [`Consumer`]. Then calls [`close`](Consumer::close)
