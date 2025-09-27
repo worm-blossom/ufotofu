@@ -129,17 +129,17 @@ use Either::*;
 ///
 /// Finally, here is a demonstration of what the macro expands to when all three kinds of cases are present, slightly simplified for readability:
 ///
-/// ```should_panic
+/// ```
 /// use ufotofu::prelude::*;
 /// # fn main() {
 /// # pollster::block_on(async{
 /// # let some_value = [1, 2, 4];
 ///
 /// consume![some_value {
-//      item 42 => todo!("handle 42"),
-///     item pattern_item => todo!("handle item"),
-///     final pattern_final => todo!("handle final"),
-///     error pattern_error => todo!("handle error"),
+///     item 42 => println!("42"),
+///     item pattern_item => println!("non-42 item"),
+///     final pattern_final => println!("final"),
+///     error pattern_error => println!("error"),
 /// }];
 /// # Result::<(), Infallible>::Ok(())
 /// # });
@@ -150,14 +150,17 @@ use Either::*;
 /// # fn expanded() {
 /// # pollster::block_on(async{
 /// # let some_value = [1, 2, 4];
+/// # fn handle_item(){}
+/// # fn handle_final(){}
+/// # fn handle_error(){}
 /// let mut producer = some_value.into_producer();
 ///
 /// loop {
 ///     match producer.produce().await {
-///         Ok(Left(42)) => todo!("handle 42"),
-///         Ok(Left(pattern_item)) => todo!("handle item"),
-///         Ok(Right(pattern_final)) => break todo!("handle final"),
-///         Err(pattern_error) => break todo!("handle_error"),
+///         Ok(Left(42)) => println!("42"),
+///         Ok(Left(pattern_item)) => println!("non-42 item"),
+///         Ok(Right(pattern_final)) => println!("final"),
+///         Err(pattern_error) => println!("error"),
 ///     }
 /// }
 /// # Result::<(), Infallible>::Ok(())

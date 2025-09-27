@@ -2,8 +2,8 @@
 
 use proc_macro::TokenStream;
 use proc_macro_crate::{FoundCrate, crate_name};
-use proc_macro2::{Span, TokenTree};
-use quote::{TokenStreamExt, quote};
+use proc_macro2::Span;
+use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{Block, Expr, Ident, Pat, Token, braced, parse_macro_input};
 
