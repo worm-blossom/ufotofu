@@ -9,7 +9,8 @@ use crate::prelude::*;
 /// A (bulk) producer that sequentially clones and produces the data in the given slice.
 ///
 /// See [`clone_from_slice`].
-/// ```
+///
+/// <br/>Counterpart: the [TODO] type.
 #[derive(Debug)]
 
 pub struct CloneFromSlice<'a, T>(&'a [T], usize);
@@ -23,13 +24,15 @@ pub struct CloneFromSlice<'a, T>(&'a [T], usize);
 ///
 /// let mut from_slice = clone_from_slice(&[1, 2, 3]);
 ///
-/// assert_eq!(Left(1), from_slice.produce().await?);
-/// assert_eq!(Left(2), from_slice.produce().await?);
-/// assert_eq!(Left(3), from_slice.produce().await?);
-/// assert_eq!(Right(()), from_slice.produce().await?);
+/// assert_eq!(from_slice.produce().await?, Left(1));
+/// assert_eq!(from_slice.produce().await?, Left(2));
+/// assert_eq!(from_slice.produce().await?, Left(3));
+/// assert_eq!(from_slice.produce().await?, Right(()));
 /// # Result::<(), Infallible>::Ok(())
 /// # });
 /// ```
+///
+/// <br/>Counterpart: the [TODO] function.
 pub fn clone_from_slice<'a, T>(slice: &'a [T]) -> CloneFromSlice<'a, T> {
     CloneFromSlice(slice, 0)
 }
@@ -158,6 +161,12 @@ impl<T: Clone> BulkProducer for CloneFromSlice<'_, T> {
         &mut self,
         buf: &mut [Self::Item],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        debug_assert_ne!(
+            buf.len(),
+            0,
+            "Must not call bulk_produce with an empty buffer."
+        );
+
         let amount = min(buf.len(), self.0.len() - self.1);
 
         if amount == 0 {

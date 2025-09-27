@@ -50,6 +50,8 @@ where
 /// An error emitted when a consumer is tasked to consume at least some number of items, but it could only consume a lower number of items.
 ///
 /// `E` is the [`Error`](crate::Consumer::Error) type of the consumer.
+///
+/// <br/>Counterpart: the [`ProduceAtLeastError`] type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConsumeAtLeastError<E> {
     /// The number of items that were consumed.
@@ -88,6 +90,8 @@ impl<E> ConsumeAtLeastError<E> {
 /// An error emitted when a producer is tasked to produce at least some number of items, but it could only produce a lower number of items.
 ///
 /// `F` is the [`Final`](crate::Producer::Final) type of the consumer, `E` is the [`Error`](crate::Producer::Error) type of the producer.
+///
+/// <br/>Counterpart: the [`ConsumeAtLeastError`] type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProduceAtLeastError<F, E> {
     /// How many items were produced.

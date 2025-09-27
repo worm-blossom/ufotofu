@@ -167,22 +167,20 @@ use Either::*;
 /// # });
 /// # }
 /// ```
+///
+/// <br/>Counterpart: the [`produce`] macro.
 pub use ufotofu_macros::consume;
 
 mod errors;
 pub use errors::*;
 
 pub mod producer;
-use producer::*;
 pub use producer::{
-    BufferedProducer, BulkProducer, IntoBufferedProducer, IntoBulkProducer, IntoProducer, Producer,
+    BufferedProducer, BulkProducer, BulkProducerExt, IntoBufferedProducer, IntoBulkProducer,
+    IntoProducer, Producer, ProducerExt,
 };
 
-pub mod producer_ext;
-pub use producer_ext::{BulkProducerExt, ProducerExt};
-
 pub mod consumer;
-use consumer::*;
 pub use consumer::{
     BufferedConsumer, BulkConsumer, Consumer, IntoBufferedConsumer, IntoBulkConsumer, IntoConsumer,
 };
@@ -260,96 +258,3 @@ where
         }
     }
 }
-
-// /// Pipes at most `count` many items from a [`Producer`] into a [`Consumer`],
-// /// and reports how many items were piped.
-// /// The producer has emitted its final item (which was then used to close the
-// /// consumer) if and only if the number of returned items is strictly less
-// /// than `count`.
-// pub async fn pipe_at_most<P, C>(
-//     producer: &mut P,
-//     consumer: &mut C,
-//     count: usize,
-// ) -> Result<usize, PipeError<P::Error, C::Error>>
-// where
-//     P: Producer,
-//     C: Consumer<Item = P::Item, Final = P::Final>,
-// {
-//      TODO use IntoProducer and IntoConsumer here
-//     let mut piped = 0;
-//     while piped < count {
-//         match producer.produce().await {
-//             Ok(Either::Left(item)) => {
-//                 match consumer.consume(item).await {
-//                     Ok(()) => {
-//                         piped += 1;
-//                         // Then continues with next loop iteration.
-//                     }
-//                     Err(consumer_error) => {
-//                         return Err(PipeError::Consumer(consumer_error));
-//                     }
-//                 }
-//             }
-//             Ok(Either::Right(final_value)) => match consumer.close(final_value).await {
-//                 Ok(()) => {
-//                     return Ok(piped);
-//                 }
-//                 Err(consumer_error) => {
-//                     return Err(PipeError::Consumer(consumer_error));
-//                 }
-//             },
-//             Err(producer_error) => {
-//                 return Err(PipeError::Producer(producer_error));
-//             }
-//         }
-//     }
-
-//     Ok(piped)
-// }
-
-// /// Efficiently pipes at most `count` many items from a [`BulkProducer`] into a [`BulkConsumer`] [`consumer.bulk_consume`](BulkConsumer::bulk_consume),
-// /// and reports how many items were piped.
-// /// The producer has emitted its final item (which was then used to close the
-// /// consumer) if and only if the number of returned items is strictly less
-// /// than `count`.
-// pub async fn bulk_pipe_at_most<P, C>(
-//     producer: &mut P,
-//     consumer: &mut C,
-//     count: usize,
-// ) -> Result<usize, PipeError<P::Error, C::Error>>
-// where
-//     P: BulkProducer,
-//     P::Item: Clone,
-//     C: BulkConsumer<Item = P::Item, Final = P::Final>,
-// {
-//     let mut piped = 0;
-//     while piped < count {
-//         match producer.expose_items().await {
-//             Ok(Either::Left(slots)) => {
-//                 let max_slots = min(count - piped, slots.len());
-//                 let amount = match consumer.bulk_consume(&slots[..max_slots]).await {
-//                     Ok(amount) => amount,
-//                     Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
-//                 };
-//                 match producer.consider_produced(amount).await {
-//                     Ok(()) => {
-//                         piped += amount;
-//                         // Then continues with next loop iteration.
-//                     }
-//                     Err(producer_error) => return Err(PipeError::Producer(producer_error)),
-//                 };
-//             }
-//             Ok(Either::Right(final_value)) => {
-//                 match consumer.close(final_value).await {
-//                     Ok(()) => return Ok(piped),
-//                     Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
-//                 };
-//             }
-//             Err(producer_error) => {
-//                 return Err(PipeError::Producer(producer_error));
-//             }
-//         }
-//     }
-
-//     Ok(piped)
-// }

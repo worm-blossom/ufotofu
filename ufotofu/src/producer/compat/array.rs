@@ -1,21 +1,41 @@
-// Modified from `core::array::IntoIter`.
+//! Producer functionality for [`[T; N]`](core::array).
+//!
+//! Specifically, the module provides
+//!
+//! - an [`IntoProducer`] impl for `[T; N]`,
+//! - an [`IntoProducer`] impl for `&[T; N]`, and
+//! - an [`IntoProducer`] impl for `&mut [T; N]`.
+//!
+//! <br/>Counterpart: the [`ufotofu::consumer::compat::array`] module.
 
 use core::{cmp::min, convert::Infallible, fmt, mem::ManuallyDrop};
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    producer::compat::{iterator_to_producer, IteratorToProducer},
+};
 
-/// A producer that moves items out of an array.
+/// The producer of the [`IntoProducer`] impl of `[T; N]`.
 ///
-/// This `struct` is created by the `into_producer` method on [`[T; N]`](https://doc.rust-lang.org/std/primitive.array.html)
-/// (provided by the [`IntoProducer`] trait).
+/// Implements [`BulkProducer`].
 ///
 /// # Example
 ///
 /// ```
 /// use ufotofu::prelude::*;
-/// let arr = [0, 1, 2];
-/// let p = arr.into_producer();
+/// # pollster::block_on(async{
+/// let arr = [1, 2, 4];
+/// let mut p = arr.into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(1));
+/// assert_eq!(p.produce().await?, Left(2));
+/// assert_eq!(p.produce().await?, Left(4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
 /// ```
+///
+/// <br/>Counterpart: the [TODO] type.
 pub struct IntoProducer<const N: usize, T> {
     arr: ManuallyDrop<[T; N]>,
     /// Core invariant: everything in `&self.arr[self.offset..]` we still have ownership of,
@@ -153,6 +173,12 @@ impl<const N: usize, T> BulkProducer for IntoProducer<N, T> {
         &mut self,
         buf: &mut [Self::Item],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        debug_assert_ne!(
+            buf.len(),
+            0,
+            "Must not call bulk_produce with an empty buffer."
+        );
+
         let amount = min(buf.len(), self.len());
 
         if amount == 0 {
@@ -183,5 +209,91 @@ impl<const N: usize, T> Drop for IntoProducer<N, T> {
                 core::ptr::drop_in_place(unproduced);
             }
         }
+    }
+}
+
+/// The producer of the [`IntoProducer`] impl of `&[T; N]`.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let arr_ref = &[1, 2, 4];
+/// let mut p = arr_ref.into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(&1));
+/// assert_eq!(p.produce().await?, Left(&2));
+/// assert_eq!(p.produce().await?, Left(&4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: [TODO].
+pub struct IntoProducerRef<'s, T, const N: usize>(
+    IteratorToProducer<<&'s [T; N] as IntoIterator>::IntoIter>,
+);
+
+impl<'s, T, const N: usize> Producer for IntoProducerRef<'s, T, N> {
+    type Item = &'s T;
+    type Final = ();
+    type Error = Infallible;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        self.0.produce().await
+    }
+}
+
+impl<'s, T, const N: usize> crate::IntoProducer for &'s [T; N] {
+    type Item = &'s T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IntoProducerRef<'s, T, N>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
+    }
+}
+
+/// The producer of the [`IntoProducer`] impl of `&mut [T; N]`.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut arr = [1, 2, 4];
+/// let mut p = (&mut arr).into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(&mut 1));
+/// let mut mutable_ref = p.produce().await?.unwrap_left();
+/// *mutable_ref = 17;
+/// assert_eq!(p.produce().await?, Left(&mut 4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// assert_eq!(arr, [1, 17, 4]);
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: [TODO].
+pub struct IntoProducerMut<'s, T, const N: usize>(
+    IteratorToProducer<<&'s mut [T; N] as IntoIterator>::IntoIter>,
+);
+
+impl<'s, T, const N: usize> Producer for IntoProducerMut<'s, T, N> {
+    type Item = &'s mut T;
+    type Final = ();
+    type Error = Infallible;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        self.0.produce().await
+    }
+}
+
+impl<'s, T, const N: usize> crate::IntoProducer for &'s mut [T; N] {
+    type Item = &'s mut T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IntoProducerMut<'s, T, N>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IntoProducerMut(iterator_to_producer(self.into_iter()))
     }
 }

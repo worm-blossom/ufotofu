@@ -1,28 +1,45 @@
-////////////////////////////////////////////////////////////////////////////////////
-// This cannot be done properly on stable until Vec::into_raw_parts stabilises =( //
-// Non-bulk boring implementation below for now.                                  //
-////////////////////////////////////////////////////////////////////////////////////
+//! Producer functionality for [`Vec`].
+//!
+//! Specifically, the module provides
+//!
+//! - an [`IntoProducer`] impl for `Vec<T>`,
+//! - an [`IntoProducer`] impl for `&Vec<T>`, and
+//! - an [`IntoProducer`] impl for `&mut Vec<T>`.
+//!
+//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// The consuming producer cannot be done properly on stable until Vec::into_raw_parts stabilises =( //
+// Non-bulk boring implementation below for now.                                                    //
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 use core::convert::Infallible;
 
 use alloc::vec::Vec;
-use either::Either;
 
-use crate::{producer::IteratorAsProducer, Producer};
+use crate::{
+    prelude::*,
+    producer::compat::{iterator_to_producer, IteratorToProducer},
+};
 
-pub struct IntoProducer<T>(IteratorAsProducer<<Vec<T> as IntoIterator>::IntoIter>);
-
-impl<T> IntoProducer<T> {
-    /// Wrap a finite iterator to use it as a producer.
-    pub fn new(vec: Vec<T>) -> Self {
-        Self(IteratorAsProducer::new(vec.into_iter()))
-    }
-
-    /// Retrieves the wrapped value.
-    pub fn into_inner(self) -> alloc::vec::IntoIter<T> {
-        self.0.into_inner()
-    }
-}
+/// The producer of the [`IntoProducer`] impl of [`Vec`].
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let v = vec![1, 2, 4];
+/// let mut p = v.into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(1));
+/// assert_eq!(p.produce().await?, Left(2));
+/// assert_eq!(p.produce().await?, Left(4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: [TODO].
+pub struct IntoProducer<T>(IteratorToProducer<<Vec<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
     type Item = T;
@@ -43,14 +60,96 @@ impl<T> crate::IntoProducer for Vec<T> {
     type IntoProducer = IntoProducer<T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducer(IteratorAsProducer::new(self.into_iter()))
+        IntoProducer(iterator_to_producer(self.into_iter()))
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// The below is how this *should* be implemented, allowing for `IntoBulkProducer`. //
-// Blocked on https://github.com/rust-lang/rust/issues/65816                       //
-/////////////////////////////////////////////////////////////////////////////////////
+/// The producer of the [`IntoProducer`] impl of `&Vec<T>`.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let vec_ref = &vec![1, 2, 4];
+/// let mut p = vec_ref.into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(&1));
+/// assert_eq!(p.produce().await?, Left(&2));
+/// assert_eq!(p.produce().await?, Left(&4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: [TODO].
+pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s Vec<T> as IntoIterator>::IntoIter>);
+
+impl<'s, T> Producer for IntoProducerRef<'s, T> {
+    type Item = &'s T;
+    type Final = ();
+    type Error = Infallible;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        self.0.produce().await
+    }
+}
+
+impl<'s, T> crate::IntoProducer for &'s Vec<T> {
+    type Item = &'s T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IntoProducerRef<'s, T>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
+    }
+}
+
+/// The producer of the [`IntoProducer`] impl of `&mut Vec<T>`.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut v = vec![1, 2, 4];
+/// let mut p = (&mut v).into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(&mut 1));
+/// let mut mutable_ref = p.produce().await?.unwrap_left();
+/// *mutable_ref = 17;
+/// assert_eq!(p.produce().await?, Left(&mut 4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// assert_eq!(v, vec![1, 17, 4]);
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: [TODO].
+pub struct IntoProducerMut<'s, T>(IteratorToProducer<<&'s mut Vec<T> as IntoIterator>::IntoIter>);
+
+impl<'s, T> Producer for IntoProducerMut<'s, T> {
+    type Item = &'s mut T;
+    type Final = ();
+    type Error = Infallible;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        self.0.produce().await
+    }
+}
+
+impl<'s, T> crate::IntoProducer for &'s mut Vec<T> {
+    type Item = &'s mut T;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = IntoProducerMut<'s, T>;
+
+    fn into_producer(self) -> Self::IntoProducer {
+        IntoProducerMut(iterator_to_producer(self.into_iter()))
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+// The below is how the consuming producer *should* be implemented, allowing for `IntoBulkProducer`. //
+// Blocked on https://github.com/rust-lang/rust/issues/65816                                         //
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // // Modified from `std::vec::IntoIter`.
 

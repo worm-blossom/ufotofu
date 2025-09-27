@@ -7,6 +7,8 @@ use crate::Producer;
 impl<P> ProducerExt for P where P: Producer {}
 
 /// An extension trait for [`Producer`] that provides a variety of convenient combinator functions.
+///
+/// <br/>Counterpart: the [`ConsumerExt`](crate::ConsumerExt) trait.
 pub trait ProducerExt: Producer {
     /// Tries to produce a regular item, and reports an error if the final item was produced instead.
     ///
@@ -19,6 +21,8 @@ pub trait ProducerExt: Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
+    ///
+    /// <br/>Counterpart: the [TODO] method.
     async fn produce_item(
         &mut self,
     ) -> Result<Self::Item, ProduceAtLeastError<Self::Final, Self::Error>> {
@@ -47,6 +51,8 @@ pub trait ProducerExt: Producer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
+    ///
+    /// <br/>Counterpart: the [TODO] method
     async fn overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],
@@ -89,6 +95,8 @@ pub trait BulkProducerExt: BulkProducer {
     ///
     /// This is a trait method for convenience, you should never need to
     /// replace the default implementation.
+    ///
+    /// <br/>Counterpart: the [TODO] method
     async fn bulk_overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],

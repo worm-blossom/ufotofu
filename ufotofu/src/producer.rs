@@ -25,7 +25,7 @@
 //!
 //! <br/>
 //!
-//! The [`consume`](crate::consume) macro provides a handy generalisation of `for` loop syntax. It can handle not only repeated items but optionally also final values and errors. The following example handles repeated items and the final item, and transparently propagates errors.
+//! The [`consume`] macro provides a handy generalisation of `for` loop syntax. It can handle not only repeated items but optionally also final values and errors. The following example handles repeated items and the final item, and transparently propagates errors.
 //!
 //! ```
 //! use ufotofu::prelude::*;
@@ -65,13 +65,7 @@
 //! # });
 //! ```
 //!
-//! <br/>
-//!
-//! ---
-//!
-//! <br/>
-//!
-//! Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes an `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
+//! <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes an `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
 //!
 //! - `bulk_produce` is asynchronous;
 //! - `bulk_produce` can either fill the slice with regular items, yield an error, or yield the final item;
@@ -110,22 +104,14 @@
 //! # });
 //! ```
 //!
-//! <br/>
+//! <br/>[TODO] BufferedProducer
 //!
-//! ---
-//!
-//! <br/>
-//!
-//! [TODO] BufferedProducer
+//! <br/>Counterpart: the [`consumer`] module.
 
-use core::convert::Infallible;
+use crate::prelude::*;
 
-use either::Either::{self, *};
-
-use crate::errors::*;
-
-mod iterator_as_producer;
-pub use iterator_as_producer::*;
+mod producer_ext;
+pub use producer_ext::*;
 
 mod clone_from_slice;
 pub use clone_from_slice::*;
@@ -133,21 +119,17 @@ pub use clone_from_slice::*;
 mod empty;
 pub use empty::*;
 
-#[cfg(feature = "alloc")]
-mod vec_producer;
-#[cfg(feature = "alloc")]
-pub use vec_producer::*;
+pub mod compat;
 
-mod array_producer;
-pub use array_producer::*;
-
-/// A [`Producer`] produces a potentially infinite sequence, one item at a time.
+/// A [`Producer`] produces a potentially infinite sequence, one item at a time. [TODO]
 ///
 /// The sequence consists of an arbitrary number of values of type [`Self::Item`], followed by
 /// up to one value of type [`Self::Final`]. If you intend for the sequence to be infinite, use
-/// [`Infallible`](core::convert::Infallible) for [`Self::Final`].
+/// [`Infallible`] for [`Self::Final`].
 ///
 /// A producer may signal an error of type [`Self::Error`] instead of producing an item (whether repeated or final).
+///
+/// <br/>Counterpart: the [`Consumer`] trait.
 #[must_use = "producers are lazy and do nothing unless consumed"]
 pub trait Producer {
     /// The sequence produced by this producer starts with *arbitrarily many* values of this type.
@@ -206,7 +188,9 @@ impl Producer for Infallible {
 /// collection of some kind.
 ///
 /// One benefit of implementing `IntoIterator` is that your type will [work
-/// with the `consume!` macro](crate::consume).
+/// with the `consume!` macro](consume).
+///
+/// <br/>Counterpart: the [`IntoConsumer`] trait.
 pub trait IntoProducer {
     /// The type of repeated items being produced.
     type Item;
@@ -248,6 +232,8 @@ impl IntoProducer for () {
 }
 
 /// A [`Producer`] that can eagerly perform side-effects to prepare values for later yielding.
+///
+/// <br/>Counterpart: the [`BufferedConsumer`] trait.
 pub trait BufferedProducer: Producer {
     /// Asks the producer to prepare some values for yielding.
     ///
@@ -259,6 +245,8 @@ pub trait BufferedProducer: Producer {
     /// #### Invariants
     ///
     /// Must not be called after any function of this trait has returned a final item or an error.
+    ///
+    /// <br/>Counterpart: the [`BufferedConsumer::flush`] method.
     async fn slurp(&mut self) -> Result<(), Self::Error>;
 }
 
@@ -284,16 +272,20 @@ impl BufferedProducer for Infallible {
 /// Conversion into a [`BufferedProducer`].
 ///
 /// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a buffered producer.
+///
+/// <br/>Counterpart: the [`IntoBufferedConsumer`] trait.
 pub trait IntoBufferedProducer: IntoProducer<IntoProducer: BufferedProducer> {}
 
 impl<P> IntoBufferedProducer for P where P: IntoProducer<IntoProducer: BufferedProducer> {}
 
 /// A [`Producer`] that is able to produce several items with a single function call, in order to
 /// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
-/// between producing items in bulk or one item at a time.
+/// between producing items in bulk or one item at a time. [TODO]
+///
+/// <br/>Counterpart: the [`BulkConsumer`] trait.
 pub trait BulkProducer: Producer {
     /// Produces a non-zero number of items by writing them into a given buffer and returning how
-    /// many items were produced. The contents of the passed buffer do not influence the behaviour of this method.
+    /// many items were produced. The contents of the passed buffer do not influence the behaviour of this method. [TODO]
     ///
     /// After this function returns the final item, or after it returns an error, no further
     /// functions of this trait may be invoked.
@@ -307,6 +299,8 @@ pub trait BulkProducer: Producer {
     /// #### Implementation Notes
     ///
     /// This function must not read the contents of `buf`; its observable semantics must not depend on the contents of `buf` (with the sole exception of running the desctructors of items in `buf` it overwrites).
+    ///
+    /// <br/>Counterpart: the [`BulkConsumer::bulk_consume`] method.
     async fn bulk_produce(
         &mut self,
         buf: &mut [Self::Item],
@@ -344,59 +338,8 @@ impl BulkProducer for Infallible {
 /// Conversion into a [`BulkProducer`].
 ///
 /// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a bulk producer.
+///
+/// <br/>Counterpart: the [`IntoBulkConsumer`] trait.
 pub trait IntoBulkProducer: IntoProducer<IntoProducer: BulkProducer> {}
 
 impl<P> IntoBulkProducer for P where P: IntoProducer<IntoProducer: BulkProducer> {}
-
-// #[macro_use]
-// mod macros;
-
-// mod from_slice;
-// pub use from_slice::FromSlice_ as FromSlice;
-
-// mod from_boxed_slice;
-// pub use from_boxed_slice::FromBoxedSlice_ as FromBoxedSlice;
-
-// mod empty;
-// pub use empty::Empty_ as Empty;
-
-// mod map_item;
-// pub use map_item::MapItem;
-
-// mod map_final;
-// pub use map_final::MapFinal;
-
-// mod map_error;
-// pub use map_error::MapError;
-
-// mod limit;
-// pub use limit::Limit;
-
-// #[cfg(feature = "alloc")]
-// mod merge;
-// #[cfg(feature = "alloc")]
-// pub use merge::Merge;
-
-// #[cfg(feature = "compat")]
-// mod reader;
-// #[cfg(feature = "compat")]
-// pub use reader::{BufReaderToBulkProducer, ReaderToBulkProducer};
-
-// #[cfg(test)]
-// mod invariant;
-// #[cfg(not(test))]
-// mod invariant_noop;
-// #[cfg(test)]
-// pub use invariant::Invariant;
-// #[cfg(not(test))]
-// pub use invariant_noop::Invariant;
-
-// #[cfg(feature = "dev")]
-// mod bulk_scrambler;
-// #[cfg(feature = "dev")]
-// pub use bulk_scrambler::{BulkProducerOperation, BulkScrambler_ as BulkScrambler};
-
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// mod test_producer;
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// pub use test_producer::{TestProducerBuilder, TestProducer_ as TestProducer};

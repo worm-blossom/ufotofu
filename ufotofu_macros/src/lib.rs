@@ -1,5 +1,3 @@
-#![feature(proc_macro_diagnostic)]
-
 use proc_macro::TokenStream;
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::Span;
