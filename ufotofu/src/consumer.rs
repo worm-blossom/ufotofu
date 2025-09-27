@@ -1,4 +1,8 @@
+//! [TODO]
+//!
 //! Useful functionality for working with consumers, beyond the [`ConsumerExt`], [`BufferedConsumerExt`], and [`BulkConsumerExt`] traits.
+
+use core::convert::Infallible;
 
 use crate::errors::*;
 
@@ -41,9 +45,7 @@ pub trait Consumer {
 
 impl<C: Consumer> Consumer for &mut C {
     type Item = C::Item;
-
     type Final = C::Final;
-
     type Error = C::Error;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
@@ -58,9 +60,7 @@ impl<C: Consumer> Consumer for &mut C {
 #[cfg(feature = "alloc")]
 impl<C: Consumer> Consumer for alloc::boxed::Box<C> {
     type Item = C::Item;
-
     type Final = C::Final;
-
     type Error = C::Error;
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
@@ -69,6 +69,20 @@ impl<C: Consumer> Consumer for alloc::boxed::Box<C> {
 
     async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
         self.as_mut().close(fin).await
+    }
+}
+
+impl Consumer for Infallible {
+    type Item = Infallible;
+    type Final = Infallible;
+    type Error = Infallible;
+
+    async fn consume(&mut self, _item: Self::Item) -> Result<(), Self::Error> {
+        unreachable!()
+    }
+
+    async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
+        unreachable!()
     }
 }
 
@@ -137,6 +151,12 @@ impl<C: BufferedConsumer> BufferedConsumer for alloc::boxed::Box<C> {
     }
 }
 
+impl BufferedConsumer for Infallible {
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        unreachable!()
+    }
+}
+
 /// Conversion into a [`BufferedConsumer`].
 ///
 /// This trait is automatically implemented by implementing [`IntoConsumer`] with the associated consumer being a buffered consumer.
@@ -171,6 +191,12 @@ impl<C: BulkConsumer> BulkConsumer for &mut C {
 impl<C: BulkConsumer> BulkConsumer for alloc::boxed::Box<C> {
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
         self.as_mut().bulk_consume(buf).await
+    }
+}
+
+impl BulkConsumer for Infallible {
+    async fn bulk_consume(&mut self, _buf: &[Self::Item]) -> Result<usize, Self::Error> {
+        unreachable!()
     }
 }
 

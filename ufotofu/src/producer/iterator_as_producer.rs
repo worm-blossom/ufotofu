@@ -86,7 +86,6 @@ where
 
 #[macro_use]
 mod macros {
-    #[macro_export]
     macro_rules! implementIntoProducerForIntoIteratorType {
         ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ; $item:ty) => {
             impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?
@@ -106,7 +105,6 @@ mod macros {
         }
     }
 
-    #[macro_export]
     macro_rules! infiniteImplementIntoProducerForIntoIteratorType {
         ($outer:ident $(< $( $lt:tt $( : $clt:tt $(+ $dlt:tt )* )? ),+ >)? ; $item:ty) => {
             impl $(< $( $lt $( : $clt $(+ $dlt )* )? ),+ >)?

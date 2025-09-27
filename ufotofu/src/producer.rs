@@ -21,7 +21,7 @@
 //!
 //! Whereas an iterator yields a sequence of arbitrarily many values of type [`Iterator::Item`] followed by up to one value of type `()`, a producer yields a sequence of arbitrarily many values of type [`Producer::Item`] followed by either up to one value of type [`Producer::Final`] or by up to one value of type [`Producer::Error`]. Producers with `Final = ()` and `Error = Infallible` are effectively asynchronous iterators.
 //!
-//! [TODO no use after error or final]
+//! It is forbidden to call `produce` after a producer has emitted an error or its final item. Any such call may result in unspecified (but safe) behaviour.
 //!
 //! <br/>
 //!
@@ -118,6 +118,8 @@
 //!
 //! [TODO] BufferedProducer
 
+use core::convert::Infallible;
+
 use either::Either::{self, *};
 
 use crate::errors::*;
@@ -127,6 +129,9 @@ pub use iterator_as_producer::*;
 
 mod clone_from_slice;
 pub use clone_from_slice::*;
+
+mod empty;
+pub use empty::*;
 
 #[cfg(feature = "alloc")]
 mod vec_producer;
@@ -165,9 +170,7 @@ pub trait Producer {
 
 impl<P: Producer> Producer for &mut P {
     type Item = P::Item;
-
     type Final = P::Final;
-
     type Error = P::Error;
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
@@ -178,13 +181,21 @@ impl<P: Producer> Producer for &mut P {
 #[cfg(feature = "alloc")]
 impl<P: Producer> Producer for alloc::boxed::Box<P> {
     type Item = P::Item;
-
     type Final = P::Final;
-
     type Error = P::Error;
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.as_mut().produce().await
+    }
+}
+
+impl Producer for Infallible {
+    type Item = Infallible;
+    type Final = Infallible;
+    type Error = Infallible;
+
+    async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        unreachable!()
     }
 }
 
@@ -224,6 +235,18 @@ impl<P: Producer> IntoProducer for P {
     }
 }
 
+impl IntoProducer for () {
+    type Item = Infallible;
+    type Final = ();
+    type Error = Infallible;
+    type IntoProducer = Empty<()>;
+
+    #[inline]
+    fn into_producer(self) -> Self::IntoProducer {
+        empty(())
+    }
+}
+
 /// A [`Producer`] that can eagerly perform side-effects to prepare values for later yielding.
 pub trait BufferedProducer: Producer {
     /// Asks the producer to prepare some values for yielding.
@@ -249,6 +272,12 @@ impl<P: BufferedProducer> BufferedProducer for &mut P {
 impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
     async fn slurp(&mut self) -> Result<(), Self::Error> {
         self.as_mut().slurp().await
+    }
+}
+
+impl BufferedProducer for Infallible {
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        unreachable!()
     }
 }
 
@@ -300,6 +329,15 @@ impl<P: BulkProducer> BulkProducer for alloc::boxed::Box<P> {
         buf: &mut [Self::Item],
     ) -> Result<Either<usize, Self::Final>, Self::Error> {
         self.as_mut().bulk_produce(buf).await
+    }
+}
+
+impl BulkProducer for Infallible {
+    async fn bulk_produce(
+        &mut self,
+        _buf: &mut [Self::Item],
+    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+        unreachable!()
     }
 }
 
