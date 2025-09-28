@@ -4,7 +4,7 @@
 //!
 //! - `produce` is asynchronous;
 //! - `produce` returns a result, allowing it to report fatal errors; and
-//! - `produce` uses an [`Either`] to distinguish between repeated items ([`Left`]) and the final item ([`Right`]).
+//! - `produce` uses an [`Either`] to distinguish between repeated items ([`Left`]) and the final value ([`Right`]).
 //!
 //! ```
 //! use ufotofu::prelude::*;
@@ -19,13 +19,13 @@
 //! # });
 //! ```
 //!
-//! Whereas an iterator yields a sequence of arbitrarily many values of type [`Iterator::Item`] followed by up to one value of type `()`, a producer yields a sequence of arbitrarily many values of type [`Producer::Item`] followed by either up to one value of type [`Producer::Final`] or by up to one value of type [`Producer::Error`]. Producers with `Final = ()` and `Error = Infallible` are effectively asynchronous iterators.
+//! Whereas an *iterator* yields a sequence of arbitrarily many values of type [`Iterator::Item`] followed by up to one value of type `()`, a producer yields a sequence of arbitrarily many values of type [`Producer::Item`] followed by either up to one value of type [`Producer::Final`] or by up to one value of type [`Producer::Error`]. Producers with `Final = ()` and `Error = Infallible` are effectively asynchronous iterators.
 //!
-//! It is forbidden to call `produce` after a producer has emitted an error or its final item. Any such call may result in unspecified (but safe) behaviour.
+//! It is forbidden to call `produce` after a producer has emitted an error or its final value. Any such call may result in unspecified (but safe) behaviour.
 //!
 //! <br/>
 //!
-//! The [`consume`] macro provides a handy generalisation of `for` loop syntax. It can handle not only repeated items but optionally also final values and errors. The following example handles repeated items and the final item, and transparently propagates errors.
+//! The [`consume`] macro provides a handy generalisation of `for` loop syntax. It can handle not only repeated items but optionally also final values and errors. The following example handles repeated items and the final value, and transparently propagates errors.
 //!
 //! ```
 //! use ufotofu::prelude::*;
@@ -35,7 +35,7 @@
 //! // The macro converts `[1, 2, 4]` into a producer.
 //! consume![[1, 2, 4] {
 //!     item it => print!("{it}, "),
-//!     // We could remove the next line to simply ignore the final item.
+//!     // We could remove the next line to simply ignore the final value.
 //!     final () => println!("and done!"),
 //!     // The following line would “catch” and print any producer error.
 //!     // error err => println!({err}),
@@ -50,27 +50,14 @@
 //!
 //! <br/>
 //!
-//! Every producer automatically implements the [`ProducerExt`] trait, which provides a host of useful methods for working with producers. [TODO add proper example]
-//!
-//! ```
-//! use ufotofu::prelude::*;
-//! # pollster::block_on(async{
-//! let mut p = [1, 2, 4].into_producer();
-//!
-//! assert_eq!(p.produce().await?, Left(1));
-//! assert_eq!(p.produce().await?, Left(2));
-//! assert_eq!(p.produce().await?, Left(4));
-//! assert_eq!(p.produce().await?, Right(()));
-//! # Result::<(), Infallible>::Ok(())
-//! # });
-//! ```
+//! Every producer automatically implements the [`ProducerExt`] trait, which provides useful methods for working with producers.
 //!
 //! <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes an `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
 //!
 //! - `bulk_produce` is asynchronous;
-//! - `bulk_produce` can either fill the slice with regular items, yield an error, or yield the final item;
+//! - `bulk_produce` can either fill the slice with regular items, yield an error, or yield the final value;
 //! - `bulk_produce` works with arbitrary `Producer::Item` and `Producer::Error` types, not just `u8` and `io::Error`; and
-//! - `bulk_produce` must not be called with an empty buffer, and it must write at least one item (when not signalling the end of the sequence with a final item or an error).
+//! - `bulk_produce` must not be called with an empty buffer, and it must write at least one item (when not signalling the end of the sequence with a final value or an error).
 //!
 //! ```
 //! use ufotofu::prelude::*;
@@ -89,24 +76,11 @@
 //!
 //! <br/>
 //!
-//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of the appropriate methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible. [TODO proper example]
+//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of the appropriate methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
 //!
-//! ```
-//! use ufotofu::prelude::*;
-//! # pollster::block_on(async{
-//! let mut p = [1, 2, 4].into_producer();
+//! <br/>Finally, the [`BufferedProducer`] trait describes producers which can eagerly perform side-effects in order to make subsequent `produce` and `bulk_produce` calls run more efficiently. The classic example is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
 //!
-//! assert_eq!(p.produce().await?, Left(1));
-//! assert_eq!(p.produce().await?, Left(2));
-//! assert_eq!(p.produce().await?, Left(4));
-//! assert_eq!(p.produce().await?, Right(()));
-//! # Result::<(), Infallible>::Ok(())
-//! # });
-//! ```
-//!
-//! <br/>[TODO] BufferedProducer
-//!
-//! <br/>Counterpart: the [`consumer`] module.
+//! <br/>The counterpart to the [`producer`] module is the [`consumer`] module.
 
 use crate::prelude::*;
 
@@ -121,13 +95,28 @@ pub use empty::*;
 
 pub mod compat;
 
-/// A [`Producer`] produces a potentially infinite sequence, one item at a time. [TODO]
+/// A [`Producer`] lazily yields a sequence of items.
 ///
-/// The sequence consists of an arbitrary number of values of type [`Self::Item`], followed by
-/// up to one value of type [`Self::Final`]. If you intend for the sequence to be infinite, use
-/// [`Infallible`] for [`Self::Final`].
+/// The sequence consists of an arbitrary number of items of type [`Producer::Item`], optionally terminated by either a value of type [`Producer::Final`] or a value of type [`Producer::Error`].
 ///
-/// A producer may signal an error of type [`Self::Error`] instead of producing an item (whether repeated or final).
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p = [1, 2, 4].into_producer();
+///
+/// assert_eq!(p.produce().await?, Left(1));
+/// assert_eq!(p.produce().await?, Left(2));
+/// assert_eq!(p.produce().await?, Left(4));
+/// assert_eq!(p.produce().await?, Right(()));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// Calling code must uphold the following invariants:
+///
+/// - Do not call methods after any method has yielded a final value or an error.
+/// - Do not use the producer after dropping any `Future` returned by any of its methods, unless the dropped future has been polled to completion.
+/// - Do not use the producer after catching an unwinding panic.
 ///
 /// <br/>Counterpart: the [`Consumer`] trait.
 #[must_use = "producers are lazy and do nothing unless consumed"]
@@ -139,14 +128,17 @@ pub trait Producer {
     /// The type of errors the producer can emit instead of doing its job.
     type Error;
 
-    /// Attempts to produce the next item, which is either a regular repeated item or the final item.
+    /// Attempts to produce the next item, which is either a regular repeated item or the final value.
+    /// The call method fail, returning an `Err` instead.
     ///
-    /// After this function returns the final item, or after it returns an error, no further
-    /// functions of this trait may be invoked.
+    /// After this function returns the final value or after it returns an error, no further
+    /// methods of this trait may be invoked.
     ///
-    /// #### Invariants
+    /// # Invariants
     ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
+    /// Must not be called after any method of this trait has returned a final value or an error.
+    ///
+    /// <br/>Counterpart: the [`Consumer::consume`] method (when this returns a regular item), or the [`Consumer::close`] method (when this returns a final value).
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
 }
 
@@ -231,74 +223,45 @@ impl IntoProducer for () {
     }
 }
 
-/// A [`Producer`] that can eagerly perform side-effects to prepare values for later yielding.
+/// A [`BulkProducer`] is a producer that can emit multiple items with a single method call, by placing many items in the buffer argument of the [`BulkProducer::bulk_produce`] method and returning how many items were placed. Semantically, there should be no difference between bulk production or item-by-item production.
 ///
-/// <br/>Counterpart: the [`BufferedConsumer`] trait.
-pub trait BufferedProducer: Producer {
-    /// Asks the producer to prepare some values for yielding.
-    ///
-    /// This function allows the [`Producer`] to perform side effects that it would otherwise
-    /// have to do just-in-time when [`produce`](Producer::produce) gets called.
-    ///
-    /// After this function returns an error, no further functions of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
-    ///
-    /// <br/>Counterpart: the [`BufferedConsumer::flush`] method.
-    async fn slurp(&mut self) -> Result<(), Self::Error>;
-}
-
-impl<P: BufferedProducer> BufferedProducer for &mut P {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        (*self).slurp().await
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        self.as_mut().slurp().await
-    }
-}
-
-impl BufferedProducer for Infallible {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        unreachable!()
-    }
-}
-
-/// Conversion into a [`BufferedProducer`].
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p = [1, 2, 4].into_producer();
+/// let mut buf = [0, 0];
 ///
-/// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a buffered producer.
-///
-/// <br/>Counterpart: the [`IntoBufferedConsumer`] trait.
-pub trait IntoBufferedProducer: IntoProducer<IntoProducer: BufferedProducer> {}
-
-impl<P> IntoBufferedProducer for P where P: IntoProducer<IntoProducer: BufferedProducer> {}
-
-/// A [`Producer`] that is able to produce several items with a single function call, in order to
-/// improve on the efficiency of the [`Producer`] trait. Semantically, there must be no difference
-/// between producing items in bulk or one item at a time. [TODO]
+/// assert_eq!(p.bulk_produce(&mut buf[..]).await?, Left(2));
+/// assert_eq!(buf, [1, 2]);
+/// assert_eq!(p.bulk_produce(&mut buf[..]).await?, Left(1));
+/// assert_eq!(buf, [4, 2]);
+/// assert_eq!(p.bulk_produce(&mut buf[..]).await?, Right(()));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
 ///
 /// <br/>Counterpart: the [`BulkConsumer`] trait.
 pub trait BulkProducer: Producer {
-    /// Produces a non-zero number of items by writing them into a given buffer and returning how
-    /// many items were produced. The contents of the passed buffer do not influence the behaviour of this method. [TODO]
+    /// Attempts to produce one or more regular items, or the final value. This method may fail, returning an `Err` instead.
     ///
-    /// After this function returns the final item, or after it returns an error, no further
-    /// functions of this trait may be invoked.
+    /// When producing regular items, the producer must write the items to a contiguous prefix of the given buffer, and then return the number of written items via `Ok(Left(amount))`. The `amount` must not be zero. The producer can assume that the buffer it receives is non-empty.
     ///
-    /// #### Invariants
+    /// If this method returns the final value or an error, it must not mutate the buffer.
     ///
-    /// Must not be called after any function of this trait has returned a final item or an error.
+    /// The contents of the passed buffer must not influence the behaviour of this method, implementations should preferrably not read the buffer contents at all.
     ///
-    /// Despite implementations of this method ignoring the contents of `buf`, `buf` must still contain initialised memory.
+    /// After this function returns the final value or after it returns an error, no further
+    /// methods of this trait may be invoked.
     ///
-    /// #### Implementation Notes
+    /// The restrictions on implementations (write at least one item, do not read the buffer, only mutate a prefix, no mutation when returning the final value or an error) and for callers (do not pass an empty buffer, do not call after a final value or error) all follow from a single axiom: in terms of the produced sequence of values, bulk production must be indistinguishable from repeatedly calling `produce`. The only difference should be improved performance.
     ///
-    /// This function must not read the contents of `buf`; its observable semantics must not depend on the contents of `buf` (with the sole exception of running the desctructors of items in `buf` it overwrites).
+    /// This has direct consequences returning errors. Suppose `bulk_produce` is called with a buffer of length seven. The bulk producer determines that it could produce four items before having to report an error. The bulk producer must then write the four items and return `Ok(Left(4))`. Only on the next producer method call can it report the error.
+    ///
+    /// # Invariants
+    ///
+    /// Must not be called after any method of this trait has returned a final value or an error.
+    ///
+    /// Must not be called with an empty buffer.
     ///
     /// <br/>Counterpart: the [`BulkConsumer::bulk_consume`] method.
     async fn bulk_produce(
@@ -343,3 +306,52 @@ impl BulkProducer for Infallible {
 pub trait IntoBulkProducer: IntoProducer<IntoProducer: BulkProducer> {}
 
 impl<P> IntoBulkProducer for P where P: IntoProducer<IntoProducer: BulkProducer> {}
+
+/// A [`BufferedProducer`] is a producer that can eagerly perform side-effects to make subsequent `produce` (and `bulk_produce`) calls more efficient.
+///
+/// The classic example of a [`BufferedProducer`] is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
+///
+/// <br/>Counterpart: the [`BufferedConsumer`] trait.
+pub trait BufferedProducer: Producer {
+    /// Attempts to perform any effectful actions that might make future calls to `produce` and `bulk_produce` more efficient.
+    ///
+    /// This function allows the [`Producer`] to perform side-effects that it would otherwise
+    /// have to do just-in-time when [`produce`](Producer::produce) or [`bulk_produce`](Producer::bulk_produce) get called.
+    ///
+    /// After this function returns an error, no further methods of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any method of this trait has returned a final value or an error.
+    ///
+    /// <br/>Counterpart: the [`BufferedConsumer::flush`] method.
+    async fn slurp(&mut self) -> Result<(), Self::Error>;
+}
+
+impl<P: BufferedProducer> BufferedProducer for &mut P {
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        (*self).slurp().await
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        self.as_mut().slurp().await
+    }
+}
+
+impl BufferedProducer for Infallible {
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        unreachable!()
+    }
+}
+
+/// Conversion into a [`BufferedProducer`].
+///
+/// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a buffered producer.
+///
+/// <br/>Counterpart: the [`IntoBufferedConsumer`] trait.
+pub trait IntoBufferedProducer: IntoProducer<IntoProducer: BufferedProducer> {}
+
+impl<P> IntoBufferedProducer for P where P: IntoProducer<IntoProducer: BufferedProducer> {}

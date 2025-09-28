@@ -18,7 +18,7 @@ use crate::{BufferedProducer, BulkProducer, Producer};
 ///
 /// The wrapper enforces the following invariants:
 ///
-/// - Must not call trait methods of [`Producer`], [`BufferedProducer`], or [`BulkProducer`] after the final item has been returned.
+/// - Must not call trait methods of [`Producer`], [`BufferedProducer`], or [`BulkProducer`] after the final value has been returned.
 /// - Must not call any of the trait methods after any of them have returned
 ///   an error.
 /// - Must not call [`consider_produced`](BulkProducer::consider_produced) with an amount exceeding the number of available exposed items.

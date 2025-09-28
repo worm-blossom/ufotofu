@@ -96,7 +96,7 @@ impl<E> ConsumeAtLeastError<E> {
 pub struct ProduceAtLeastError<F, E> {
     /// How many items were produced.
     pub count: usize,
-    /// Did producing enough items fail because the producer reached its final item, or because it yielded an error?
+    /// Did producing enough items fail because the producer reached its final value, or because it yielded an error?
     pub reason: Either<F, E>,
 }
 
@@ -118,7 +118,7 @@ impl<F, E> Display for ProduceAtLeastError<F, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.reason {
             Either::Left(_) => {
-                write!(f, "The producer was unable to produce sufficiently many items due to emitting its final item; it stopped after producing {} items", self.count)
+                write!(f, "The producer was unable to produce sufficiently many items due to emitting its final value; it stopped after producing {} items", self.count)
             }
             Either::Right(_) => {
                 write!(f, "The producer was unable to produce sufficiently many items due to an error; it stopped after producing {} items", self.count)

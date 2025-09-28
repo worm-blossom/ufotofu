@@ -32,7 +32,7 @@ pub trait Consumer {
     /// nor after [`close`](Consumer::close) was called.
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error>;
 
-    /// Attempts to consume the final item.
+    /// Attempts to consume the final value.
     ///
     /// After this function is called, no further functions of this trait may be invoked.
     ///

@@ -2,7 +2,7 @@ use either::Either::{self, Left, Right};
 
 use crate::{BufferedProducer, BulkProducer, Producer};
 
-/// A `Producer` adaptor that maps the final item emitted by an inner `Producer` with a function.
+/// A `Producer` adaptor that maps the final value emitted by an inner `Producer` with a function.
 #[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct MapFinal<P, F> {
     inner: P,
@@ -18,7 +18,7 @@ impl<P: core::fmt::Debug, F> core::fmt::Debug for MapFinal<P, F> {
 }
 
 impl<P, F> MapFinal<P, F> {
-    /// Returns a producer that behaves like the wrapped producer except it passes its final item through a function.
+    /// Returns a producer that behaves like the wrapped producer except it passes its final value through a function.
     pub fn new(inner: P, fun: F) -> Self {
         MapFinal {
             inner,
@@ -40,11 +40,9 @@ impl<B, P: Producer, F: FnOnce(P::Final) -> B> Producer for MapFinal<P, F> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         match self.inner.produce().await? {
             Left(item) => Ok(Left(item)),
-            Right(fin) => {
-                Ok(Right((self.fun.take().expect(
-                    "Must not produce items after the final item has been emitted",
-                ))(fin)))
-            }
+            Right(fin) => Ok(Right((self.fun.take().expect(
+                "Must not produce items after the final value has been emitted",
+            ))(fin))),
         }
     }
 }
@@ -64,11 +62,9 @@ impl<B, P: BulkProducer, F: FnOnce(P::Final) -> B> BulkProducer for MapFinal<P, 
     {
         match self.inner.expose_items().await? {
             Left(items) => Ok(Left(items)),
-            Right(fin) => {
-                Ok(Right((self.fun.take().expect(
-                    "Must not produce items after the final item has been emitted",
-                ))(fin)))
-            }
+            Right(fin) => Ok(Right((self.fun.take().expect(
+                "Must not produce items after the final value has been emitted",
+            ))(fin))),
         }
     }
 

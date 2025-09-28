@@ -47,7 +47,7 @@ impl<P> Limit<P> {
 
 impl<P: Producer> Producer for Limit<P> {
     type Item = P::Item;
-    /// `None` if the limit was reached, `Some` if the wrapped producer emitted its final item before the limit was reached.
+    /// `None` if the limit was reached, `Some` if the wrapped producer emitted its final value before the limit was reached.
     type Final = Option<P::Final>;
     type Error = P::Error;
 

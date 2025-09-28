@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use crate::{BufferedConsumer, BulkConsumer, Consumer};
 
-/// A `Consumer` adaptor that maps the final items it receives with a function before passing it to the inner consumer.
+/// A `Consumer` adaptor that maps the final values it receives with a function before passing it to the inner consumer.
 #[derive(Copy, Clone, Hash, Ord, Eq, PartialEq, PartialOrd)]
 pub struct MapFinal<C, F, B> {
     inner: C,
@@ -19,7 +19,7 @@ impl<C: core::fmt::Debug, F, B> core::fmt::Debug for MapFinal<C, F, B> {
 }
 
 impl<C, F, B> MapFinal<C, F, B> {
-    /// Returns a Consumer that forwards to the wrapped Consumer but passes its final item through a function.
+    /// Returns a Consumer that forwards to the wrapped Consumer but passes its final value through a function.
     pub fn new(inner: C, fun: F) -> Self {
         MapFinal {
             inner,

@@ -53,7 +53,7 @@ impl<Item, Final, Error> TestConsumer_<Item, Final, Error> {
         self.0.as_ref().consumed()
     }
 
-    /// Obtains a reference to the final item that was consumed, or `None` if the consumer had not been closed so far.
+    /// Obtains a reference to the final value that was consumed, or `None` if the consumer had not been closed so far.
     ///
     /// ```
     /// use ufotofu::consumer::*;

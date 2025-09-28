@@ -10,7 +10,7 @@ impl<P> ProducerExt for P where P: Producer {}
 ///
 /// <br/>Counterpart: the [`ConsumerExt`](crate::ConsumerExt) trait.
 pub trait ProducerExt: Producer {
-    /// Tries to produce a regular item, and reports an error if the final item was produced instead.
+    /// Tries to produce a regular item, and reports an error if the final value was produced instead.
     ///
     /// #### Invariants
     ///

@@ -48,7 +48,7 @@ where
         loop {
             match (self.produce_future1.as_mut(), self.produce_future2.as_mut()) {
                 (None, None) => {
-                    panic!("Must not call produce after a producer emitted its final item")
+                    panic!("Must not call produce after a producer emitted its final value")
                 }
                 (Some(fut), None) => {
                     let (result, mut p1) = (&mut *fut).await;
