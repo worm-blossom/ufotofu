@@ -22,11 +22,11 @@ pub struct CloneFromSlice<'a, T>(&'a [T], usize);
 /// use ufotofu::producer::clone_from_slice;
 /// # pollster::block_on(async {
 ///
-/// let mut from_slice = clone_from_slice(&[1, 2, 3]);
+/// let mut from_slice = clone_from_slice(&[1, 2, 4]);
 ///
 /// assert_eq!(from_slice.produce().await?, Left(1));
 /// assert_eq!(from_slice.produce().await?, Left(2));
-/// assert_eq!(from_slice.produce().await?, Left(3));
+/// assert_eq!(from_slice.produce().await?, Left(4));
 /// assert_eq!(from_slice.produce().await?, Right(()));
 /// # Result::<(), Infallible>::Ok(())
 /// # });
@@ -44,7 +44,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     /// # use ufotofu::prelude::*;
     /// use ufotofu::producer::clone_from_slice;
     ///
-    /// let mut from_slice = clone_from_slice(&[1, 2, 3]);
+    /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
     /// # pollster::block_on(async {
     /// assert_eq!(0, from_slice.offset());
@@ -52,7 +52,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     /// assert_eq!(1, from_slice.offset());
     /// assert_eq!(Left(2), from_slice.produce().await?);
     /// assert_eq!(2, from_slice.offset());
-    /// assert_eq!(Left(3), from_slice.produce().await?);
+    /// assert_eq!(Left(4), from_slice.produce().await?);
     /// assert_eq!(3, from_slice.offset());
     /// assert_eq!(Right(()), from_slice.produce().await?);
     /// assert_eq!(3, from_slice.offset());
@@ -69,7 +69,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     /// # use ufotofu::prelude::*;
     /// use ufotofu::producer::clone_from_slice;
     ///
-    /// let mut from_slice = clone_from_slice(&[1, 2, 3]);
+    /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
     /// # pollster::block_on(async {
     /// assert!(from_slice.produced().is_empty());
@@ -77,10 +77,10 @@ impl<'a, T> CloneFromSlice<'a, T> {
     /// assert_eq!(&[1], from_slice.produced());
     /// assert_eq!(Left(2), from_slice.produce().await?);
     /// assert_eq!(&[1, 2], from_slice.produced());
-    /// assert_eq!(Left(3), from_slice.produce().await?);
-    /// assert_eq!(&[1, 2, 3], from_slice.produced());
+    /// assert_eq!(Left(4), from_slice.produce().await?);
+    /// assert_eq!(&[1, 2, 4], from_slice.produced());
     /// assert_eq!(Right(()), from_slice.produce().await?);
-    /// assert_eq!(&[1, 2, 3], from_slice.produced());
+    /// assert_eq!(&[1, 2, 4], from_slice.produced());
     /// # Result::<(), Infallible>::Ok(())
     /// # });
     /// ```
@@ -94,15 +94,15 @@ impl<'a, T> CloneFromSlice<'a, T> {
     /// # use ufotofu::prelude::*;
     /// use ufotofu::producer::clone_from_slice;
     ///
-    /// let mut from_slice = clone_from_slice(&[1, 2, 3]);
+    /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
     /// # pollster::block_on(async {
-    /// assert_eq!(&[1, 2, 3], from_slice.remaining());
+    /// assert_eq!(&[1, 2, 4], from_slice.remaining());
     /// assert_eq!(Left(1), from_slice.produce().await?);
-    /// assert_eq!(&[2, 3], from_slice.remaining());
+    /// assert_eq!(&[2, 4], from_slice.remaining());
     /// assert_eq!(Left(2), from_slice.produce().await?);
-    /// assert_eq!(&[3], from_slice.remaining());
-    /// assert_eq!(Left(3), from_slice.produce().await?);
+    /// assert_eq!(&[4], from_slice.remaining());
+    /// assert_eq!(Left(4), from_slice.produce().await?);
     /// assert!(from_slice.remaining().is_empty());
     /// assert_eq!(Right(()), from_slice.produce().await?);
     /// assert!(from_slice.remaining().is_empty());
@@ -119,12 +119,12 @@ impl<'a, T> CloneFromSlice<'a, T> {
     /// # use ufotofu::prelude::*;
     /// use ufotofu::producer::clone_from_slice;
     ///
-    /// let mut from_slice = clone_from_slice(&[1, 2, 3]);
+    /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
     /// # pollster::block_on(async {
     /// assert_eq!(Left(1), from_slice.produce().await?);
     /// assert_eq!(Left(2), from_slice.produce().await?);
-    /// assert_eq!(&[1, 2, 3], from_slice.into_inner());
+    /// assert_eq!(&[1, 2, 4], from_slice.into_inner());
     /// # Result::<(), Infallible>::Ok(())
     /// # });
     /// ```

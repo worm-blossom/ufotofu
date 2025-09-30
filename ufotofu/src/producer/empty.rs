@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 /// A (bulk) producer that immediately yields a predetermined final value.
 ///
-/// <br/>Counterpart: the [TODO] type.
+/// <br/>Counterpart: the [`consumer::Full`] type.
 #[derive(Debug, Clone, Copy)]
 
 pub struct Empty<T>(Option<T>);
@@ -25,7 +25,7 @@ pub struct Empty<T>(Option<T>);
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [TODO] function.
+/// <br/>Counterpart: the [consumer::full] function.
 pub fn empty<T>(fin: T) -> Empty<T> {
     Empty(Some(fin))
 }

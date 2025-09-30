@@ -81,11 +81,11 @@ use crate::prelude::*;
 mod consumer_ext;
 pub use consumer_ext::*;
 
-mod clone_from_slice;
-pub use clone_from_slice::*;
+mod move_into_slice;
+pub use move_into_slice::*;
 
-mod empty;
-pub use empty::*;
+mod full;
+pub use full::*;
 
 pub mod compat;
 
@@ -235,7 +235,7 @@ impl IntoConsumer for () {
 
     #[inline]
     fn into_consumer(self) -> Self::IntoConsumer {
-        full(())
+        full()
     }
 }
 
@@ -302,9 +302,9 @@ impl BulkConsumer for Infallible {
 /// This trait is automatically implemented by implementing [`IntoConsumer`] with the associated consumer being a bulk consumer.
 ///
 /// <br/>Counterpart: the [`IntoBulkProducer`] trait.
-pub trait IntoBulkProducer: IntoProducer<IntoProducer: BulkProducer> {}
+pub trait IntoBulkConsumer: IntoConsumer<IntoConsumer: BulkConsumer> {}
 
-impl<C> IntoBulkProducer for C where C: IntoProducer<IntoProducer: BulkProducer> {}
+impl<C> IntoBulkConsumer for C where C: IntoConsumer<IntoConsumer: BulkConsumer> {}
 
 /// A [`BufferedConsumer`] is a consumer that can delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient.
 ///
