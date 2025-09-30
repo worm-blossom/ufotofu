@@ -16,7 +16,7 @@ pub struct Empty<T>(Option<T>);
 ///
 /// ```
 /// # use ufotofu::prelude::*;
-/// use ufotofu::producer::empty;
+/// use producer::empty;
 /// # pollster::block_on(async {
 ///
 /// let mut p = empty(17);

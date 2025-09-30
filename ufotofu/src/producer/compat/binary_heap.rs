@@ -5,7 +5,7 @@
 //! - an [`IntoProducer`] impl for `BinaryHeap<T>`, and
 //! - an [`IntoProducer`] impl for `&BinaryHeap<T>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 use std::collections::BinaryHeap;
 
@@ -32,9 +32,9 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerBinaryHeap<T>(IteratorToProducer<<BinaryHeap<T> as IntoIterator>::IntoIter>);
+pub struct IntoProducer<T>(IteratorToProducer<<BinaryHeap<T> as IntoIterator>::IntoIter>);
 
-impl<T> Producer for IntoProducerBinaryHeap<T> {
+impl<T> Producer for IntoProducer<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -48,10 +48,10 @@ impl<T> crate::IntoProducer for BinaryHeap<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerBinaryHeap<T>;
+    type IntoProducer = IntoProducer<T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerBinaryHeap(iterator_to_producer(
+        IntoProducer(iterator_to_producer(
             <BinaryHeap<T> as IntoIterator>::into_iter(self),
         ))
     }
@@ -75,11 +75,11 @@ impl<T> crate::IntoProducer for BinaryHeap<T> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerBinaryHeapRef<'s, T>(
+pub struct IntoProducerRef<'s, T>(
     IteratorToProducer<<&'s BinaryHeap<T> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, T> Producer for IntoProducerBinaryHeapRef<'s, T> {
+impl<'s, T> Producer for IntoProducerRef<'s, T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
@@ -93,9 +93,9 @@ impl<'s, T> crate::IntoProducer for &'s BinaryHeap<T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerBinaryHeapRef<'s, T>;
+    type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerBinaryHeapRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
     }
 }

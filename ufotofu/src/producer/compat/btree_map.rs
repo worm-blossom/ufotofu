@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&BTreeMap<K, V>`, and
 //! - an [`IntoProducer`] impl for `&mut BTreeMap<K, V>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 use std::collections::BTreeMap;
 
@@ -33,11 +33,9 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerBTreeMap<K, V>(
-    IteratorToProducer<<BTreeMap<K, V> as IntoIterator>::IntoIter>,
-);
+pub struct IntoProducer<K, V>(IteratorToProducer<<BTreeMap<K, V> as IntoIterator>::IntoIter>);
 
-impl<K, V> Producer for IntoProducerBTreeMap<K, V> {
+impl<K, V> Producer for IntoProducer<K, V> {
     type Item = (K, V);
     type Final = ();
     type Error = Infallible;
@@ -51,10 +49,10 @@ impl<K, V> crate::IntoProducer for BTreeMap<K, V> {
     type Item = (K, V);
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerBTreeMap<K, V>;
+    type IntoProducer = IntoProducer<K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerBTreeMap(iterator_to_producer(
+        IntoProducer(iterator_to_producer(
             <BTreeMap<K, V> as IntoIterator>::into_iter(self),
         ))
     }
@@ -78,11 +76,11 @@ impl<K, V> crate::IntoProducer for BTreeMap<K, V> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerBTreeMapRef<'s, K, V>(
+pub struct IntoProducerRef<'s, K, V>(
     IteratorToProducer<<&'s BTreeMap<K, V> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, K, V> Producer for IntoProducerBTreeMapRef<'s, K, V> {
+impl<'s, K, V> Producer for IntoProducerRef<'s, K, V> {
     type Item = (&'s K, &'s V);
     type Final = ();
     type Error = Infallible;
@@ -96,10 +94,10 @@ impl<'s, K, V> crate::IntoProducer for &'s BTreeMap<K, V> {
     type Item = (&'s K, &'s V);
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerBTreeMapRef<'s, K, V>;
+    type IntoProducer = IntoProducerRef<'s, K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerBTreeMapRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
     }
 }
 
@@ -123,11 +121,11 @@ impl<'s, K, V> crate::IntoProducer for &'s BTreeMap<K, V> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerBTreeMapMut<'s, K, V>(
+pub struct IntoProducerMut<'s, K, V>(
     IteratorToProducer<<&'s mut BTreeMap<K, V> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, K, V> Producer for IntoProducerBTreeMapMut<'s, K, V> {
+impl<'s, K, V> Producer for IntoProducerMut<'s, K, V> {
     type Item = (&'s K, &'s mut V);
     type Final = ();
     type Error = Infallible;
@@ -141,9 +139,9 @@ impl<'s, K, V> crate::IntoProducer for &'s mut BTreeMap<K, V> {
     type Item = (&'s K, &'s mut V);
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerBTreeMapMut<'s, K, V>;
+    type IntoProducer = IntoProducerMut<'s, K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerBTreeMapMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.into_iter()))
     }
 }

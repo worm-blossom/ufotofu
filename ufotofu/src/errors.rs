@@ -97,7 +97,7 @@ pub struct ProduceAtLeastError<F, E> {
     /// How many items were produced.
     pub count: usize,
     /// Did producing enough items fail because the producer reached its final value, or because it yielded an error?
-    pub reason: Either<F, E>,
+    pub reason: Result<F, E>,
 }
 
 #[cfg(feature = "std")]
@@ -108,8 +108,8 @@ where
 {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match &self.reason {
-            Either::Left(_) => None,
-            Either::Right(err) => Some(err),
+            Ok(_) => None,
+            Err(err) => Some(err),
         }
     }
 }
@@ -117,10 +117,10 @@ where
 impl<F, E> Display for ProduceAtLeastError<F, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.reason {
-            Either::Left(_) => {
+            Ok(_) => {
                 write!(f, "The producer was unable to produce sufficiently many items due to emitting its final value; it stopped after producing {} items", self.count)
             }
-            Either::Right(_) => {
+            Err(_) => {
                 write!(f, "The producer was unable to produce sufficiently many items due to an error; it stopped after producing {} items", self.count)
             }
         }
@@ -129,7 +129,7 @@ impl<F, E> Display for ProduceAtLeastError<F, E> {
 
 impl<F, E> ProduceAtLeastError<F, E> {
     /// Consumes `self` and returns `self.reason`, effectively discarding `self.count`.
-    pub fn into_reason(self) -> Either<F, E> {
+    pub fn into_reason(self) -> Result<F, E> {
         self.reason
     }
 }

@@ -15,18 +15,20 @@ pub trait ConsumerExt: Consumer {
     ///
     /// ```
     /// use ufotofu::prelude::*;
+    /// use ufotofu::ConsumeAtLeastError;
     /// # pollster::block_on(async{
     /// let mut arr = [0, 0, 0];
     /// let mut c = (&mut arr).into_consumer();
     ///
     /// c.consume_full_slice(&[1, 2]).await?;
-    /// assert_eq!(arr, [1, 2]);
     ///
-    /// assert_eq!(c.consume_full_slice(&[4, 8]), Err(ConsumeAtLeastError {
+    /// assert_eq!(c.consume_full_slice(&[4, 8]).await, Err(ConsumeAtLeastError {
     ///     count: 1,
     ///     reason: (),
     /// }));
-    /// # Result::<(), Infallible>::Ok(())
+    ///
+    /// assert_eq!(arr, [1, 2, 4]);
+    /// # Result::<(), ConsumeAtLeastError<()>>::Ok(())
     /// # });
     /// ```
     ///
@@ -68,18 +70,20 @@ pub trait BulkConsumerExt: BulkConsumer {
     ///
     /// ```
     /// use ufotofu::prelude::*;
+    /// use ufotofu::ConsumeAtLeastError;
     /// # pollster::block_on(async{
     /// let mut arr = [0, 0, 0];
     /// let mut c = (&mut arr).into_consumer();
     ///
     /// c.bulk_consume_full_slice(&[1, 2]).await?;
-    /// assert_eq!(arr, [1, 2]);
     ///
-    /// assert_eq!(c.bulk_consume_full_slice(&[4, 8]), Err(ConsumeAtLeastError {
+    /// assert_eq!(c.bulk_consume_full_slice(&[4, 8]).await, Err(ConsumeAtLeastError {
     ///     count: 1,
     ///     reason: (),
     /// }));
-    /// # Result::<(), Infallible>::Ok(())
+    ///
+    /// assert_eq!(arr, [1, 2, 4]);
+    /// # Result::<(), ConsumeAtLeastError<()>>::Ok(())
     /// # });
     /// ```
     ///

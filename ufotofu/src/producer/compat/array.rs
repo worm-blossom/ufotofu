@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&[T; N]`, and
 //! - an [`IntoProducer`] impl for `&mut [T; N]`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::array`] module.
+//! <br/>Counterpart: the [`consumer::compat::array`] module.
 
 use core::{cmp::min, convert::Infallible, fmt, mem::ManuallyDrop};
 

@@ -8,11 +8,11 @@
 //! let mut my_first_consumer = vec![].into_consumer();
 //!
 //! my_first_consumer.consume(1).await?;
-//! my_first_consumer.consume(2).await?
-//! my_first_consumer.consume(4).await?
-//! my_first_consumer.close(()).await?
+//! my_first_consumer.consume(2).await?;
+//! my_first_consumer.consume(4).await?;
 //!
-//! assert_eq!(my_first_consumer.into_vec(), vec![1, 2, 4]);
+//! let vec: Vec<_> = my_first_consumer.into();
+//! assert_eq!(vec, vec![1, 2, 4]);
 //! # Result::<(), Infallible>::Ok(())
 //! # });
 //! ```
@@ -30,9 +30,8 @@
 //! let mut c = (&mut v).into_consumer();
 //!
 //! c.consume(1).await?;
-//! c.consume(2).await?
-//! c.consume(4).await?
-//! c.close(()).await?
+//! c.consume(2).await?;
+//! c.consume(4).await?;
 //!
 //! assert_eq!(v, vec![1, 2, 4]);
 //! # Result::<(), Infallible>::Ok(())
@@ -54,15 +53,14 @@
 //! ```
 //! use ufotofu::prelude::*;
 //! # pollster::block_on(async{
-//! let arr = [0, 0, 0];
+//! let mut arr = [0, 0, 0];
 //! let mut c = (&mut arr).into_consumer();
 //!
-//! assert_eq!(c.bulk_consume(&[1, 2]).await?, Left(2));
-//! assert_eq!(c.bulk_consume(&[4, 8]).await?, Left(1));
-//! c.close(()).await?;
+//! assert_eq!(c.bulk_consume(&[1, 2]).await?, 2);
+//! assert_eq!(c.bulk_consume(&[4, 8]).await?, 1);
 //!
 //! assert_eq!(arr, [1, 2, 4]);
-//! # Result::<(), Infallible>::Ok(())
+//! # Result::<(), ()>::Ok(())
 //! # });
 //! ```
 //!
@@ -100,9 +98,8 @@ pub mod compat;
 /// let mut c = (&mut v).into_consumer();
 ///
 /// c.consume(1).await?;
-/// c.consume(2).await?
-/// c.consume(4).await?
-/// c.close(()).await?
+/// c.consume(2).await?;
+/// c.consume(4).await?;
 ///
 /// assert_eq!(v, vec![1, 2, 4]);
 /// # Result::<(), Infallible>::Ok(())
@@ -183,11 +180,11 @@ impl Consumer for Infallible {
     type Final = Infallible;
     type Error = Infallible;
 
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+    async fn consume(&mut self, _item: Self::Item) -> Result<(), Self::Error> {
         unreachable!()
     }
 
-    async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
+    async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!()
     }
 }
@@ -244,15 +241,14 @@ impl IntoConsumer for () {
 /// ```
 /// use ufotofu::prelude::*;
 /// # pollster::block_on(async{
-/// let arr = [0, 0, 0];
+/// let mut arr = [0, 0, 0];
 /// let mut c = (&mut arr).into_consumer();
 ///
-/// assert_eq!(c.bulk_consume(&[1, 2]).await?, Left(2));
-/// assert_eq!(c.bulk_consume(&[4, 8]).await?, Left(1));
-/// c.close(()).await?;
+/// assert_eq!(c.bulk_consume(&[1, 2]).await?, 2);
+/// assert_eq!(c.bulk_consume(&[4, 8]).await?, 1);
 ///
 /// assert_eq!(arr, [1, 2, 4]);
-/// # Result::<(), Infallible>::Ok(())
+/// # Result::<(), ()>::Ok(())
 /// # });
 /// ```
 ///

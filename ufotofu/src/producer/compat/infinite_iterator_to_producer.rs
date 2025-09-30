@@ -14,7 +14,7 @@ pub struct InfiniteIteratorToProducer<I>(I);
 ///
 /// ```
 /// # use ufotofu::prelude::*;
-/// use ufotofu::producer::compat::infinite_iterator_to_producer;
+/// use producer::compat::infinite_iterator_to_producer;
 /// # pollster::block_on(async {
 ///
 /// let mut p = infinite_iterator_to_producer(core::iter::repeat(4));

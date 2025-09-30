@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&LinkedList<T>`, and
 //! - an [`IntoProducer`] impl for `&mut LinkedList<T>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 use std::collections::LinkedList;
 
@@ -33,9 +33,9 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerLinkedList<T>(IteratorToProducer<<LinkedList<T> as IntoIterator>::IntoIter>);
+pub struct IntoProducer<T>(IteratorToProducer<<LinkedList<T> as IntoIterator>::IntoIter>);
 
-impl<T> Producer for IntoProducerLinkedList<T> {
+impl<T> Producer for IntoProducer<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -49,10 +49,10 @@ impl<T> crate::IntoProducer for LinkedList<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerLinkedList<T>;
+    type IntoProducer = IntoProducer<T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerLinkedList(iterator_to_producer(
+        IntoProducer(iterator_to_producer(
             <LinkedList<T> as IntoIterator>::into_iter(self),
         ))
     }
@@ -76,11 +76,11 @@ impl<T> crate::IntoProducer for LinkedList<T> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerLinkedListRef<'s, T>(
+pub struct IntoProducerRef<'s, T>(
     IteratorToProducer<<&'s LinkedList<T> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, T> Producer for IntoProducerLinkedListRef<'s, T> {
+impl<'s, T> Producer for IntoProducerRef<'s, T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
@@ -94,10 +94,10 @@ impl<'s, T> crate::IntoProducer for &'s LinkedList<T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerLinkedListRef<'s, T>;
+    type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerLinkedListRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
     }
 }
 
@@ -121,11 +121,11 @@ impl<'s, T> crate::IntoProducer for &'s LinkedList<T> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerLinkedListMut<'s, T>(
+pub struct IntoProducerMut<'s, T>(
     IteratorToProducer<<&'s mut LinkedList<T> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, T> Producer for IntoProducerLinkedListMut<'s, T> {
+impl<'s, T> Producer for IntoProducerMut<'s, T> {
     type Item = &'s mut T;
     type Final = ();
     type Error = Infallible;
@@ -139,9 +139,9 @@ impl<'s, T> crate::IntoProducer for &'s mut LinkedList<T> {
     type Item = &'s mut T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerLinkedListMut<'s, T>;
+    type IntoProducer = IntoProducerMut<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerLinkedListMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.into_iter()))
     }
 }

@@ -14,7 +14,7 @@ pub struct IteratorToProducer<I>(I);
 ///
 /// ```
 /// # use ufotofu::prelude::*;
-/// use ufotofu::producer::compat::iterator_to_producer;
+/// use producer::compat::iterator_to_producer;
 /// # pollster::block_on(async {
 ///
 /// let mut p = iterator_to_producer(vec![1, 2, 4].into_iter());

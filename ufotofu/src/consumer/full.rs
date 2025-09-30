@@ -17,7 +17,7 @@ pub struct Full<T>(PhantomData<T>);
 ///
 /// ```
 /// # use ufotofu::prelude::*;
-/// use ufotofu::consumer::full;
+/// use consumer::full;
 /// # pollster::block_on(async {
 ///
 /// let mut c = full();

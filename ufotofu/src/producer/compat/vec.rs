@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&Vec<T>`, and
 //! - an [`IntoProducer`] impl for `&mut Vec<T>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // The consuming producer cannot be done properly on stable until Vec::into_raw_parts stabilises =( //

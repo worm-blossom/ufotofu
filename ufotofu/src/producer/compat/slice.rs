@@ -8,7 +8,7 @@
 //! - an [`IntoProducer`] impl for `&Box<[T]>`, and
 //! - an [`IntoProducer`] impl for `&mut Box<[T]>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::slice`] module.
+//! <br/>Counterpart: the [`consumer::compat::slice`] module.
 
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;

@@ -11,6 +11,7 @@ pub trait ProducerExt: Producer {
     ///
     /// ```
     /// use ufotofu::prelude::*;
+    /// use ufotofu::ProduceAtLeastError;
     /// # pollster::block_on(async{
     /// let mut p = [1, 2, 4].into_producer();
     ///
@@ -21,7 +22,7 @@ pub trait ProducerExt: Producer {
     ///     count: 0,
     ///     reason: Ok(()), // Would be an `Err` if `produce` would have errored.
     /// }));
-    /// # Result::<(), Infallible>::Ok(())
+    /// # Result::<(), ProduceAtLeastError<(), Infallible>>::Ok(())
     /// # });
     /// ```
     ///
@@ -33,11 +34,11 @@ pub trait ProducerExt: Producer {
             Ok(Left(item)) => Ok(item),
             Ok(Right(fin)) => Err(ProduceAtLeastError {
                 count: 0,
-                reason: Left(fin),
+                reason: Ok(fin),
             }),
             Err(err) => Err(ProduceAtLeastError {
                 count: 0,
-                reason: Right(err),
+                reason: Err(err),
             }),
         }
     }
@@ -50,6 +51,7 @@ pub trait ProducerExt: Producer {
     ///
     /// ```
     /// use ufotofu::prelude::*;
+    /// use ufotofu::ProduceAtLeastError;
     /// # pollster::block_on(async{
     /// let mut arr = [0, 0];
     /// let mut p = [1, 2, 4].into_producer();
@@ -57,11 +59,11 @@ pub trait ProducerExt: Producer {
     /// p.overwrite_full_slice(&mut arr[..]).await?;
     /// assert_eq!(arr, [1, 2]);
     ///
-    /// assert_eq!(p.overwrite_full_slice(&mut arr[..]), Err(ProduceAtLeastError {
+    /// assert_eq!(p.overwrite_full_slice(&mut arr[..]).await, Err(ProduceAtLeastError {
     ///     count: 1,
     ///     reason: Ok(()), // Would be an `Err` if `produce` would have errored.
     /// }));
-    /// # Result::<(), Infallible>::Ok(())
+    /// # Result::<(), ProduceAtLeastError<(), Infallible>>::Ok(())
     /// # });
     /// ```
     ///
@@ -76,13 +78,13 @@ pub trait ProducerExt: Producer {
                 Ok(Right(fin)) => {
                     return Err(ProduceAtLeastError {
                         count: i,
-                        reason: Left(fin),
+                        reason: Ok(fin),
                     })
                 }
                 Err(err) => {
                     return Err(ProduceAtLeastError {
                         count: i,
-                        reason: Right(err),
+                        reason: Err(err),
                     })
                 }
             }
@@ -106,6 +108,7 @@ pub trait BulkProducerExt: BulkProducer {
     ///
     /// ```
     /// use ufotofu::prelude::*;
+    /// use ufotofu::ProduceAtLeastError;
     /// # pollster::block_on(async{
     /// let mut arr = [0, 0];
     /// let mut p = [1, 2, 4].into_producer();
@@ -113,11 +116,11 @@ pub trait BulkProducerExt: BulkProducer {
     /// p.bulk_overwrite_full_slice(&mut arr[..]).await?;
     /// assert_eq!(arr, [1, 2]);
     ///
-    /// assert_eq!(p.bulk_overwrite_full_slice(&mut arr[..]), Err(ProduceAtLeastError {
+    /// assert_eq!(p.bulk_overwrite_full_slice(&mut arr[..]).await, Err(ProduceAtLeastError {
     ///     count: 1,
     ///     reason: Ok(()), // Would be an `Err` if `produce` would have errored.
     /// }));
-    /// # Result::<(), Infallible>::Ok(())
+    /// # Result::<(), ProduceAtLeastError<(), Infallible>>::Ok(())
     /// # });
     /// ```
     ///
@@ -134,13 +137,13 @@ pub trait BulkProducerExt: BulkProducer {
                 Ok(Right(fin)) => {
                     return Err(ProduceAtLeastError {
                         count: produced_so_far,
-                        reason: Left(fin),
+                        reason: Ok(fin),
                     });
                 }
                 Err(err) => {
                     return Err(ProduceAtLeastError {
                         count: produced_so_far,
-                        reason: Right(err),
+                        reason: Err(err),
                     });
                 }
             }

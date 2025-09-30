@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&HashMap<K, V>`, and
 //! - an [`IntoProducer`] impl for `&mut HashMap<K, V>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 use std::collections::HashMap;
 
@@ -42,9 +42,9 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerHashMap<K, V>(IteratorToProducer<<HashMap<K, V> as IntoIterator>::IntoIter>);
+pub struct IntoProducer<K, V>(IteratorToProducer<<HashMap<K, V> as IntoIterator>::IntoIter>);
 
-impl<K, V> Producer for IntoProducerHashMap<K, V> {
+impl<K, V> Producer for IntoProducer<K, V> {
     type Item = (K, V);
     type Final = ();
     type Error = Infallible;
@@ -58,10 +58,10 @@ impl<K, V> crate::IntoProducer for HashMap<K, V> {
     type Item = (K, V);
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerHashMap<K, V>;
+    type IntoProducer = IntoProducer<K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerHashMap(iterator_to_producer(
+        IntoProducer(iterator_to_producer(
             <HashMap<K, V> as IntoIterator>::into_iter(self),
         ))
     }
@@ -94,11 +94,11 @@ impl<K, V> crate::IntoProducer for HashMap<K, V> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerHashMapRef<'s, K, V>(
+pub struct IntoProducerRef<'s, K, V>(
     IteratorToProducer<<&'s HashMap<K, V> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, K, V> Producer for IntoProducerHashMapRef<'s, K, V> {
+impl<'s, K, V> Producer for IntoProducerRef<'s, K, V> {
     type Item = (&'s K, &'s V);
     type Final = ();
     type Error = Infallible;
@@ -112,10 +112,10 @@ impl<'s, K, V> crate::IntoProducer for &'s HashMap<K, V> {
     type Item = (&'s K, &'s V);
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerHashMapRef<'s, K, V>;
+    type IntoProducer = IntoProducerRef<'s, K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerHashMapRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
     }
 }
 
@@ -149,11 +149,11 @@ impl<'s, K, V> crate::IntoProducer for &'s HashMap<K, V> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerHashMapMut<'s, K, V>(
+pub struct IntoProducerMut<'s, K, V>(
     IteratorToProducer<<&'s mut HashMap<K, V> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, K, V> Producer for IntoProducerHashMapMut<'s, K, V> {
+impl<'s, K, V> Producer for IntoProducerMut<'s, K, V> {
     type Item = (&'s K, &'s mut V);
     type Final = ();
     type Error = Infallible;
@@ -167,9 +167,9 @@ impl<'s, K, V> crate::IntoProducer for &'s mut HashMap<K, V> {
     type Item = (&'s K, &'s mut V);
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerHashMapMut<'s, K, V>;
+    type IntoProducer = IntoProducerMut<'s, K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerHashMapMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.into_iter()))
     }
 }

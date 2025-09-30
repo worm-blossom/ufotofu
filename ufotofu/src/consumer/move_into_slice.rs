@@ -4,7 +4,7 @@ use core::fmt::Debug;
 
 use crate::prelude::*;
 
-/// A (bulk) consumer that fills (overwrites) a slice with data.
+/// A (bulk) consumer that fills (i.e., overwrites) a slice with consumed data.
 ///
 /// See [`move_into_slice`].
 ///
@@ -17,7 +17,7 @@ pub struct MoveIntoSlice<'a, T>(&'a mut [T], usize);
 ///
 /// ```
 /// # use ufotofu::prelude::*;
-/// use ufotofu::consumer::move_into_slice;
+/// use consumer::move_into_slice;
 /// # pollster::block_on(async {
 ///
 /// let mut buf = [0, 0, 0, 0];
@@ -26,10 +26,10 @@ pub struct MoveIntoSlice<'a, T>(&'a mut [T], usize);
 /// into_slice.consume(1).await?;
 /// into_slice.consume(2).await?;
 /// into_slice.consume(4).await?;
-/// into_slice.close(()).await?;
+/// assert_eq!(into_slice.consume(8).await, Err(()));
 ///
 /// assert_eq!(buf, [0, 1, 2, 4]);
-/// # Result::<(), Infallible>::Ok(())
+/// # Result::<(), ()>::Ok(())
 /// # });
 /// ```
 ///
@@ -43,7 +43,7 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::consumer::move_into_slice;
+    /// use consumer::move_into_slice;
     /// # pollster::block_on(async {
     ///
     /// let mut buf = [0, 0, 0, 0];
@@ -56,9 +56,8 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     /// assert_eq!(into_slice.offset(), 2);
     /// into_slice.consume(4).await?;
     /// assert_eq!(into_slice.offset(), 3);
-    /// into_slice.close(()).await?;
-    /// assert_eq!(into_slice.offset(), 3);
-    /// # Result::<(), Infallible>::Ok(())
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
     /// # });
     /// ```
     pub fn offset(&self) -> usize {
@@ -69,7 +68,7 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::consumer::move_into_slice;
+    /// use consumer::move_into_slice;
     /// # pollster::block_on(async {
     ///
     /// let mut buf = [0, 0, 0, 0];
@@ -77,14 +76,13 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// assert!(into_slice.consumed().is_empty());
     /// into_slice.consume(1).await?;
-    /// assert_eq!(into_slice.consumed(), &[1]);
+    /// assert_eq!(into_slice.consumed(), &[1][..]);
     /// into_slice.consume(2).await?;
-    /// assert_eq!(into_slice.consumed(), &[1, 2]);
+    /// assert_eq!(into_slice.consumed(), &[1, 2][..]);
     /// into_slice.consume(4).await?;
-    /// assert_eq!(into_slice.consumed(), &[1, 2, 3]);
-    /// into_slice.close(()).await?;
-    /// assert_eq!(into_slice.consumed(), &[1, 2, 3]);
-    /// # Result::<(), Infallible>::Ok(())
+    /// assert_eq!(into_slice.consumed(), &[1, 2, 4][..]);
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
     /// # });
     /// ```
     pub fn consumed(&self) -> &[T] {
@@ -95,7 +93,7 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::consumer::move_into_slice;
+    /// use consumer::move_into_slice;
     /// # pollster::block_on(async {
     ///
     /// let mut buf = [0, 0, 0, 0];
@@ -103,14 +101,13 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// assert!(into_slice.consumed_mut().is_empty());
     /// into_slice.consume(1).await?;
-    /// assert_eq!(into_slice.consumed_mut(), &mut [1]);
+    /// assert_eq!(into_slice.consumed_mut(), &mut [1][..]);
     /// into_slice.consume(2).await?;
-    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2]);
+    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2][..]);
     /// into_slice.consume(4).await?;
-    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2, 3]);
-    /// into_slice.close(()).await?;
-    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2, 3]);
-    /// # Result::<(), Infallible>::Ok(())
+    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2, 4][..]);
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
     /// # });
     /// ```
     pub fn consumed_mut(&mut self) -> &mut [T] {
@@ -122,22 +119,21 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::consumer::move_into_slice;
+    /// use consumer::move_into_slice;
     /// # pollster::block_on(async {
     ///
     /// let mut buf = [0, 0, 0, 0];
     /// let mut into_slice = move_into_slice(&mut buf[1..]);
     ///
-    /// assert_eq!(into_slice.remaining(), &[1, 2, 3]);
+    /// assert_eq!(into_slice.remaining(), &[0, 0, 0][..]);
     /// into_slice.consume(1).await?;
-    /// assert_eq!(into_slice.remaining(), &[1, 2]);
+    /// assert_eq!(into_slice.remaining(), &[0, 0][..]);
     /// into_slice.consume(2).await?;
-    /// assert_eq!(into_slice.remaining(), &[1]);
+    /// assert_eq!(into_slice.remaining(), &[0][..]);
     /// into_slice.consume(4).await?;
     /// assert!(into_slice.remaining().is_empty());
-    /// into_slice.close(()).await?;
-    /// assert!(into_slice.remaining().is_empty());
-    /// # Result::<(), Infallible>::Ok(())
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
     /// # });
     /// ```
     pub fn remaining(&self) -> &[T] {
@@ -148,22 +144,21 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::consumer::move_into_slice;
+    /// use consumer::move_into_slice;
     /// # pollster::block_on(async {
     ///
     /// let mut buf = [0, 0, 0, 0];
     /// let mut into_slice = move_into_slice(&mut buf[1..]);
     ///
-    /// assert_eq!(into_slice.remaining_mut(), &mut [1, 2, 3]);
+    /// assert_eq!(into_slice.remaining_mut(), &mut [0, 0, 0][..]);
     /// into_slice.consume(1).await?;
-    /// assert_eq!(into_slice.remaining_mut(), &mut [1, 2]);
+    /// assert_eq!(into_slice.remaining_mut(), &mut [0, 0][..]);
     /// into_slice.consume(2).await?;
-    /// assert_eq!(into_slice.remaining_mut(), &mut [1]);
+    /// assert_eq!(into_slice.remaining_mut(), &mut [0][..]);
     /// into_slice.consume(4).await?;
     /// assert!(into_slice.remaining_mut().is_empty());
-    /// into_slice.close(()).await?;
-    /// assert!(into_slice.remaining_mut().is_empty());
-    /// # Result::<(), Infallible>::Ok(())
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
     /// # });
     /// ```
     pub fn remaining_mut(&mut self) -> &mut [T] {
@@ -175,7 +170,7 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::consumer::move_into_slice;
+    /// use consumer::move_into_slice;
     /// # pollster::block_on(async {
     ///
     /// let mut buf = [0, 0, 0, 0];
@@ -183,8 +178,8 @@ impl<'a, T> MoveIntoSlice<'a, T> {
     ///
     /// into_slice.consume(1).await?;
     /// into_slice.consume(2).await?;
-    /// iassert_eq!(into_slice.into_inner(), &mut [1, 2, 0]);
-    /// # Result::<(), Infallible>::Ok(())
+    /// assert_eq!(into_slice.into_inner(), &mut [1, 2, 0][..]);
+    /// # Result::<(), ()>::Ok(())
     /// # });
     /// ```
     pub fn into_inner(self) -> &'a mut [T] {

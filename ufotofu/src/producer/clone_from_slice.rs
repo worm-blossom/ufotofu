@@ -19,7 +19,7 @@ pub struct CloneFromSlice<'a, T>(&'a [T], usize);
 ///
 /// ```
 /// # use ufotofu::prelude::*;
-/// use ufotofu::producer::clone_from_slice;
+/// use producer::clone_from_slice;
 /// # pollster::block_on(async {
 ///
 /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
@@ -42,7 +42,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::producer::clone_from_slice;
+    /// use producer::clone_from_slice;
     ///
     /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
@@ -67,7 +67,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::producer::clone_from_slice;
+    /// use producer::clone_from_slice;
     ///
     /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
@@ -92,7 +92,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::producer::clone_from_slice;
+    /// use producer::clone_from_slice;
     ///
     /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///
@@ -117,7 +117,7 @@ impl<'a, T> CloneFromSlice<'a, T> {
     ///
     /// ```
     /// # use ufotofu::prelude::*;
-    /// use ufotofu::producer::clone_from_slice;
+    /// use producer::clone_from_slice;
     ///
     /// let mut from_slice = clone_from_slice(&[1, 2, 4]);
     ///

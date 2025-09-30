@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&VecDeque<T>`, and
 //! - an [`IntoProducer`] impl for `&mut VecDeque<T>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 use std::collections::VecDeque;
 
@@ -33,9 +33,9 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerVecDeque<T>(IteratorToProducer<<VecDeque<T> as IntoIterator>::IntoIter>);
+pub struct IntoProducer<T>(IteratorToProducer<<VecDeque<T> as IntoIterator>::IntoIter>);
 
-impl<T> Producer for IntoProducerVecDeque<T> {
+impl<T> Producer for IntoProducer<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -49,10 +49,10 @@ impl<T> crate::IntoProducer for VecDeque<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerVecDeque<T>;
+    type IntoProducer = IntoProducer<T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerVecDeque(iterator_to_producer(
+        IntoProducer(iterator_to_producer(
             <VecDeque<T> as IntoIterator>::into_iter(self),
         ))
     }
@@ -76,11 +76,9 @@ impl<T> crate::IntoProducer for VecDeque<T> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerVecDequeRef<'s, T>(
-    IteratorToProducer<<&'s VecDeque<T> as IntoIterator>::IntoIter>,
-);
+pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s VecDeque<T> as IntoIterator>::IntoIter>);
 
-impl<'s, T> Producer for IntoProducerVecDequeRef<'s, T> {
+impl<'s, T> Producer for IntoProducerRef<'s, T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
@@ -94,10 +92,10 @@ impl<'s, T> crate::IntoProducer for &'s VecDeque<T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerVecDequeRef<'s, T>;
+    type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerVecDequeRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
     }
 }
 
@@ -121,11 +119,11 @@ impl<'s, T> crate::IntoProducer for &'s VecDeque<T> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerVecDequeMut<'s, T>(
+pub struct IntoProducerMut<'s, T>(
     IteratorToProducer<<&'s mut VecDeque<T> as IntoIterator>::IntoIter>,
 );
 
-impl<'s, T> Producer for IntoProducerVecDequeMut<'s, T> {
+impl<'s, T> Producer for IntoProducerMut<'s, T> {
     type Item = &'s mut T;
     type Final = ();
     type Error = Infallible;
@@ -139,9 +137,9 @@ impl<'s, T> crate::IntoProducer for &'s mut VecDeque<T> {
     type Item = &'s mut T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerVecDequeMut<'s, T>;
+    type IntoProducer = IntoProducerMut<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerVecDequeMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.into_iter()))
     }
 }

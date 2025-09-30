@@ -5,7 +5,7 @@
 //! - an [`IntoProducer`] impl for `HashSet<T>`, and
 //! - an [`IntoProducer`] impl for `&HashSet<T>`.
 //!
-//! <br/>Counterpart: the [`ufotofu::consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec`] module.
 
 use std::collections::HashSet;
 
@@ -34,9 +34,9 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerHashSet<T>(IteratorToProducer<<HashSet<T> as IntoIterator>::IntoIter>);
+pub struct IntoProducer<T>(IteratorToProducer<<HashSet<T> as IntoIterator>::IntoIter>);
 
-impl<T> Producer for IntoProducerHashSet<T> {
+impl<T> Producer for IntoProducer<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
@@ -50,10 +50,10 @@ impl<T> crate::IntoProducer for HashSet<T> {
     type Item = T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerHashSet<T>;
+    type IntoProducer = IntoProducer<T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerHashSet(iterator_to_producer(
+        IntoProducer(iterator_to_producer(
             <HashSet<T> as IntoIterator>::into_iter(self),
         ))
     }
@@ -79,11 +79,9 @@ impl<T> crate::IntoProducer for HashSet<T> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerHashSetRef<'s, T>(
-    IteratorToProducer<<&'s HashSet<T> as IntoIterator>::IntoIter>,
-);
+pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s HashSet<T> as IntoIterator>::IntoIter>);
 
-impl<'s, T> Producer for IntoProducerHashSetRef<'s, T> {
+impl<'s, T> Producer for IntoProducerRef<'s, T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
@@ -97,9 +95,9 @@ impl<'s, T> crate::IntoProducer for &'s HashSet<T> {
     type Item = &'s T;
     type Final = ();
     type Error = Infallible;
-    type IntoProducer = IntoProducerHashSetRef<'s, T>;
+    type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerHashSetRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.into_iter()))
     }
 }
