@@ -1,28 +1,31 @@
-use either::Either::*;
-
-use crate::errors::*;
-use crate::BulkProducer;
-use crate::Producer;
+use crate::{prelude::*, ProduceAtLeastError};
 
 impl<P> ProducerExt for P where P: Producer {}
 
 /// An extension trait for [`Producer`] that provides a variety of convenient combinator functions.
+/// You never need to implement this trait yourself, it merely adds methods with default implementation to existing producers.
 ///
 /// <br/>Counterpart: the [`ConsumerExt`](crate::ConsumerExt) trait.
 pub trait ProducerExt: Producer {
     /// Tries to produce a regular item, and reports an error if the final value was produced instead.
     ///
-    /// #### Invariants
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = [1, 2, 4].into_producer();
     ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
+    /// assert_eq!(p.produce_item().await?, 1);
+    /// assert_eq!(p.produce_item().await?, 2);
+    /// assert_eq!(p.produce_item().await?, 4);
+    /// assert_eq!(p.produce_item().await, Err(ProduceAtLeastError {
+    ///     count: 0,
+    ///     reason: Ok(()), // Would be an `Err` if `produce` would have errored.
+    /// }));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
     ///
-    /// #### Implementation Notes
-    ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
-    ///
-    /// <br/>Counterpart: the [TODO] method.
+    /// <br/>Counterpart: none, because [`Consumer`] splits up processing regular items and final items into separate methods.
     async fn produce_item(
         &mut self,
     ) -> Result<Self::Item, ProduceAtLeastError<Self::Final, Self::Error>> {
@@ -42,17 +45,27 @@ pub trait ProducerExt: Producer {
     /// Tries to completely overwrite a slice with items from a producer.
     /// Reports an error if the slice could not be overwritten completely.
     ///
-    /// #### Invariants
+    /// When working with a bulk producer, use
+    /// [`BulkProducerExt::bulk_overwrite_full_slice`] for greater efficiency.
     ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut arr = [0, 0];
+    /// let mut p = [1, 2, 4].into_producer();
     ///
-    /// #### Implementation Notes
+    /// p.overwrite_full_slice(&mut arr[..]).await?;
+    /// assert_eq!(arr, [1, 2]);
     ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
+    /// assert_eq!(p.overwrite_full_slice(&mut arr[..]), Err(ProduceAtLeastError {
+    ///     count: 1,
+    ///     reason: Ok(()), // Would be an `Err` if `produce` would have errored.
+    /// }));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
     ///
-    /// <br/>Counterpart: the [TODO] method
+    /// <br/>Counterpart: the [`ConsumerExt::consume_full_slide`] method.
     async fn overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],
@@ -82,21 +95,33 @@ pub trait ProducerExt: Producer {
 impl<P> BulkProducerExt for P where P: BulkProducer {}
 
 /// An extension trait for [`BulkProducer`] that provides a variety of convenient combinator functions.
+/// You never need to implement this trait yourself, it merely adds methods with default implementation to existing bulk producers.
+///
+/// <br/>Counterpart: the [`BulkConsumerExt`](crate::BulkConsumerExt) trait.
 pub trait BulkProducerExt: BulkProducer {
     /// Tries to completely overwrite a slice with items from a bulk producer.
     /// Reports an error if the slice could not be overwritten completely.
     ///
-    /// #### Invariants
+    /// More efficient than [`ProducerExt::overwrite_full_slice`].
     ///
-    /// Must not be called after any function of this trait has returned an error,
-    /// nor after [`close`](Consumer::close) was called.
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut arr = [0, 0];
+    /// let mut p = [1, 2, 4].into_producer();
     ///
-    /// #### Implementation Notes
+    /// p.bulk_overwrite_full_slice(&mut arr[..]).await?;
+    /// assert_eq!(arr, [1, 2]);
     ///
-    /// This is a trait method for convenience, you should never need to
-    /// replace the default implementation.
+    /// assert_eq!(p.bulk_overwrite_full_slice(&mut arr[..]), Err(ProduceAtLeastError {
+    ///     count: 1,
+    ///     reason: Ok(()), // Would be an `Err` if `produce` would have errored.
+    /// }));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
     ///
-    /// <br/>Counterpart: the [TODO] method
+    /// <br/>Counterpart: the [`BulkConsumerExt::bulk_consume_full_slide`] method.
     async fn bulk_overwrite_full_slice(
         &mut self,
         buf: &mut [Self::Item],

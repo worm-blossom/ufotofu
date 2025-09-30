@@ -52,7 +52,9 @@
 //!
 //! Every producer automatically implements the [`ProducerExt`] trait, which provides useful methods for working with producers.
 //!
-//! <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes an `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
+//! <br/
+//!
+//! >Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes a `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
 //!
 //! - `bulk_produce` is asynchronous;
 //! - `bulk_produce` can either fill the slice with regular items, yield an error, or yield the final value;
@@ -76,9 +78,11 @@
 //!
 //! <br/>
 //!
-//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of the appropriate methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
+//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of several methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
 //!
-//! <br/>Finally, the [`BufferedProducer`] trait describes producers which can eagerly perform side-effects in order to make subsequent `produce` and `bulk_produce` calls run more efficiently. The classic example is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
+//! <br/>
+//!
+//! Finally, the [`BufferedProducer`] trait describes producers which can eagerly perform side-effects in order to make subsequent `produce` and `bulk_produce` calls run more efficiently. The classic example is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
 //!
 //! <br/>The counterpart to the [`producer`] module is the [`consumer`] module.
 
@@ -114,7 +118,7 @@ pub mod compat;
 ///
 /// Calling code must uphold the following invariants:
 ///
-/// - Do not call methods after any method has yielded a final value or an error.
+/// - Do not call trait methods after any method has yielded a final value or an error.
 /// - Do not use the producer after dropping any `Future` returned by any of its methods, unless the dropped future has been polled to completion.
 /// - Do not use the producer after catching an unwinding panic.
 ///
@@ -129,9 +133,9 @@ pub trait Producer {
     type Error;
 
     /// Attempts to produce the next item, which is either a regular repeated item or the final value.
-    /// The call method fail, returning an `Err` instead.
+    /// The method may fail, returning an `Err` instead.
     ///
-    /// After this function returns the final value or after it returns an error, no further
+    /// After this method returns the final value or after it returns an error, no further
     /// methods of this trait may be invoked.
     ///
     /// # Invariants
@@ -253,7 +257,7 @@ pub trait BulkProducer: Producer {
     /// After this function returns the final value or after it returns an error, no further
     /// methods of this trait may be invoked.
     ///
-    /// The restrictions on implementations (write at least one item, do not read the buffer, only mutate a prefix, no mutation when returning the final value or an error) and for callers (do not pass an empty buffer, do not call after a final value or error) all follow from a single axiom: in terms of the produced sequence of values, bulk production must be indistinguishable from repeatedly calling `produce`. The only difference should be improved performance.
+    /// The restrictions on implementations (write at least one item, do not read the buffer, only mutate a prefix, no mutation when returning the final value or an error) and for callers (do not pass an empty buffer, do not call after a final value or an error) all follow from a single axiom: in terms of the produced sequence of values, bulk production must be indistinguishable from repeatedly calling `produce`. The only difference should be improved performance.
     ///
     /// This has direct consequences returning errors. Suppose `bulk_produce` is called with a buffer of length seven. The bulk producer determines that it could produce four items before having to report an error. The bulk producer must then write the four items and return `Ok(Left(4))`. Only on the next producer method call can it report the error.
     ///

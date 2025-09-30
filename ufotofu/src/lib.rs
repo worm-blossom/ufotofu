@@ -182,11 +182,9 @@ pub use producer::{
 
 pub mod consumer;
 pub use consumer::{
-    BufferedConsumer, BulkConsumer, Consumer, IntoBufferedConsumer, IntoBulkConsumer, IntoConsumer,
+    BufferedConsumer, BulkConsumer, BulkConsumerExt, Consumer, ConsumerExt, IntoBufferedConsumer,
+    IntoBulkConsumer, IntoConsumer,
 };
-
-pub mod consumer_ext;
-pub use consumer_ext::{BulkConsumerExt, ConsumerExt};
 
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_yielder;
