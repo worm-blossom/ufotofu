@@ -94,7 +94,7 @@ impl<T: Ord> crate::IntoConsumer for BinaryHeap<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::binary_heap::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::binary_heap::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T>(&'a mut BinaryHeap<T>);

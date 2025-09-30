@@ -111,7 +111,7 @@ impl<T, const N: usize> crate::IntoConsumer for [T; N] {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::array::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::array::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T, const N: usize>(&'a mut [T; N], usize);

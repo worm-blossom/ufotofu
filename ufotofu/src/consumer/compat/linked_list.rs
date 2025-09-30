@@ -90,7 +90,7 @@ impl<T> crate::IntoConsumer for LinkedList<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::linked_list::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::linked_list::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T>(&'a mut LinkedList<T>);

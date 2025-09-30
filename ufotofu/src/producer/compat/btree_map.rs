@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&BTreeMap<K, V>`, and
 //! - an [`IntoProducer`] impl for `&mut BTreeMap<K, V>`.
 //!
-//! <br/>Counterpart: the [`consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::btree_map`] module.
 
 use std::collections::BTreeMap;
 
@@ -32,7 +32,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::btree_map::IntoConsumer`].
 pub struct IntoProducer<K, V>(IteratorToProducer<<BTreeMap<K, V> as IntoIterator>::IntoIter>);
 
 impl<K, V> Producer for IntoProducer<K, V> {
@@ -75,7 +75,7 @@ impl<K, V> crate::IntoProducer for BTreeMap<K, V> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::btree_map::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, K, V>(
     IteratorToProducer<<&'s BTreeMap<K, V> as IntoIterator>::IntoIter>,
 );
@@ -120,7 +120,7 @@ impl<'s, K, V> crate::IntoProducer for &'s BTreeMap<K, V> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a collection behind an immutable reference.
 pub struct IntoProducerMut<'s, K, V>(
     IteratorToProducer<<&'s mut BTreeMap<K, V> as IntoIterator>::IntoIter>,
 );

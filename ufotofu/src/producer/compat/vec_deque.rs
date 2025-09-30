@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&VecDeque<T>`, and
 //! - an [`IntoProducer`] impl for `&mut VecDeque<T>`.
 //!
-//! <br/>Counterpart: the [`consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::vec_deque`] module.
 
 use std::collections::VecDeque;
 
@@ -32,7 +32,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::vec_deque::IntoConsumer`].
 pub struct IntoProducer<T>(IteratorToProducer<<VecDeque<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
@@ -75,7 +75,7 @@ impl<T> crate::IntoProducer for VecDeque<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::vec_deque::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s VecDeque<T> as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerRef<'s, T> {
@@ -118,7 +118,7 @@ impl<'s, T> crate::IntoProducer for &'s VecDeque<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a collection behind an immutable reference.
 pub struct IntoProducerMut<'s, T>(
     IteratorToProducer<<&'s mut VecDeque<T> as IntoIterator>::IntoIter>,
 );

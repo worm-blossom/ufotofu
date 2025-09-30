@@ -33,7 +33,7 @@ use crate::prelude::*;
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [producer::compat::slice::IntoProducerRef].
 pub struct IntoConsumerMut<'s, T>(&'s mut [T], usize);
 
 impl<'s, T> Consumer for IntoConsumerMut<'s, T> {
@@ -107,7 +107,7 @@ impl<'s, T> crate::IntoConsumer for &'s mut [T] {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [producer::compat::slice::IntoProducerBoxed].
 #[cfg(feature = "alloc")]
 pub struct IntoConsumerBoxed<T>(Box<[T]>, usize);
 
@@ -190,7 +190,7 @@ impl<T> crate::IntoConsumer for Box<[T]> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [producer::compat::slice::IntoProducerBoxedRef].
 #[cfg(feature = "alloc")]
 pub struct IntoConsumerBoxedMut<'s, T>(&'s mut Box<[T]>, usize);
 

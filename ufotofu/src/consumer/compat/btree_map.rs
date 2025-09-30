@@ -93,7 +93,7 @@ impl<K: Ord, V> crate::IntoConsumer for BTreeMap<K, V> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::btree_map::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::btree_map::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, K, V>(&'a mut BTreeMap<K, V>);

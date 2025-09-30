@@ -32,7 +32,7 @@ pub trait ConsumerExt: Consumer {
     /// # });
     /// ```
     ///
-    /// <br/>Counterpart: the [`ProducerExt::overwrite_full_slide`] method.
+    /// <br/>Counterpart: the [`ProducerExt::overwrite_full_slice`] method.
     async fn consume_full_slice(
         &mut self,
         buf: &[Self::Item],
@@ -87,7 +87,7 @@ pub trait BulkConsumerExt: BulkConsumer {
     /// # });
     /// ```
     ///
-    /// <br/>Counterpart: the [`ProducerExt::overwrite_full_slide`] method.
+    /// <br/>Counterpart: the [`ProducerExt::overwrite_full_slice`] method.
     async fn bulk_consume_full_slice(
         &mut self,
         buf: &[Self::Item],

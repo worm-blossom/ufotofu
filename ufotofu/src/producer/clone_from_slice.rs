@@ -10,7 +10,7 @@ use crate::prelude::*;
 ///
 /// See [`clone_from_slice`].
 ///
-/// <br/>Counterpart: the [TODO] type.
+/// <br/>Counterpart: the [`consumer::MoveIntoSlice`] type.
 #[derive(Debug)]
 
 pub struct CloneFromSlice<'a, T>(&'a [T], usize);
@@ -32,7 +32,7 @@ pub struct CloneFromSlice<'a, T>(&'a [T], usize);
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [TODO] function.
+/// <br/>Counterpart: the [`consumer::move_into_slice`] function.
 pub fn clone_from_slice<'a, T>(slice: &'a [T]) -> CloneFromSlice<'a, T> {
     CloneFromSlice(slice, 0)
 }

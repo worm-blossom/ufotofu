@@ -38,7 +38,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::vec::IntoConsumer`].
 pub struct IntoProducer<T>(IteratorToProducer<<Vec<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
@@ -80,7 +80,7 @@ impl<T> crate::IntoProducer for Vec<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::vec::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s Vec<T> as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerRef<'s, T> {
@@ -122,7 +122,7 @@ impl<'s, T> crate::IntoProducer for &'s Vec<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a collection behind an immutable reference.
 pub struct IntoProducerMut<'s, T>(IteratorToProducer<<&'s mut Vec<T> as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerMut<'s, T> {

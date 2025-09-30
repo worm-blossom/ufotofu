@@ -2,17 +2,17 @@
 //!
 //! ## [Core](core)
 //!
-//! Provides [`IntoConsumer`](IntoConsumer) impls for [arrays](core::array) and [slices](core::slice).
+//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for [arrays](core::array) and [slices](core::slice).
 //!
 //! ## [Alloc](alloc)
 //!
-//! Provides [`IntoConsumer`](IntoConsumer) impls for [boxed](alloc::boxed::Box) slices and for [`Vec`].
+//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for [boxed](alloc::boxed::Box) slices and for [`Vec`](alloc::vec::Vec).
 //!
 //! # [Std](std)
 //!
-//! Provides [`IntoConsumer`](IntoConsumer) impls for various [collections](std::collections).
+//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for various [collections](std::collections).
 //!
-//! <br/>Counterpart: the [`producer::compat`] module.
+//! <br/>Counterpart: the [`producer::compat`](crate::producer::compat) module.
 
 pub mod array;
 pub mod slice;

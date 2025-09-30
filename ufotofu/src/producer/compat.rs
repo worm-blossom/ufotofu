@@ -4,17 +4,17 @@
 //!
 //! Lets you convert iterators into producers with the [`iterator_to_producer`] and [`infinite_iterator_to_producer`] functions.
 //!
-//! Provides [`IntoProducer`](IntoProducer) impls for [arrays](core::array) and [slices](core::slice).
+//! Provides [`IntoProducer`](crate::IntoProducer) impls for [arrays](core::array) and [slices](core::slice).
 //!
 //! ## [Alloc](alloc)
 //!
-//! Provides [`IntoProducer`](IntoProducer) impls for [boxed](alloc::boxed::Box) slices and for [`Vec`].
+//! Provides [`IntoProducer`](crate::IntoProducer) impls for [boxed](alloc::boxed::Box) slices and for [`Vec`](alloc::vec::Vec).
 //!
 //! # [Std](std)
 //!
-//! Provides [`IntoProducer`](IntoProducer) impls for various [collections](std::collections).
+//! Provides [`IntoProducer`](crate::IntoProducer) impls for various [collections](std::collections).
 //!
-//! <br/>Counterpart: the [`consumer::compat`] module.
+//! <br/>Counterpart: the [`consumer::compat`](crate::consumer::compat) module.
 
 mod iterator_to_producer;
 pub use iterator_to_producer::*;

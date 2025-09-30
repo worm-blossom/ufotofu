@@ -168,7 +168,7 @@ use Either::*;
 /// # }
 /// ```
 ///
-/// <br/>Counterpart: the [`produce`] macro.
+/// <br/>Counterpart: none, because Rust has no counterpart to the `for` loop. In a certain sense, generators are this counterpart, but we have not implemented generator-like producer macros. Yet.
 pub use ufotofu_macros::consume;
 
 mod errors;

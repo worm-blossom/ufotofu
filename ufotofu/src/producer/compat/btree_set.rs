@@ -5,7 +5,7 @@
 //! - an [`IntoProducer`] impl for `BTreeSet<T>`, and
 //! - an [`IntoProducer`] impl for `&BTreeSet<T>`.
 //!
-//! <br/>Counterpart: the [`consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::btree_set`] module.
 
 use std::collections::BTreeSet;
 
@@ -31,7 +31,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::btree_set::IntoConsumer`].
 pub struct IntoProducer<T>(IteratorToProducer<<BTreeSet<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
@@ -74,7 +74,7 @@ impl<T> crate::IntoProducer for BTreeSet<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::hash_set::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s BTreeSet<T> as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerRef<'s, T> {

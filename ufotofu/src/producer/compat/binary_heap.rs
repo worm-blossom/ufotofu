@@ -5,7 +5,7 @@
 //! - an [`IntoProducer`] impl for `BinaryHeap<T>`, and
 //! - an [`IntoProducer`] impl for `&BinaryHeap<T>`.
 //!
-//! <br/>Counterpart: the [`consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::binary_heap`] module.
 
 use std::collections::BinaryHeap;
 
@@ -31,7 +31,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::binary_heap::IntoConsumer`].
 pub struct IntoProducer<T>(IteratorToProducer<<BinaryHeap<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
@@ -74,7 +74,7 @@ impl<T> crate::IntoProducer for BinaryHeap<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::btree_set::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(
     IteratorToProducer<<&'s BinaryHeap<T> as IntoIterator>::IntoIter>,
 );

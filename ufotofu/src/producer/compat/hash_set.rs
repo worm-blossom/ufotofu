@@ -5,7 +5,7 @@
 //! - an [`IntoProducer`] impl for `HashSet<T>`, and
 //! - an [`IntoProducer`] impl for `&HashSet<T>`.
 //!
-//! <br/>Counterpart: the [`consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::hash_set`] module.
 
 use std::collections::HashSet;
 
@@ -33,7 +33,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::hash_set::IntoConsumer`].
 pub struct IntoProducer<T>(IteratorToProducer<<HashSet<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
@@ -78,7 +78,7 @@ impl<T> crate::IntoProducer for HashSet<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::hash_set::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s HashSet<T> as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerRef<'s, T> {

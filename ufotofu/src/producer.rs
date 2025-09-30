@@ -320,7 +320,7 @@ pub trait BufferedProducer: Producer {
     /// Attempts to perform any effectful actions that might make future calls to `produce` and `bulk_produce` more efficient.
     ///
     /// This function allows the [`Producer`] to perform side-effects that it would otherwise
-    /// have to do just-in-time when [`produce`](Producer::produce) or [`bulk_produce`](Producer::bulk_produce) get called.
+    /// have to do just-in-time when [`produce`](Producer::produce) or [`bulk_produce`](BulkProducer::bulk_produce) get called.
     ///
     /// After this function returns an error, no further methods of this trait may be invoked.
     ///

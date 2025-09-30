@@ -34,7 +34,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::slice::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s [T] as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerRef<'s, T> {
@@ -76,7 +76,7 @@ impl<'s, T> crate::IntoProducer for &'s [T] {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a slice behind an immutable reference.
 pub struct IntoProducerMut<'s, T>(IteratorToProducer<<&'s mut [T] as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerMut<'s, T> {
@@ -118,7 +118,7 @@ impl<'s, T> crate::IntoProducer for &'s mut [T] {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::slice::IntoConsumerBoxed`].
 #[cfg(feature = "alloc")]
 pub struct IntoProducerBoxed<T>(IteratorToProducer<<Box<[T]> as IntoIterator>::IntoIter>);
 
@@ -163,7 +163,7 @@ impl<T> crate::IntoProducer for Box<[T]> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::slice::IntoConsumerBoxedMut`].
 #[cfg(feature = "alloc")]
 pub struct IntoProducerBoxedRef<'s, T>(
     IteratorToProducer<<&'s Box<[T]> as IntoIterator>::IntoIter>,
@@ -210,7 +210,7 @@ impl<'s, T> crate::IntoProducer for &'s Box<[T]> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a slice behind an immutable reference.
 #[cfg(feature = "alloc")]
 pub struct IntoProducerBoxedMut<'s, T>(
     IteratorToProducer<<&'s mut Box<[T]> as IntoIterator>::IntoIter>,

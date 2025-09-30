@@ -34,7 +34,7 @@ use crate::prelude::*;
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::btree_set::IntoProducer] type.
+/// <br/>Counterpart: the [producer::compat::hash_set::IntoProducer] type.
 #[derive(Debug)]
 
 pub struct IntoConsumer<T>(HashSet<T>);
@@ -90,7 +90,7 @@ impl<T: Hash + Eq> crate::IntoConsumer for HashSet<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::btree_set::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::hash_set::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T>(&'a mut HashSet<T>);

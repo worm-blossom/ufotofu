@@ -35,7 +35,7 @@ use crate::prelude::*;
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::btree_map::IntoProducer] type.
+/// <br/>Counterpart: the [producer::compat::hash_map::IntoProducer] type.
 #[derive(Debug)]
 
 pub struct IntoConsumer<K, V>(HashMap<K, V>);
@@ -92,7 +92,7 @@ impl<K: Hash + Eq, V> crate::IntoConsumer for HashMap<K, V> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::btree_map::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::hash_map::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, K, V>(&'a mut HashMap<K, V>);

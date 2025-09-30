@@ -35,7 +35,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [TODO] type.
+/// <br/>Counterpart: the [`consumer::compat::array::IntoConsumer`] type.
 pub struct IntoProducer<const N: usize, T> {
     arr: ManuallyDrop<[T; N]>,
     /// Core invariant: everything in `&self.arr[self.offset..]` we still have ownership of,
@@ -228,7 +228,7 @@ impl<const N: usize, T> Drop for IntoProducer<N, T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::array::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T, const N: usize>(
     IteratorToProducer<<&'s [T; N] as IntoIterator>::IntoIter>,
 );
@@ -272,7 +272,7 @@ impl<'s, T, const N: usize> crate::IntoProducer for &'s [T; N] {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a collection behind an immutable reference.
 pub struct IntoProducerMut<'s, T, const N: usize>(
     IteratorToProducer<<&'s mut [T; N] as IntoIterator>::IntoIter>,
 );

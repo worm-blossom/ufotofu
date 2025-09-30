@@ -101,7 +101,7 @@ impl<T> crate::IntoConsumer for Vec<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::vec::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::vec::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T>(&'a mut Vec<T>);

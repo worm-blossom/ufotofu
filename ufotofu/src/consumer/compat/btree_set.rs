@@ -91,7 +91,7 @@ impl<T: Ord> crate::IntoConsumer for BTreeSet<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: the [producer::compat::btree_set::IntoProducerMut] type.
+/// <br/>Counterpart: the [producer::compat::btree_set::IntoProducerRef] type.
 #[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T>(&'a mut BTreeSet<T>);

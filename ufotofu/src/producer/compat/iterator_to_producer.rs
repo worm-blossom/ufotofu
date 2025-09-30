@@ -10,7 +10,7 @@ pub struct IteratorToProducer<I>(I);
 
 /// Creates a producer that produces items from a wrapped iterator.
 ///
-/// Do not use this method to convert infinite iterators to producers, see [`infinite_iterator_to_producer`](crate::producer::infinite_iterator_to_producer) for the appropriate alternative. An inifinite iterator is one whose `next` method never returns `None`.
+/// Do not use this method to convert infinite iterators to producers, see [`infinite_iterator_to_producer`](crate::producer::compat::infinite_iterator_to_producer) for the appropriate alternative. An inifinite iterator is one whose `next` method never returns `None`.
 ///
 /// ```
 /// # use ufotofu::prelude::*;

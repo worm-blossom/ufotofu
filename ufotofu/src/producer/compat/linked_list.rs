@@ -6,7 +6,7 @@
 //! - an [`IntoProducer`] impl for `&LinkedList<T>`, and
 //! - an [`IntoProducer`] impl for `&mut LinkedList<T>`.
 //!
-//! <br/>Counterpart: the [`consumer::compat::vec`] module.
+//! <br/>Counterpart: the [`consumer::compat::linked_list`] module.
 
 use std::collections::LinkedList;
 
@@ -32,7 +32,7 @@ use crate::{
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::linked_list::IntoConsumer`].
 pub struct IntoProducer<T>(IteratorToProducer<<LinkedList<T> as IntoIterator>::IntoIter>);
 
 impl<T> Producer for IntoProducer<T> {
@@ -75,7 +75,7 @@ impl<T> crate::IntoProducer for LinkedList<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: [`consumer::compat::linked_list::IntoConsumerMut`].
 pub struct IntoProducerRef<'s, T>(
     IteratorToProducer<<&'s LinkedList<T> as IntoIterator>::IntoIter>,
 );
@@ -120,7 +120,7 @@ impl<'s, T> crate::IntoProducer for &'s LinkedList<T> {
 /// # });
 /// ```
 ///
-/// <br/>Counterpart: [TODO].
+/// <br/>Counterpart: none, because you cannot consume into a collection behind an immutable reference.
 pub struct IntoProducerMut<'s, T>(
     IteratorToProducer<<&'s mut LinkedList<T> as IntoIterator>::IntoIter>,
 );
