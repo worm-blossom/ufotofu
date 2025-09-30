@@ -164,10 +164,12 @@ impl<T> crate::IntoProducer for Box<[T]> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
+#[cfg(feature = "alloc")]
 pub struct IntoProducerBoxedRef<'s, T>(
     IteratorToProducer<<&'s Box<[T]> as IntoIterator>::IntoIter>,
 );
 
+#[cfg(feature = "alloc")]
 impl<'s, T> Producer for IntoProducerBoxedRef<'s, T> {
     type Item = &'s T;
     type Final = ();
@@ -178,6 +180,7 @@ impl<'s, T> Producer for IntoProducerBoxedRef<'s, T> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<'s, T> crate::IntoProducer for &'s Box<[T]> {
     type Item = &'s T;
     type Final = ();
@@ -208,8 +211,12 @@ impl<'s, T> crate::IntoProducer for &'s Box<[T]> {
 /// ```
 ///
 /// <br/>Counterpart: [TODO].
-pub struct IntoProducerBoxedMut<'s, T>(IteratorToProducer<<&'s mut [T] as IntoIterator>::IntoIter>);
+#[cfg(feature = "alloc")]
+pub struct IntoProducerBoxedMut<'s, T>(
+    IteratorToProducer<<&'s mut Box<[T]> as IntoIterator>::IntoIter>,
+);
 
+#[cfg(feature = "alloc")]
 impl<'s, T> Producer for IntoProducerBoxedMut<'s, T> {
     type Item = &'s mut T;
     type Final = ();
@@ -220,6 +227,7 @@ impl<'s, T> Producer for IntoProducerBoxedMut<'s, T> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<'s, T> crate::IntoProducer for &'s mut Box<[T]> {
     type Item = &'s mut T;
     type Final = ();

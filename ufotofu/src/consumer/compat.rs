@@ -15,22 +15,22 @@
 //! <br/>Counterpart: the [`producer::compat`] module.
 
 pub mod array;
-// pub mod slice;
+pub mod slice;
 
 #[cfg(feature = "alloc")]
 pub mod vec;
 
-// #[cfg(feature = "std")]
-// pub mod binary_heap;
-// #[cfg(feature = "std")]
-// pub mod btree_map;
-// #[cfg(feature = "std")]
-// pub mod btree_set;
-// #[cfg(feature = "std")]
-// pub mod hash_map;
-// #[cfg(feature = "std")]
-// pub mod hash_set;
-// #[cfg(feature = "std")]
-// pub mod linked_list;
-// #[cfg(feature = "std")]
-// pub mod vec_deque;
+#[cfg(feature = "std")]
+pub mod binary_heap;
+#[cfg(feature = "std")]
+pub mod btree_map;
+#[cfg(feature = "std")]
+pub mod btree_set;
+#[cfg(feature = "std")]
+pub mod hash_map;
+#[cfg(feature = "std")]
+pub mod hash_set;
+#[cfg(feature = "std")]
+pub mod linked_list;
+#[cfg(feature = "std")]
+pub mod vec_deque;

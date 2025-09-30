@@ -1,3 +1,12 @@
+//! Consumer functionality for [`[T; N]`](core::array).
+//!
+//! Specifically, the module provides
+//!
+//! - an [`IntoConsumer`] impl for `[T; N]`,
+//! - an [`IntoConsumer`] impl for `&mut [T; N]`.
+//!
+//! <br/>Counterpart: the [`producer::compat::array`] module.
+
 use core::{cmp::min, fmt::Debug};
 
 use crate::prelude::*;

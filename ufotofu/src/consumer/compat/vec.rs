@@ -1,3 +1,12 @@
+//! Consumer functionality for [`Vec`].
+//!
+//! Specifically, the module provides
+//!
+//! - an [`IntoConsumer`] impl for `Vec<T>`,
+//! - an [`IntoConsumer`] impl for `&mut Vec<T>`.
+//!
+//! <br/>Counterpart: the [`producer::compat::vec`] module.
+
 use core::fmt::Debug;
 
 use alloc::vec::Vec;
