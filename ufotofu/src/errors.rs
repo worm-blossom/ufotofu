@@ -1,7 +1,6 @@
 #[cfg(not(feature = "std"))]
 use core::error::Error;
 use core::fmt::{Debug, Display};
-use either::Either;
 #[cfg(feature = "std")]
 use std::error::Error;
 

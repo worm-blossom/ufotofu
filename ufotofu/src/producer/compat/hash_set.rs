@@ -98,6 +98,6 @@ impl<'s, T> crate::IntoProducer for &'s HashSet<T> {
     type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.iter()))
     }
 }

@@ -170,11 +170,11 @@ impl<T: Clone> BulkProducer for CloneFromSlice<'_, T> {
         let amount = min(buf.len(), self.0.len() - self.1);
 
         if amount == 0 {
-            return Ok(Right(()));
+            Ok(Right(()))
         } else {
-            (&mut buf[..amount]).clone_from_slice(&self.0[self.1..self.1 + amount]);
+            buf[..amount].clone_from_slice(&self.0[self.1..self.1 + amount]);
             self.1 += amount;
-            return Ok(Left(amount));
+            Ok(Left(amount))
         }
     }
 }

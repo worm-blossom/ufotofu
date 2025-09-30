@@ -132,6 +132,7 @@ impl<const N: usize, T> IntoProducer<N, T> {
     /// # });
     /// ```
     #[inline]
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.as_slice().len()
     }
@@ -182,7 +183,7 @@ impl<const N: usize, T> BulkProducer for IntoProducer<N, T> {
         let amount = min(buf.len(), self.len());
 
         if amount == 0 {
-            return Ok(Right(()));
+            Ok(Right(()))
         } else {
             let to_move = &self.as_slice()[..amount];
 
@@ -192,7 +193,7 @@ impl<const N: usize, T> BulkProducer for IntoProducer<N, T> {
             unsafe { core::ptr::copy_nonoverlapping(to_move.as_ptr(), buf.as_mut_ptr(), amount) };
 
             self.offset += amount;
-            return Ok(Left(amount));
+            Ok(Left(amount))
         }
     }
 }
@@ -250,7 +251,7 @@ impl<'s, T, const N: usize> crate::IntoProducer for &'s [T; N] {
     type IntoProducer = IntoProducerRef<'s, T, N>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.iter()))
     }
 }
 
@@ -294,6 +295,6 @@ impl<'s, T, const N: usize> crate::IntoProducer for &'s mut [T; N] {
     type IntoProducer = IntoProducerMut<'s, T, N>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.iter_mut()))
     }
 }

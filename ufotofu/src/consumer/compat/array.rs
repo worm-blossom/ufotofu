@@ -73,11 +73,11 @@ impl<T: Clone, const N: usize> BulkConsumer for IntoConsumer<T, N> {
         let amount = min(buf.len(), N - self.1);
 
         if amount == 0 {
-            return Err(());
+            Err(())
         } else {
-            (&mut self.0[self.1..self.1 + amount]).clone_from_slice(&buf[..amount]);
+            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
             self.1 += amount;
-            return Ok(amount);
+            Ok(amount)
         }
     }
 }
@@ -148,11 +148,11 @@ impl<'a, T: Clone, const N: usize> BulkConsumer for IntoConsumerMut<'a, T, N> {
         let amount = min(buf.len(), N - self.1);
 
         if amount == 0 {
-            return Err(());
+            Err(())
         } else {
-            (&mut self.0[self.1..self.1 + amount]).clone_from_slice(&buf[..amount]);
+            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
             self.1 += amount;
-            return Ok(amount);
+            Ok(amount)
         }
     }
 }

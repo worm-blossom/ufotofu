@@ -54,7 +54,7 @@ impl<'s, T> crate::IntoProducer for &'s [T] {
     type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.iter()))
     }
 }
 
@@ -96,7 +96,7 @@ impl<'s, T> crate::IntoProducer for &'s mut [T] {
     type IntoProducer = IntoProducerMut<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.iter_mut()))
     }
 }
 
@@ -165,6 +165,7 @@ impl<T> crate::IntoProducer for Box<[T]> {
 ///
 /// <br/>Counterpart: [`consumer::compat::slice::IntoConsumerBoxedMut`].
 #[cfg(feature = "alloc")]
+#[allow(clippy::borrowed_box)]
 pub struct IntoProducerBoxedRef<'s, T>(
     IteratorToProducer<<&'s Box<[T]> as IntoIterator>::IntoIter>,
 );

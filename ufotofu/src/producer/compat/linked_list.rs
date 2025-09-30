@@ -97,7 +97,7 @@ impl<'s, T> crate::IntoProducer for &'s LinkedList<T> {
     type IntoProducer = IntoProducerRef<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.iter()))
     }
 }
 
@@ -142,6 +142,6 @@ impl<'s, T> crate::IntoProducer for &'s mut LinkedList<T> {
     type IntoProducer = IntoProducerMut<'s, T>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.iter_mut()))
     }
 }

@@ -97,7 +97,7 @@ impl<'s, K, V> crate::IntoProducer for &'s BTreeMap<K, V> {
     type IntoProducer = IntoProducerRef<'s, K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerRef(iterator_to_producer(self.into_iter()))
+        IntoProducerRef(iterator_to_producer(self.iter()))
     }
 }
 
@@ -142,6 +142,6 @@ impl<'s, K, V> crate::IntoProducer for &'s mut BTreeMap<K, V> {
     type IntoProducer = IntoProducerMut<'s, K, V>;
 
     fn into_producer(self) -> Self::IntoProducer {
-        IntoProducerMut(iterator_to_producer(self.into_iter()))
+        IntoProducerMut(iterator_to_producer(self.iter_mut()))
     }
 }

@@ -67,11 +67,11 @@ impl<'a, T: Clone> BulkConsumer for IntoConsumerMut<'a, T> {
         let amount = min(buf.len(), self.0.len() - self.1);
 
         if amount == 0 {
-            return Err(());
+            Err(())
         } else {
-            (&mut self.0[self.1..self.1 + amount]).clone_from_slice(&buf[..amount]);
+            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
             self.1 += amount;
-            return Ok(amount);
+            Ok(amount)
         }
     }
 }
@@ -151,11 +151,11 @@ impl<T: Clone> BulkConsumer for IntoConsumerBoxed<T> {
         let amount = min(buf.len(), self.0.len() - self.1);
 
         if amount == 0 {
-            return Err(());
+            Err(())
         } else {
-            (&mut self.0[self.1..self.1 + amount]).clone_from_slice(&buf[..amount]);
+            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
             self.1 += amount;
-            return Ok(amount);
+            Ok(amount)
         }
     }
 }
@@ -227,11 +227,11 @@ impl<'s, T: Clone> BulkConsumer for IntoConsumerBoxedMut<'s, T> {
         let amount = min(buf.len(), self.0.len() - self.1);
 
         if amount == 0 {
-            return Err(());
+            Err(())
         } else {
-            (&mut self.0[self.1..self.1 + amount]).clone_from_slice(&buf[..amount]);
+            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
             self.1 += amount;
-            return Ok(amount);
+            Ok(amount)
         }
     }
 }

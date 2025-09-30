@@ -84,9 +84,9 @@ impl Parse for Consume {
         } else {
             return Ok(Consume {
                 producer,
-                item_cases: item_cases,
-                final_cases: final_cases,
-                error_cases: error_cases,
+                item_cases,
+                final_cases,
+                error_cases,
             });
         }
 
@@ -98,13 +98,13 @@ impl Parse for Consume {
         ) -> Result<bool> {
             let lookahead = cases.lookahead1();
             Ok(if lookahead.peek(kw::item) {
-                item_case.push(ConsumeCase::parse_with_kw::<kw::item>(&cases)?);
+                item_case.push(ConsumeCase::parse_with_kw::<kw::item>(cases)?);
                 true
             } else if lookahead.peek(Token![final]) {
-                final_case.push(ConsumeCase::parse_with_kw::<Token![final]>(&cases)?);
+                final_case.push(ConsumeCase::parse_with_kw::<Token![final]>(cases)?);
                 true
             } else if lookahead.peek(kw::error) {
-                error_case.push(ConsumeCase::parse_with_kw::<kw::error>(&cases)?);
+                error_case.push(ConsumeCase::parse_with_kw::<kw::error>(cases)?);
                 true
             } else {
                 false

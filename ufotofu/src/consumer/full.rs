@@ -2,8 +2,6 @@ use core::convert::Infallible;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 
-use either::Either;
-
 use crate::prelude::*;
 
 /// A (bulk) consumer that always closes succesfully but cannot consume anything.
@@ -36,7 +34,7 @@ impl<T> Consumer for Full<T> {
     type Final = T;
     type Error = Infallible;
 
-    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+    async fn consume(&mut self, _item: Self::Item) -> Result<(), Self::Error> {
         unreachable!()
     }
 
@@ -46,7 +44,7 @@ impl<T> Consumer for Full<T> {
 }
 
 impl<T> BulkConsumer for Full<T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
+    async fn bulk_consume(&mut self, _buf: &[Self::Item]) -> Result<usize, Self::Error> {
         panic!("Must not call bulk_consume with an empty buffer") // impossible to create a non-empty buffer of Infallibles
     }
 }

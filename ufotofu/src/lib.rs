@@ -186,8 +186,8 @@ pub use consumer::{
     IntoBulkConsumer, IntoConsumer,
 };
 
-#[cfg(all(feature = "dev", feature = "alloc"))]
-mod test_yielder;
+// #[cfg(all(feature = "dev", feature = "alloc"))]
+// mod test_yielder;
 
 /// A “prelude” for crates using the `ufotofu` crate.
 ///
@@ -236,7 +236,7 @@ where
     P: IntoBulkProducer<Item: Clone>,
     C: IntoBulkConsumer<Item = P::Item, Final = P::Final>,
 {
-    debug_assert!(buf.len() > 0);
+    debug_assert!(!buf.is_empty());
 
     let mut producer = producer.into_producer();
     let mut consumer = consumer.into_consumer();
