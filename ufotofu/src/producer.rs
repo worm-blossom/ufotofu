@@ -84,6 +84,8 @@
 //!
 //! Finally, the [`BufferedProducer`] trait describes producers which can eagerly perform side-effects in order to make subsequent `produce` and `bulk_produce` calls run more efficiently. The classic example is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
 //!
+//! See [`ProducerExt::buffered`] for a generic way of how ufotofu can add buffering to arbitrary producers.
+//!
 //! <br/>The counterpart to the [`producer`] module is the [`consumer`] module.
 
 use crate::prelude::*;

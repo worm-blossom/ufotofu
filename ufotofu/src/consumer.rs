@@ -72,6 +72,8 @@
 //!
 //! Finally, the [`BufferedConsumer`] trait describes consumers which can delay performing side-effects in order to make `consume` and `bulk_consume` calls run more efficiently. The classic example is a consumer of bytes which writes to a file on disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk. While any consumer can perform such an optimisation and flush during `consume` and `close` calls, the [`BufferedConsumer`] trait additionally provides the [`flush`](BufferedConsumer::flush) method, by which calling code can instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
 //!
+//! See [`ConsumerExt::buffered`] for a generic way of how ufotofu can add buffering to arbitrary consumers.
+//!
 //! <br/>The counterpart to the [`consumer`] module is the [`producer`] module.
 
 use crate::prelude::*;

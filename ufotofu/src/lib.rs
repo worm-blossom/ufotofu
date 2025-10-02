@@ -33,6 +33,12 @@
 //! - The futures returned by async ufotofu methods are `!Send`, they cannot be run on multi-threaded executors.
 //! - Dropping any method-returned future before polling it to completion will leave the original object in an undefined state; subsequent method calls may display arbitrary (but always safe) behaviour.
 //! - Unwinding any panic may leave ufotofu values in an undefined state. Do not attempt to recover from panics when using ufotofu.
+//!
+//! ## Module Overview
+//!
+//! The two central modules are [`producer`] and [`consumer`], they define the core abstractions of the crate.
+//!
+//! The [`queues`] module provides the [`Queue`](queues::Queue) trait for infallible in-memory queues with bulk push and pop operations, and some types implementing it. These power the buffered producer and consumer implementations of ufotofu.
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -185,6 +191,8 @@ pub use consumer::{
     BufferedConsumer, BulkConsumer, BulkConsumerExt, Consumer, ConsumerExt, IntoBufferedConsumer,
     IntoBulkConsumer, IntoConsumer,
 };
+
+pub mod queues;
 
 // #[cfg(all(feature = "dev", feature = "alloc"))]
 // mod test_yielder;
