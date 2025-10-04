@@ -8,7 +8,7 @@
 //!
 //! <br/>Counterpart: the [`consumer::compat::array`] module.
 
-use core::{cmp::min, convert::Infallible, fmt, mem::ManuallyDrop};
+use core::{convert::Infallible, fmt, mem::ManuallyDrop};
 
 use crate::{
     prelude::*,
@@ -91,29 +91,27 @@ impl<const N: usize, T> IntoProducer<N, T> {
         &self.arr[self.offset..]
     }
 
-    // Actually not providing this, because then bulk production can safely assume non-overlapping buffers.
-    //
-    // /// Returns the remaining items of this iterator as a mutable slice.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use ufotofu::prelude::*;
-    // /// # pollster::block_on(async{
-    // /// let arr = ['a', 'b', 'c'];
-    // /// let mut p = arr.into_producer();
-    // ///
-    // /// assert_eq!(p.as_slice(), &['a', 'b', 'c']);
-    // /// assert_eq!(p.produce().await?, 'a');
-    // /// p.as_mut_slice()[1] = 'z';
-    // /// assert_eq!(p.produce.await?, 'b');
-    // /// assert_eq!(p.produce.await?, 'z');
-    // /// # Result::<(), Infallible>::Ok(())
-    // /// # });
-    // /// ```
-    // pub fn as_mut_slice(&mut self) -> &mut [T] {
-    //     &mut self.arr[self.offset..]
-    // }
+    /// Returns the remaining items of this iterator as a mutable slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let arr = ['a', 'b', 'c'];
+    /// let mut p = arr.into_producer();
+    ///
+    /// assert_eq!(p.as_slice(), &['a', 'b', 'c']);
+    /// assert_eq!(p.produce().await?, Left('a'));
+    /// p.as_mut_slice()[1] = 'z';
+    /// assert_eq!(p.produce().await?, Left('b'));
+    /// assert_eq!(p.produce().await?, Left('z'));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.arr[self.offset..]
+    }
 
     /// Returns the number of remaining items.
     ///
@@ -144,12 +142,11 @@ impl<const N: usize, T> AsRef<[T]> for IntoProducer<N, T> {
     }
 }
 
-// Actually not providing this, because then bulk production can safely assume non-overlapping buffers.
-// impl<const N: usize, T> AsMut<[T]> for IntoProducer<N, T> {
-//     fn as_mut(&mut self) -> &mut [T] {
-//         self.as_mut_slice()
-//     }
-// }
+impl<const N: usize, T> AsMut<[T]> for IntoProducer<N, T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        self.as_mut_slice()
+    }
+}
 
 impl<const N: usize, T> Producer for IntoProducer<N, T> {
     type Item = T;
@@ -170,30 +167,18 @@ impl<const N: usize, T> Producer for IntoProducer<N, T> {
 }
 
 impl<const N: usize, T> BulkProducer for IntoProducer<N, T> {
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_produce with an empty buffer."
-        );
-
-        let amount = min(buf.len(), self.len());
-
-        if amount == 0 {
-            Ok(Right(()))
+    async fn expose_items<F, R>(&mut self, f: F) -> Result<Either<R, Self::Final>, Self::Error>
+    where
+        F: AsyncFnOnce(&[Self::Item]) -> (usize, R),
+    {
+        if self.len() == 0 {
+            return Ok(Right(()));
         } else {
-            let to_move = &self.as_slice()[..amount];
-
-            // SAFETY: slice references yield valid pointers.
-            // The memory is not overlapping, because we do not expose any
-            // mutable references to the array after we took ownership of it.
-            unsafe { core::ptr::copy_nonoverlapping(to_move.as_ptr(), buf.as_mut_ptr(), amount) };
-
+            let (amount, ret) = f(self.as_slice()).await;
+            assert!(amount <= self.len());
             self.offset += amount;
-            Ok(Left(amount))
+
+            Ok(Left(ret))
         }
     }
 }

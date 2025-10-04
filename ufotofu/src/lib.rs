@@ -20,7 +20,7 @@
 //! - Fatal errors, no resumption of processing after an error was signalled.
 //! - Full generics for bulk operations, no restriction to `u8` and `io::Error`.
 //! - Bulk processing generalises item-by-item processing; the bulk traits extend the item-by-item traits.
-//! - Bulk operations work with non-empty slices and must process nonzero quantities of items.
+//! - Zero-copy bulk processing; the bulk traits *expose* slices instead of copying into or from passed slices.
 //! - Buffering is abstracted-over in traits, not provided by concrete structs.
 //! - Emphasis on producer-consumer duality, neither is more expressive than the other.
 //! - Producers emit a dedicated final value, consumers receive a dedicated value when closed.
@@ -234,7 +234,7 @@ where
 
 /// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using a non-empty slice as an intermediate buffer.
 /// Then calls [`close`](Consumer::close) on the consumer with the final value
-/// emitted by the producer.
+/// emitted by the producer. [TODO]
 pub async fn bulk_pipe<P, C>(
     producer: P,
     consumer: C,
@@ -246,21 +246,23 @@ where
 {
     debug_assert!(!buf.is_empty());
 
-    let mut producer = producer.into_producer();
-    let mut consumer = consumer.into_consumer();
+    todo!()
 
-    loop {
-        match producer.bulk_produce(buf).await {
-            Err(err) => return Err(PipeError::Producer(err)),
-            Ok(Right(fin)) => {
-                return consumer.close(fin).await.map_err(PipeError::Consumer);
-            }
-            Ok(Left(amount)) => {
-                consumer
-                    .bulk_consume_full_slice(&buf[..amount])
-                    .await
-                    .map_err(|err| PipeError::Consumer(err.reason))?;
-            }
-        }
-    }
+    // let mut producer = producer.into_producer();
+    // let mut consumer = consumer.into_consumer();
+
+    // loop {
+    //     match producer.bulk_produce(buf).await {
+    //         Err(err) => return Err(PipeError::Producer(err)),
+    //         Ok(Right(fin)) => {
+    //             return consumer.close(fin).await.map_err(PipeError::Consumer);
+    //         }
+    //         Ok(Left(amount)) => {
+    //             consumer
+    //                 .bulk_consume_full_slice(&buf[..amount])
+    //                 .await
+    //                 .map_err(|err| PipeError::Consumer(err.reason))?;
+    //         }
+    //     }
+    // }
 }

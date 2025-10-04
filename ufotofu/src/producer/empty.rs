@@ -41,20 +41,3 @@ impl<T> Producer for Empty<T> {
         )))
     }
 }
-
-impl<T> BulkProducer for Empty<T> {
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_produce with an empty buffer."
-        );
-
-        Ok(Right(self.0.take().expect(
-            "Must not call produce after having yielded the final value",
-        )))
-    }
-}

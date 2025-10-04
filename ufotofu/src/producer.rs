@@ -52,14 +52,35 @@
 //!
 //! Every producer automatically implements the [`ProducerExt`] trait, which provides useful methods for working with producers.
 //!
-//! <br/
+//! <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. This is enabled by the [`BulkProducer::expose_items`] method. You pass to this method an async function as the sole argument. The bulk producer calls that function, passing it a non-empty slice of items. The function can process these items in any way, and then returns a pair of values: first, the number of items the producer should now consider as having been produced, and second, an arbitrary value, to be returned by the `expose_items` call.
 //!
-//! >Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. The design is fully analogous to [`std::io::Read`] — the [`BulkProducer::bulk_produce`] method takes a `&mut [Self::Item]` as its argument, and returns how many items it placed in that buffer. Crucial differences to [`Read::read`](std::io::Read::read) are:
+//! ```
+//! use ufotofu::prelude::*;
+//! # pollster::block_on(async{
+//! let mut p = [1, 2, 4].into_producer();
 //!
-//! - `bulk_produce` is asynchronous;
-//! - `bulk_produce` can either fill the slice with regular items, yield an error, or yield the final value;
-//! - `bulk_produce` works with arbitrary `Producer::Item` and `Producer::Error` types, not just `u8` and `io::Error`; and
-//! - `bulk_produce` must not be called with an empty buffer, and it must write at least one item (when not signalling the end of the sequence with a final value or an error).
+//! assert_eq!(p.expose_items(async |items| {
+//!     assert_eq!(items, &[1, 2, 4]);
+//!     return (3, "hi!");
+//! }).await?, Left("hi!"));
+//! assert_eq!(p.produce().await?, Right(()));
+//!
+//! // If we reported that we only consumed two items, the producer would later emit the `4`:
+//! let mut p2 = [1, 2, 4].into_producer();
+//! assert_eq!(p2.expose_items(async |items| {
+//!     assert_eq!(items, &[1, 2, 4]);
+//!     return (2, "hi!");
+//! }).await?, Left("hi!"));
+//! assert_eq!(p2.produce().await?, Left(4));
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! ```
+//!
+//! <br/>
+//!
+//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of several methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
+//!
+//! Of particular note is the [`BulkProducerExt::bulk_produce`] method, which builds on `expose_items` and reimplements the way that, e.g., [`std::io::Read`] emits multiple items at a time: `bulk_produce` takes a mutable slice as its input, and the producer reports how many items it copied (cloned) into it.
 //!
 //! ```
 //! use ufotofu::prelude::*;
@@ -75,10 +96,6 @@
 //! # Result::<(), Infallible>::Ok(())
 //! # });
 //! ```
-//!
-//! <br/>
-//!
-//! Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of several methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
 //!
 //! <br/>
 //!
@@ -229,7 +246,35 @@ impl IntoProducer for () {
     }
 }
 
-/// A [`BulkProducer`] is a producer that can emit multiple items with a single method call, by placing many items in the buffer argument of the [`BulkProducer::bulk_produce`] method and returning how many items were placed. Semantically, there should be no difference between bulk production or item-by-item production.
+/// <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. This is enabled by the [`BulkProducer::expose_items`] method. You pass to this method an async function as the sole argument. The bulk producer calls that function, passing it a non-empty slice of items. The function can process these items in any way, and then returns a pair of values: first, the number of items the producer should now consider as having been produced, and second, an arbitrary value, to be returned by the `expose_items` call.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p = [1, 2, 4].into_producer();
+///
+/// assert_eq!(p.expose_items(async |items| {
+///     assert_eq!(items, &[1, 2, 4]);
+///     return (3, "hi!");
+/// }).await?, Left("hi!"));
+/// assert_eq!(p.produce().await?, Right(()));
+///
+/// // If we reported that we only consumed two items, the producer would later emit the `4`:
+/// let mut p2 = [1, 2, 4].into_producer();
+/// assert_eq!(p2.expose_items(async |items| {
+///     assert_eq!(items, &[1, 2, 4]);
+///     return (2, "hi!");
+/// }).await?, Left("hi!"));
+/// assert_eq!(p2.produce().await?, Left(4));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>
+///
+/// Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of several methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
+///
+/// Of particular note is the [`BulkProducerExt::bulk_produce`] method, which builds on `expose_items` and reimplements the way that, e.g., [`std::io::Read`] emits multiple items at a time: `bulk_produce` takes a mutable slice as its input, and the producer reports how many items it copied (cloned) into it.
 ///
 /// ```
 /// use ufotofu::prelude::*;
@@ -245,61 +290,103 @@ impl IntoProducer for () {
 /// # Result::<(), Infallible>::Ok(())
 /// # });
 /// ```
+
+/// A [`BulkProducer`] is a producer that can emit multiple items with a single call of the [`BulkProducer::expose_items`] method.
 ///
+/// This method takes an async function as its sole argument. The producer calls that function, passing it a non-empty slice of items. The function can process these items in any way, and then returns a pair of values: first, the number of items the producer should now consider as having been produced, and second, an arbitrary value, to be returned by the `expose_items` call.
+///
+/// See [`BulkProducerExt::bulk_produce`] for using bulk producers in a way analogous to [`std::io::Read::read`].
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p = [1, 2, 4].into_producer();
+///
+/// assert_eq!(p.expose_items(async |items| {
+///     assert_eq!(items, &[1, 2, 4]);
+///     return (3, "hi!");
+/// }).await?, Left("hi!"));
+/// assert_eq!(p.produce().await?, Right(()));
+///
+/// // If we reported that we only consumed two items, the producer would later emit the `4`:
+/// let mut p2 = [1, 2, 4].into_producer();
+/// assert_eq!(p2.expose_items(async |items| {
+///     assert_eq!(items, &[1, 2, 4]);
+///     return (2, "hi!");
+/// }).await?, Left("hi!"));
+/// assert_eq!(p2.produce().await?, Left(4));
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// Semantically, there should be no difference between bulk production or item-by-item production.
 /// <br/>Counterpart: the [`BulkConsumer`] trait.
 pub trait BulkProducer: Producer {
     /// Attempts to produce one or more regular items, or the final value. This method may fail, returning an `Err` instead.
     ///
-    /// When producing regular items, the producer must write the items to a contiguous prefix of the given buffer, and then return the number of written items via `Ok(Left(amount))`. The `amount` must not be zero. The producer can assume that the buffer it receives is non-empty.
-    ///
-    /// If this method returns the final value or an error, it must not mutate the buffer.
-    ///
-    /// The contents of the passed buffer must not influence the behaviour of this method, implementations should preferrably not read the buffer contents at all.
+    /// When the producer needs to yield an error or its final value, it must return them immediately from this function. Otherwise, i.e., when it wants to produce regular items, it must call the passed function `f` with a non-empty slice of items as the argument, and then poll `f` to completion. When `f` has yielded `(amount, t)`, the producer must adjust its state as if `produce` had been called `amount` many times, and then return `Ok(Left(t))`. It must not return `Ok(Right(_))` or `Err(_)` when having called `f`.
     ///
     /// After this function returns the final value or after it returns an error, no further
     /// methods of this trait may be invoked.
-    ///
-    /// The restrictions on implementations (write at least one item, do not read the buffer, only mutate a prefix, no mutation when returning the final value or an error) and for callers (do not pass an empty buffer, do not call after a final value or an error) all follow from a single axiom: in terms of the produced sequence of values, bulk production must be indistinguishable from repeatedly calling `produce`. The only difference should be improved performance.
-    ///
-    /// This has direct consequences returning errors. Suppose `bulk_produce` is called with a buffer of length seven. The bulk producer determines that it could produce four items before having to report an error. The bulk producer must then write the four items and return `Ok(Left(4))`. Only on the next producer method call can it report the error.
     ///
     /// # Invariants
     ///
     /// Must not be called after any method of this trait has returned a final value or an error.
     ///
-    /// Must not be called with an empty buffer.
+    /// # Examples
     ///
-    /// <br/>Counterpart: the [`BulkConsumer::bulk_consume`] method.
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error>;
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = [1, 2, 4].into_producer();
+    ///
+    /// assert_eq!(p.expose_items(async |items| {
+    ///     assert_eq!(items, &[1, 2, 4]);
+    ///     return (3, "hi!");
+    /// }).await?, Left("hi!"));
+    /// assert_eq!(p.produce().await?, Right(()));
+    ///
+    /// // If we reported that we only consumed two items, the producer would later emit the `4`:
+    /// let mut p2 = [1, 2, 4].into_producer();
+    /// assert_eq!(p2.expose_items(async |items| {
+    ///     assert_eq!(items, &[1, 2, 4]);
+    ///     return (2, "hi!");
+    /// }).await?, Left("hi!"));
+    /// assert_eq!(p2.produce().await?, Left(4));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: the [`BulkConsumer::expose_slots`] method.
+    async fn expose_items<F, R>(&mut self, f: F) -> Result<Either<R, Self::Final>, Self::Error>
+    where
+        F: AsyncFnOnce(&[Self::Item]) -> (usize, R);
 }
 
 impl<P: BulkProducer> BulkProducer for &mut P {
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        (*self).bulk_produce(buf).await
+    async fn expose_items<F, R>(&mut self, f: F) -> Result<Either<R, Self::Final>, Self::Error>
+    where
+        F: AsyncFnOnce(&[Self::Item]) -> (usize, R),
+    {
+        (*self).expose_items(f).await
     }
 }
 
 #[cfg(feature = "alloc")]
 impl<P: BulkProducer> BulkProducer for alloc::boxed::Box<P> {
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        self.as_mut().bulk_produce(buf).await
+    async fn expose_items<F, R>(&mut self, f: F) -> Result<Either<R, Self::Final>, Self::Error>
+    where
+        F: AsyncFnOnce(&[Self::Item]) -> (usize, R),
+    {
+        self.as_mut().expose_items(f).await
     }
 }
 
 impl BulkProducer for Infallible {
-    async fn bulk_produce(
-        &mut self,
-        _buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
+    async fn expose_items<F, R>(&mut self, _f: F) -> Result<Either<R, Self::Final>, Self::Error>
+    where
+        F: AsyncFnOnce(&[Self::Item]) -> (usize, R),
+    {
         unreachable!()
     }
 }
