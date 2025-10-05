@@ -1,18 +1,45 @@
 # UFOTOFU
 
-Ufotofu provides APIs for lazily producing or consuming sequences of arbitrary
-length. Highlights include
+Abstractions for asynchronously working with series of data (“streams” and
+“sinks”).
 
-- freely choosable error and item types, even for readers and writers,
-- meaningful subtyping relations between streams and readers, and between sinks
-  and writers,
-- the ability to represent finite and infinite sequences on the type level, and
-- `nostd` support.
+This crate provides alternatives to some abstractions of the popular
+[`futures`](https://docs.rs/futures/latest/futures) crate:
 
-Read the [docs here](https://docs.rs/ufotofu/latest/ufotofu/).
+- [`Producer`](https://docs.rs/ufotofu/latest/ufotofu/trait.Producer.html) and
+  [`Consumer`](https://docs.rs/ufotofu/latest/ufotofu/trait.Consumer.html)
+  replace
+  [`Stream`](https://docs.rs/futures/latest/futures/prelude/trait.Stream.html)
+  and [`Sink`](https://docs.rs/futures/latest/futures/prelude/trait.Sink.html),
+  and
+- [`BulkProducer`](https://docs.rs/ufotofu/latest/ufotofu/trait.BulkProducer.html)
+  and
+  [`BulkConsumer`](https://docs.rs/ufotofu/latest/ufotofu/trait.BulkConsumer.html)
+  replace
+  [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html)
+  [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
 
-You can find an in-depth discussion of the API designs
-[here](https://github.com/AljoschaMeyer/lazy_on_principle/blob/main/main.pdf).
+## Fundamental Design Choices
+
+- Async trait methods, no poll-based interfaces.
+- `nostd` by default.
+- Fatal errors, no resumption of processing after an error was signalled.
+- Full generics for bulk operations, no restriction to `u8` and `io::Error`.
+- Bulk processing generalises item-by-item processing; the bulk traits extend
+  the item-by-item traits.
+- Zero-copy bulk processing; the bulk traits _expose_ slices instead of copying
+  into or from passed slices.
+- Buffering is abstracted-over in traits, not provided by concrete structs.
+- Emphasis on producer-consumer duality, neither is more expressive than the
+  other.
+- Producers emit a dedicated final value, consumers receive a dedicated value
+  when closed.
+- British spelling.
+
+Read the [docs](https://docs.rs/ufotofu/latest/ufotofu/) for a thorough
+introduction to the API, see the
+[ufotofu website](https://ufotofu.worm-blossom.org/) for a discussion of the
+design choices.
 
 ## License
 

@@ -11,7 +11,6 @@ syn = { version = "2.0.106", features = ["full"] }
 quote = "1.0.40"
 proc-macro2 = "1.0.101"
 proc-macro-crate = "3.4.0"
-either = "1.10.0"
 
 [lints]
 workspace = true
