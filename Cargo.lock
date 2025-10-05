@@ -562,20 +562,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ufotofu_codec"
-version = "0.2.0"
-
-[[package]]
-name = "ufotofu_codec_endian"
-version = "0.3.0"
-dependencies = [
- "arbitrary",
- "either",
- "ufotofu",
- "ufotofu_codec",
-]
-
-[[package]]
 name = "ufotofu_macros"
 version = "0.1.0"
 dependencies = [
@@ -584,10 +570,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "ufotofu_queues"
-version = "0.7.0"
 
 [[package]]
 name = "unicode-ident"
