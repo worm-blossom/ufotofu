@@ -21,7 +21,7 @@ pub use static_::*;
 ///
 /// Beyond the entirely typical [`enqueue`](Queue::enqueue) and [`dequeue`](Queue::dequeue) methods, this trait also provides [`bulk_enqueue`](Queue::bulk_enqueue) and [`bulk_dequeue`](Queue::bulk_dequeue) methods for transferring multiple items with single method calls.
 ///
-/// This trait describes infallible in-memory queues; its methods are synchronous and do not support error reporting.
+/// This trait describes infallible in-memory queues; its methods are synchronous and do not support error reporting. [TODO] do zero-copy item/slot exposure
 pub trait Queue {
     /// The type of items to manage in the queue.
     type Item;

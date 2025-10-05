@@ -65,7 +65,7 @@
 //! }).await?, Left("hi!"));
 //! assert_eq!(p.produce().await?, Right(()));
 //!
-//! // If we reported that we only consumed two items, the producer would later emit the `4`:
+//! // If we reported that we only processed two items, the producer would later emit the `4`:
 //! let mut p2 = [1, 2, 4].into_producer();
 //! assert_eq!(p2.expose_items(async |items| {
 //!     assert_eq!(items, &[1, 2, 4]);
@@ -246,51 +246,6 @@ impl IntoProducer for () {
     }
 }
 
-/// <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. This is enabled by the [`BulkProducer::expose_items`] method. You pass to this method an async function as the sole argument. The bulk producer calls that function, passing it a non-empty slice of items. The function can process these items in any way, and then returns a pair of values: first, the number of items the producer should now consider as having been produced, and second, an arbitrary value, to be returned by the `expose_items` call.
-///
-/// ```
-/// use ufotofu::prelude::*;
-/// # pollster::block_on(async{
-/// let mut p = [1, 2, 4].into_producer();
-///
-/// assert_eq!(p.expose_items(async |items| {
-///     assert_eq!(items, &[1, 2, 4]);
-///     return (3, "hi!");
-/// }).await?, Left("hi!"));
-/// assert_eq!(p.produce().await?, Right(()));
-///
-/// // If we reported that we only consumed two items, the producer would later emit the `4`:
-/// let mut p2 = [1, 2, 4].into_producer();
-/// assert_eq!(p2.expose_items(async |items| {
-///     assert_eq!(items, &[1, 2, 4]);
-///     return (2, "hi!");
-/// }).await?, Left("hi!"));
-/// assert_eq!(p2.produce().await?, Left(4));
-/// # Result::<(), Infallible>::Ok(())
-/// # });
-/// ```
-///
-/// <br/>
-///
-/// Every bulk producer automatically implements the [`BulkProducerExt`] trait, which provides bulk-production-based variants of several methods of [`ProducerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
-///
-/// Of particular note is the [`BulkProducerExt::bulk_produce`] method, which builds on `expose_items` and reimplements the way that, e.g., [`std::io::Read`] emits multiple items at a time: `bulk_produce` takes a mutable slice as its input, and the producer reports how many items it copied (cloned) into it.
-///
-/// ```
-/// use ufotofu::prelude::*;
-/// # pollster::block_on(async{
-/// let mut p = [1, 2, 4].into_producer();
-/// let mut buf = [0, 0];
-///
-/// assert_eq!(p.bulk_produce(&mut buf[..]).await?, Left(2));
-/// assert_eq!(buf, [1, 2]);
-/// assert_eq!(p.bulk_produce(&mut buf[..]).await?, Left(1));
-/// assert_eq!(buf, [4, 2]);
-/// assert_eq!(p.bulk_produce(&mut buf[..]).await?, Right(()));
-/// # Result::<(), Infallible>::Ok(())
-/// # });
-/// ```
-
 /// A [`BulkProducer`] is a producer that can emit multiple items with a single call of the [`BulkProducer::expose_items`] method.
 ///
 /// This method takes an async function as its sole argument. The producer calls that function, passing it a non-empty slice of items. The function can process these items in any way, and then returns a pair of values: first, the number of items the producer should now consider as having been produced, and second, an arbitrary value, to be returned by the `expose_items` call.
@@ -308,7 +263,7 @@ impl IntoProducer for () {
 /// }).await?, Left("hi!"));
 /// assert_eq!(p.produce().await?, Right(()));
 ///
-/// // If we reported that we only consumed two items, the producer would later emit the `4`:
+/// // If we reported that we only processed two items, the producer would later emit the `4`:
 /// let mut p2 = [1, 2, 4].into_producer();
 /// assert_eq!(p2.expose_items(async |items| {
 ///     assert_eq!(items, &[1, 2, 4]);
@@ -320,6 +275,7 @@ impl IntoProducer for () {
 /// ```
 ///
 /// Semantically, there should be no difference between bulk production or item-by-item production.
+///
 /// <br/>Counterpart: the [`BulkConsumer`] trait.
 pub trait BulkProducer: Producer {
     /// Attempts to produce one or more regular items, or the final value. This method may fail, returning an `Err` instead.
@@ -332,6 +288,8 @@ pub trait BulkProducer: Producer {
     /// # Invariants
     ///
     /// Must not be called after any method of this trait has returned a final value or an error.
+    ///
+    /// `f` must not return an `amount` strictly greater than the length of the buffer passed to it.
     ///
     /// # Examples
     ///
@@ -346,7 +304,7 @@ pub trait BulkProducer: Producer {
     /// }).await?, Left("hi!"));
     /// assert_eq!(p.produce().await?, Right(()));
     ///
-    /// // If we reported that we only consumed two items, the producer would later emit the `4`:
+    /// // If we reported that we only processed two items, the producer would later emit the `4`:
     /// let mut p2 = [1, 2, 4].into_producer();
     /// assert_eq!(p2.expose_items(async |items| {
     ///     assert_eq!(items, &[1, 2, 4]);

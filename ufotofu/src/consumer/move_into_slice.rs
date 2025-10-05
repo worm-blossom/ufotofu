@@ -1,4 +1,3 @@
-use core::cmp::min;
 use core::convert::AsRef;
 use core::fmt::Debug;
 
@@ -219,22 +218,19 @@ impl<T> Consumer for MoveIntoSlice<'_, T> {
     }
 }
 
-impl<T: Clone> BulkConsumer for MoveIntoSlice<'_, T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<T> BulkConsumer for MoveIntoSlice<'_, T> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        let amount = min(buf.len(), self.0.len() - self.1);
-
-        if amount == 0 {
+        if len == 0 {
             Err(())
         } else {
-            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
+            let (amount, ret) = f(&mut self.0[self.1..]).await;
             self.1 += amount;
-            Ok(amount)
+            Ok(ret)
         }
     }
 }

@@ -118,7 +118,7 @@ pub trait BulkProducerExt: BulkProducer {
     /// }).await?, Left("hi!"));
     /// assert_eq!(p.produce().await?, Right(()));
     ///
-    /// // If we reported that we only consumed two items, the producer would later emit the `4`:
+    /// // If we reported that we only processed two items, the producer would later emit the `4`:
     /// let mut p2 = [1, 2, 4].into_producer();
     /// assert_eq!(p2.expose_items_sync(|items| {
     ///     assert_eq!(items, &[1, 2, 4]);
@@ -139,7 +139,7 @@ pub trait BulkProducerExt: BulkProducer {
 
     /// Calls `self.expose_items`, clones the resulting items into the given buffer, and returns how many items where written there. Alternatively, forwards any final value or error. This method is mostly analogous to [`std::io::Read::read`].
     ///
-    /// This method will return `Ok(Left(0))` only when `buf` has length zero. It *may* still return a final value or error instead when called with a zero-length buffer.
+    /// This method will return `Ok(Left(0))` only when `buf` has length zero. It *may* still forward a final value or error instead when called with a zero-length buffer.
     ///
     /// Note that this function does not attempt to completely fill `buf`, it only does a *single* call to `self.expose_items` and then clones as many items as it has available (and as will fit). See [`BulkProducerExt::bulk_overwrite_full_slice`] if you want to *completely* fill a slice.
     ///

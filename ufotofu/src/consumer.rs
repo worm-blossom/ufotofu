@@ -44,11 +44,46 @@
 //!
 //! <br/>
 //!
-//! Consuming a sequence one item at a time can be inefficient. The [`BulkConsumer`] trait extends [`Consumer`] with the ability to consume multiple items at a time. The design is fully analogous to [`std::io::Write`] — the [`BulkConsumer::bulk_consume`] method takes a `&[Self::Item]` as its argument, and returns how many items it read from that buffer. Crucial differences to [`Write::write`](std::io::Write::write) are:
+//! Consuming a sequence one item at a time can be inefficient. The [`BulkConsumer`] trait extends [`Consumer`] with the ability to consume multiple items at a time. This is enabled by the [`BulkConsumer::expose_slots`] method. You pass to this method an async function as the sole argument. The bulk consumer calls that function, passing it a mutable, non-empty slice of items. The function overwrite items in that buffer, and then returns a pair of values: first, the number of items from the buffer the consumer should now consume, and second, an arbitrary value, to be returned by the `expose_slots` call.
 //!
-//! - `bulk_consume` is asynchronous;
-//! - `bulk_consume` works with arbitrary `Producer::Item: Clone` and `Producer::Error` types, not just `u8` and `io::Error`; and
-//! - `bulk_produce` must not be called with an empty buffer, and it must read at least one item (unless returning an error).
+//! ```
+//! use ufotofu::prelude::*;
+//! # pollster::block_on(async{
+//! let mut arr = [0, 0, 0];
+//! let mut c = (&mut arr).into_consumer();
+//!
+//! assert_eq!(c.expose_slots(async |mut slots| {
+//!     slots[0] = 1;
+//!     slots[1] = 2;
+//!     slots[2] = 4;
+//!     (3, "hi!")
+//! }).await?, "hi!");
+//! assert_eq!(c.consume(8).await, Err(()));
+//!
+//! assert_eq!(arr, [1, 2, 4]);
+//!
+//! // If we reported that we only wrote two items, the consumer would later accept another item:
+//! let mut arr2 = [0, 0, 0];
+//! let mut c2 = (&mut arr2).into_consumer();
+//!
+//! assert_eq!(c2.expose_slots(async |mut slots| {
+//!     slots[0] = 1;
+//!     slots[1] = 2;
+//!     slots[2] = 4;
+//!     (2, "hi!")
+//! }).await?, "hi!");
+//! assert_eq!(c2.consume(8).await, Ok(()));
+//!
+//! assert_eq!(arr2, [1, 2, 8]);
+//! # Result::<(), ()>::Ok(())
+//! # });
+//! ```
+//!
+//! <br/>
+//!
+//! Every bulk consumer automatically implements the [`BulkConsumerExt`] trait, which provides bulk-consumption-based variants of several methods of [`ConsumerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
+//!
+//! Of particular note is the [`BulkConsumerExt::bulk_consume`] method, which builds on `expose_slots` and reimplements the way that, e.g., [`std::io::Write`] accepts multiple items at a time: `bulk_consume` takes a slice as its input, and the consumer reports how many items from that slice it consumed.
 //!
 //! ```
 //! use ufotofu::prelude::*;
@@ -63,10 +98,6 @@
 //! # Result::<(), ()>::Ok(())
 //! # });
 //! ```
-//!
-//! <br/>
-//!
-//! Every bulk consumer automatically implements the [`BulkConsumerExt`] trait, which provides bulk-consumption-based variants of several methods of [`ConsumerExt`]. These bulk versions are typically more efficient and should be preferred whenever possible.
 //!
 //! <br/>
 //!
@@ -238,7 +269,11 @@ impl IntoConsumer for () {
     }
 }
 
-/// A [`BulkConsumer`] is a consumer that can receive multiple items with a single method call, by cloning them out of the buffer argument of the [`BulkConsumer::bulk_consume`] method and returning how many items were read. Semantically, there should be no difference between bulk consumption or item-by-item consumption.
+/// A [`Bulkconsumer`] is a producer that can accept multiple items with a single call of the [`BulkConsumer::expose_slots`] method.
+///
+/// This method takes an async function as its sole argument. The consumer calls that function, passing it a mutable, non-empty slice of items. The function can mutate these items in any way, and then returns a pair of values: first, the number of items the consumer should now consider as having been consumed, and second, an arbitrary value, to be returned by the `expose_slots` call.
+///
+/// See [`BulkConsumerExt::bulk_consumer`] for using bulk consumers in a way analogous to [`std::io::Write::write`].
 ///
 /// ```
 /// use ufotofu::prelude::*;
@@ -246,51 +281,117 @@ impl IntoConsumer for () {
 /// let mut arr = [0, 0, 0];
 /// let mut c = (&mut arr).into_consumer();
 ///
-/// assert_eq!(c.bulk_consume(&[1, 2]).await?, 2);
-/// assert_eq!(c.bulk_consume(&[4, 8]).await?, 1);
+/// assert_eq!(c.expose_slots(async |mut slots| {
+///     slots[0] = 1;
+///     slots[1] = 2;
+///     slots[2] = 4;
+///     (3, "hi!")
+/// }).await?, "hi!");
+/// assert_eq!(c.consume(8).await, Err(()));
 ///
 /// assert_eq!(arr, [1, 2, 4]);
+///
+/// // If we reported that we only wrote two items, the consumer would later accept another item:
+/// let mut arr2 = [0, 0, 0];
+/// let mut c2 = (&mut arr2).into_consumer();
+///
+/// assert_eq!(c2.expose_slots(async |mut slots| {
+///     slots[0] = 1;
+///     slots[1] = 2;
+///     slots[2] = 4;
+///     (2, "hi!")
+/// }).await?, "hi!");
+/// assert_eq!(c2.consume(8).await, Ok(()));
+///
+/// assert_eq!(arr2, [1, 2, 8]);
 /// # Result::<(), ()>::Ok(())
 /// # });
 /// ```
+///
+/// Semantically, there should be no difference between bulk consumption or item-by-item consumption.
 ///
 /// <br/>Counterpart: the [`BulkProducer`] trait.
 pub trait BulkConsumer: Consumer {
     /// Attempts to consume one or more regular items. This method may fail, returning an `Err` instead.
     ///
-    /// When consuming regular items, the consumer must clone the items out of a contiguous prefix of the given buffer, and then return the number of cloned items via `Ok(amount)`. The `amount` must not be zero. The consumer can assume that the buffer it receives is non-empty.
+    /// When the consumer needs to return an error, it must return it immediately from this function. Otherwise, i.e., when it wants to consume regular items, it must call the passed function `f` with a non-empty slice of items as the argument, and then poll `f` to completion. When `f` has yielded `(amount, t)`, the consumer must adjust its state as if `consume` had been called `amount` many times with copies of the first `amount` many items in the slice it had passed to `f`, and then return `Ok(t)`. It must not return `Err(_)` when having called `f`.
     ///
-    /// After this function returns an error, no further methods of this trait may be invoked.
+    /// After this function returns the final value or after it returns an error, no further
+    /// methods of this trait may be invoked.
     ///
-    /// The restrictions on implementations (read at least one item, only read from a prefix) and for callers (do not pass an empty buffer, do not call after closing or an error) all follow from a single axiom: in terms of the consumed sequence of values, bulk consumption must be indistinguishable from repeatedly calling `consume`. The only difference should be improved performance.
-    ///
-    /// This has direct consequences returning errors. Suppose `bulk_consume` is called with a buffer of length seven. The bulk consumer determines that it could consume four items before having to report an error. The bulk consumer must then read the four items and return `Ok(4)`. Only on the next consumer method call can it report the error.
+    /// The intention is for `f` to not read any contents of the passed slice, but to simply write items into the slice that should be consumed. Sadly, we cannot enforce this on the type level.
     ///
     /// # Invariants
     ///
     /// Must not be called after this consumer has been closed, or after any method of this trait has returned an error.
     ///
-    /// Must not be called with an empty buffer.
+    /// `f` must not return an `amount` strictly greater than the length of the buffer passed to it.
     ///
-    /// <br/>Counterpart: the [`BulkProducer::bulk_produce`] method (when producing regular items).
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error>;
+    /// # Examples
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut arr = [0, 0, 0];
+    /// let mut c = (&mut arr).into_consumer();
+    ///
+    /// assert_eq!(c.expose_slots(async |mut slots| {
+    ///     slots[0] = 1;
+    ///     slots[1] = 2;
+    ///     slots[2] = 4;
+    ///     (3, "hi!")
+    /// }).await?, "hi!");
+    /// assert_eq!(c.consume(8).await, Err(()));
+    ///
+    /// assert_eq!(arr, [1, 2, 4]);
+    ///
+    /// // If we reported that we only wrote two items, the consumer would later accept another item:
+    /// let mut arr2 = [0, 0, 0];
+    /// let mut c2 = (&mut arr2).into_consumer();
+    ///
+    /// assert_eq!(c2.expose_slots(async |mut slots| {
+    ///     slots[0] = 1;
+    ///     slots[1] = 2;
+    ///     slots[2] = 4;
+    ///     (2, "hi!")
+    /// }).await?, "hi!");
+    /// assert_eq!(c2.consume(8).await, Ok(()));
+    ///
+    /// assert_eq!(arr2, [1, 2, 8]);
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: the [`BulkProducer::expose_items`] method.
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R);
 }
 
 impl<C: BulkConsumer> BulkConsumer for &mut C {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        (*self).bulk_consume(buf).await
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        (*self).expose_slots(f).await
     }
 }
 
 #[cfg(feature = "alloc")]
 impl<C: BulkConsumer> BulkConsumer for alloc::boxed::Box<C> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        self.as_mut().bulk_consume(buf).await
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        self.as_mut().expose_slots(f).await
     }
 }
 
 impl BulkConsumer for Infallible {
-    async fn bulk_consume(&mut self, _buf: &[Self::Item]) -> Result<usize, Self::Error> {
+    async fn expose_slots<F, R>(&mut self, _f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
         unreachable!()
     }
 }

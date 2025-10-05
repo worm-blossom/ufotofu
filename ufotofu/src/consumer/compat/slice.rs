@@ -8,8 +8,6 @@
 //!
 //! <br/>Counterpart: the [`consumer::compat::slice`] module.
 
-use core::cmp::min;
-
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 
@@ -56,22 +54,19 @@ impl<'s, T> Consumer for IntoConsumerMut<'s, T> {
     }
 }
 
-impl<'a, T: Clone> BulkConsumer for IntoConsumerMut<'a, T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<'a, T> BulkConsumer for IntoConsumerMut<'a, T> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        let amount = min(buf.len(), self.0.len() - self.1);
-
-        if amount == 0 {
+        if len == 0 {
             Err(())
         } else {
-            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
+            let (amount, ret) = f(&mut self.0[self.1..]).await;
             self.1 += amount;
-            Ok(amount)
+            Ok(ret)
         }
     }
 }
@@ -140,22 +135,19 @@ impl<T> Consumer for IntoConsumerBoxed<T> {
 }
 
 #[cfg(feature = "alloc")]
-impl<T: Clone> BulkConsumer for IntoConsumerBoxed<T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<T> BulkConsumer for IntoConsumerBoxed<T> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        let amount = min(buf.len(), self.0.len() - self.1);
-
-        if amount == 0 {
+        if len == 0 {
             Err(())
         } else {
-            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
+            let (amount, ret) = f(&mut self.0[self.1..]).await;
             self.1 += amount;
-            Ok(amount)
+            Ok(ret)
         }
     }
 }
@@ -216,22 +208,19 @@ impl<'s, T> Consumer for IntoConsumerBoxedMut<'s, T> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'s, T: Clone> BulkConsumer for IntoConsumerBoxedMut<'s, T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<'s, T> BulkConsumer for IntoConsumerBoxedMut<'s, T> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        let amount = min(buf.len(), self.0.len() - self.1);
-
-        if amount == 0 {
+        if len == 0 {
             Err(())
         } else {
-            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
+            let (amount, ret) = f(&mut self.0[self.1..]).await;
             self.1 += amount;
-            Ok(amount)
+            Ok(ret)
         }
     }
 }

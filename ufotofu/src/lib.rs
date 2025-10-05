@@ -49,7 +49,8 @@ extern crate alloc;
 // We re-export Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
 #[doc(hidden)]
 pub use either::Either;
-use Either::*;
+
+use prelude::*;
 
 /// Conveniently consume the output of a [`Producer`].
 ///
@@ -232,37 +233,36 @@ where
     }]
 }
 
-/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using a non-empty slice as an intermediate buffer.
+/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using [`BulkConsumerExt::bulk_consume`].
 /// Then calls [`close`](Consumer::close) on the consumer with the final value
-/// emitted by the producer. [TODO]
-pub async fn bulk_pipe<P, C>(
-    producer: P,
-    consumer: C,
-    buf: &mut [P::Item],
-) -> Result<(), PipeError<P::Error, C::Error>>
+/// emitted by the producer.
+pub async fn bulk_pipe<P, C>(producer: P, consumer: C) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: IntoBulkProducer<Item: Clone>,
     C: IntoBulkConsumer<Item = P::Item, Final = P::Final>,
 {
-    debug_assert!(!buf.is_empty());
+    let mut p = producer.into_producer();
+    let mut c = consumer.into_consumer();
 
-    todo!()
-
-    // let mut producer = producer.into_producer();
-    // let mut consumer = consumer.into_consumer();
-
-    // loop {
-    //     match producer.bulk_produce(buf).await {
-    //         Err(err) => return Err(PipeError::Producer(err)),
-    //         Ok(Right(fin)) => {
-    //             return consumer.close(fin).await.map_err(PipeError::Consumer);
-    //         }
-    //         Ok(Left(amount)) => {
-    //             consumer
-    //                 .bulk_consume_full_slice(&buf[..amount])
-    //                 .await
-    //                 .map_err(|err| PipeError::Consumer(err.reason))?;
-    //         }
-    //     }
-    // }
+    loop {
+        match p
+            .expose_items(async |items| match c.bulk_consume(items).await {
+                Ok(amount) => (amount, Ok(())),
+                Err(consumer_error) => (0, Err(consumer_error)),
+            })
+            .await
+        {
+            Ok(Left(Ok(()))) => {
+                // No-op, continues with next loop iteration.
+            }
+            Ok(Left(Err(consumer_err))) => return Err(PipeError::Consumer(consumer_err)),
+            Ok(Right(fin)) => {
+                match c.close(fin).await {
+                    Ok(()) => return Ok(()),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
+                };
+            }
+            Err(producer_err) => return Err(PipeError::Producer(producer_err)),
+        }
+    }
 }
