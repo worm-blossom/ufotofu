@@ -246,7 +246,7 @@ pub trait BulkConsumerExt: BulkConsumer {
     /// # });
     /// ```
     ///
-    /// <br/>Counterpart: the [`BulkProducer::bulk_produce`] method.
+    /// <br/>Counterpart: the [`BulkProducerExt::bulk_produce`] method.
     async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error>
     where
         Self::Item: Clone,

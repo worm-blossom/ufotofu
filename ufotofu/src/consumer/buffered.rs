@@ -2,7 +2,7 @@ use crate::{prelude::*, queues::Queue};
 
 /// A bulk consumer wrapper which collects consumed items in an internal buffer before flushing them one-by-one into the wrapped consumer.
 ///
-/// Prefer to use a [`BulkBuffered`] (which wraps bulk consumers and thus implements more efficient flushing).
+/// Prefer to use a [`BulkBuffered`](super::BulkBuffered) (which wraps *bulk* consumers and thus implements more efficient flushing).
 ///
 /// The internal buffer can be any value implementing the [`queues::Queue`](crate::queues::Queue) trait.
 ///

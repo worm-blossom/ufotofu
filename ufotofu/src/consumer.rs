@@ -44,7 +44,7 @@
 //!
 //! <br/>
 //!
-//! Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a [`BufferedConsumer`] is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.
+//! Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a buffering consumer is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.
 //!
 //! The [`flush`](Consumer::flush) method lets calling code instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
 //!
@@ -151,7 +151,7 @@ pub use bulk_buffered::*;
 /// # }
 /// ```
 ///
-/// Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a [`BufferedConsumer`] is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.
+/// Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a buffering consumer is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.
 ///
 /// The [`flush`](Consumer::flush) method lets calling code instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
 ///
@@ -310,11 +310,11 @@ impl IntoConsumer for () {
     }
 }
 
-/// A [`Bulkconsumer`] is a producer that can accept multiple items with a single call of the [`BulkConsumer::expose_slots`] method.
+/// A [`BulkConsumer`] is a producer that can accept multiple items with a single call of the [`BulkConsumer::expose_slots`] method.
 ///
 /// This method takes an async function as its sole argument. The consumer calls that function, passing it a mutable, non-empty slice of items. The function can mutate these items in any way, and then returns a pair of values: first, the number of items the consumer should now consider as having been consumed, and second, an arbitrary value, to be returned by the `expose_slots` call.
 ///
-/// See [`BulkConsumerExt::bulk_consumer`] for using bulk consumers in a way analogous to [`std::io::Write::write`].
+/// See [`BulkConsumerExt::bulk_consume`] for using bulk consumers in a way analogous to [`std::io::Write::write`].
 ///
 /// ```
 /// use ufotofu::prelude::*;

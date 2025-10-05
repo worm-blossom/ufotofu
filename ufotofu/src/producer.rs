@@ -50,7 +50,7 @@
 //!
 //! <br/>
 //!
-//! Every producer may eagerly perform side-effects to make subsequent `produce` calls more efficient. The classic example of a [`BufferedProducer`] is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand.
+//! Every producer may eagerly perform side-effects to make subsequent `produce` calls more efficient. The classic example of a buffering producer is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand.
 //!
 //! The [`slurp`](Producer::slurp) method lets calling code instruct the producer to perform preparatory side-effects, even without the need to actually produce any data yet.
 //!
@@ -118,6 +118,12 @@ pub use empty::*;
 
 pub mod compat;
 
+mod buffered;
+pub use buffered::*;
+
+mod bulk_buffered;
+pub use bulk_buffered::*;
+
 /// A [`Producer`] lazily yields a sequence of items.
 ///
 /// The sequence consists of an arbitrary number of items of type [`Producer::Item`], optionally terminated by either a value of type [`Producer::Final`] or a value of type [`Producer::Error`].
@@ -135,7 +141,7 @@ pub mod compat;
 /// # });
 /// ```
 ///
-/// Every producer may eagerly perform side-effects to make subsequent `produce` calls more efficient. The classic example of a [`BufferedProducer`] is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand.
+/// Every producer may eagerly perform side-effects to make subsequent `produce` calls more efficient. The classic example of a buffering producer is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand.
 ///
 /// The [`slurp`](Producer::slurp) method lets calling code instruct the producer to perform preparatory side-effects, even without the need to actually produce any data yet.
 ///
@@ -171,7 +177,7 @@ pub trait Producer {
     /// Attempts to perform any effectful actions that might make future calls to `produce` and `bulk_produce` more efficient.
     ///
     /// This function allows the [`Producer`] to perform side-effects that it would otherwise
-    /// have to do just-in-time when [`produce`](Producer::produce) or [`bulk_produce`](BulkProducer::bulk_produce) get called.
+    /// have to do just-in-time when [`produce`](Producer::produce) gets called.
     ///
     /// After this function returns an error, no further methods of this trait may be invoked.
     ///
@@ -179,7 +185,7 @@ pub trait Producer {
     ///
     /// Must not be called after any method of this trait has returned a final value or an error.
     ///
-    /// <br/>Counterpart: the [`BufferedConsumer::flush`] method.
+    /// <br/>Counterpart: the [`Consumer::flush`] method.
     async fn slurp(&mut self) -> Result<(), Self::Error>;
 }
 

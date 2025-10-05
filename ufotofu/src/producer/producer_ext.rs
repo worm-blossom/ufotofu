@@ -1,6 +1,10 @@
 use core::cmp::min;
 
-use crate::{prelude::*, ProduceAtLeastError};
+use crate::{
+    prelude::*,
+    producer::{Buffered, BulkBuffered},
+    ProduceAtLeastError,
+};
 
 impl<P> ProducerExt for P where P: Producer {}
 
@@ -94,6 +98,108 @@ pub trait ProducerExt: Producer {
 
         Ok(())
     }
+
+    /// Turns `self` into a buffered bulk producer.
+    ///
+    /// Whenever the returned producer is tasked to produce an item while the internal buffer is empty, it eagerly fills its buffer with as many items from the wrapped producer as possible before emitting the requested item.
+    ///
+    /// Prefer to use a [`BulkProducerExt::bulk_buffered`] (which can fill its queue more efficiently with items from a bulk producer).
+    ///
+    /// The internal buffer can be any value implementing the [`queues::Queue`](crate::queues::Queue) trait. See [`queues::new_static`](crate::queues::new_static) and [`queues::new_fixed`](crate::queues::new_fixed) for convenient ways of creating suitable queues.
+    ///
+    /// Use the `AsRef<P>` impl to access the wrapped producer.
+    ///
+    /// # Examples
+    ///
+    /// The returned producer will eagerly fetch multiple items from the wrapped producer.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// // Create a buffered version of `p`, with a buffer of two items.
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// // Produce a single first item now fetches *two* items from the wrapped producer.
+    /// assert_eq!(buffered.produce().await?, Left(1));
+    /// assert_eq!(buffered.into_inner().remaining(), &[4]);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// Use [`Producer::slurp`] to force pre-fetching without actually producing anything.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// // Slurping triggers the side-effects of producing items from the inner consumer.
+    /// buffered.slurp().await?;
+    /// assert_eq!(buffered.into_inner().remaining(), &[4]);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// While the buffer is not empty, producing more items will not invoke the wrapped producer.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// assert_eq!(buffered.produce().await?, Left(1));
+    /// assert_eq!(buffered.produce().await?, Left(2));
+    /// assert_eq!(buffered.into_inner().remaining(), &[4]);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// When prefetching items encounters a final value or an error, this is *not* reported immediately. Only after all buffered items have been produced is the final value or error emitted.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// assert_eq!(buffered.produce().await?, Left(1));
+    /// assert_eq!(buffered.produce().await?, Left(2));
+    ///
+    /// // Slurping now (whether explicitly or by calling `produce`) will internally encounter the
+    /// // final value, but it is buffered instead of reported.
+    /// assert_eq!(buffered.produce().await?, Left(4));
+    /// // Only now is the final value emitted.
+    /// assert_eq!(buffered.produce().await?, Right(()));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: the [ConsumerExt::buffered] method.
+    fn buffered<Q>(self, queue: Q) -> Buffered<Self, Self::Final, Self::Error, Q>
+    where
+        Self: Sized,
+    {
+        Buffered::new(self, queue)
+    }
 }
 
 impl<P> BulkProducerExt for P where P: BulkProducer {}
@@ -160,7 +266,7 @@ pub trait BulkProducerExt: BulkProducer {
     /// # });
     /// ```
     ///
-    /// <br/>Counterpart: the [`BulkConsumer::bulk_consume`] method.
+    /// <br/>Counterpart: the [`BulkConsumerExt::bulk_consume`] method.
     async fn bulk_produce(
         &mut self,
         buf: &mut [Self::Item],
@@ -228,5 +334,107 @@ pub trait BulkProducerExt: BulkProducer {
         }
 
         Ok(())
+    }
+
+    /// Turns `self` into a buffered bulk producer.
+    ///
+    /// Whenever the returned producer is tasked to produce an item while the internal buffer is empty, it eagerly fills its buffer with as many items from the wrapped producer as possible before emitting the requested item.
+    ///
+    /// More efficient than [`ProducerExt::buffered`] (which has to fill its buffer by repeatedly calling `produce` instead of using bulk production).
+    ///
+    /// The internal buffer can be any value implementing the [`queues::Queue`](crate::queues::Queue) trait. See [`queues::new_static`](crate::queues::new_static) and [`queues::new_fixed`](crate::queues::new_fixed) for convenient ways of creating suitable queues.
+    ///
+    /// Use the `AsRef<P>` impl to access the wrapped producer.
+    ///
+    /// # Examples
+    ///
+    /// The returned producer will eagerly fetch multiple items from the wrapped producer.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// // Create a buffered version of `p`, with a buffer of two items.
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// // Produce a single first item now fetches *two* items from the wrapped producer.
+    /// assert_eq!(buffered.produce().await?, Left(1));
+    /// assert_eq!(buffered.into_inner().remaining(), &[4]);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// Use [`Producer::slurp`] to force pre-fetching without actually producing anything.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// // Slurping triggers the side-effects of producing items from the inner consumer.
+    /// buffered.slurp().await?;
+    /// assert_eq!(buffered.into_inner().remaining(), &[4]);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// While the buffer is not empty, producing more items will not invoke the wrapped producer.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// assert_eq!(buffered.produce().await?, Left(1));
+    /// assert_eq!(buffered.produce().await?, Left(2));
+    /// assert_eq!(buffered.into_inner().remaining(), &[4]);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// When prefetching items encounters a final value or an error, this is *not* reported immediately. Only after all buffered items have been produced is the final value or error emitted.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// use ufotofu::queues;
+    ///
+    /// # pollster::block_on(async{
+    /// let data = [1, 2, 4];
+    /// let mut p = producer::clone_from_slice(&data[..]);
+    ///
+    /// let mut buffered = p.buffered(queues::new_static::<_, 2>());
+    ///
+    /// assert_eq!(buffered.produce().await?, Left(1));
+    /// assert_eq!(buffered.produce().await?, Left(2));
+    ///
+    /// // Slurping now (whether explicitly or by calling `produce`) will internally encounter the
+    /// // final value, but it is buffered instead of reported.
+    /// assert_eq!(buffered.produce().await?, Left(4));
+    /// // Only now is the final value emitted.
+    /// assert_eq!(buffered.produce().await?, Right(()));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: the [BulkConsumerExt::bulk_buffered] method.
+    fn bulk_buffered<Q>(self, queue: Q) -> BulkBuffered<Self, Self::Final, Self::Error, Q>
+    where
+        Self: Sized,
+    {
+        BulkBuffered::new(self, queue)
     }
 }

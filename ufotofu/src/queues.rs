@@ -1,12 +1,29 @@
 //! In-memory queues for adding buffering to arbitrary producers and consumers.
 //!
-//! This module provides the [`Queue`] trait for infallible in-memory queues supporting bulk push and pop operations. You can safely consider this trait (and this module) a low-level implementation detail you likely will not interact with directly. Queues power some useful functionality, such as creating [buffered](crate::BufferedProducer) [versions](crate::BufferedConsumer) of arbitrary producers and consumers, via the [`ProducerExt::buffered`] and [`ConsumerExt::buffered`] methods.
+//! This module provides the [`Queue`] trait for infallible in-memory queues supporting bulk push and pop operations. You can safely consider this trait (and this module) a low-level implementation detail you likely will not interact with directly. Queues power some useful functionality, such as creating buffered versions of arbitrary producers and consumers, via the [`ProducerExt::buffered`](crate::ProducerExt::buffered) and [`ConsumerExt::buffered`](crate::ConsumerExt::buffered) methods.
 //!
 //! Ufotofu provides one concrete implementations of the [`Queue`] trait: the [`Contiguous`] queue, which uses a single contiguous slice of items for storage. For queue creation, see [`new_contiguous`], [`new_static`], and [`new_fixed`].
 //!
-//! Functionality relying on queues typically comes with methods which handle queue creation for you. For example, [`ProducerExt::buffered_static`] or [`ProducerExt::buffered_fixed`] and [`ConsumerExt::buffered_static`] or [`ConsumerExt::buffered_fixed`] are specialised versions of [`ProducerExt::buffered`] and [`ConsumerExt::buffered`] respectively.
+//! ```
+//! use ufotofu::prelude::*;
+//! use ufotofu::queues::{Queue, new_contiguous};
+//! let mut q = new_contiguous(vec![42; 2]);
+//! // The vec will never be resized, we only use its `AsRef<[u32]>` and `AsMut<[u32]>` impls.
+//! // In a real setting, use `new_fixed` instead if you want a simple heap-allocated queue.
 //!
-//! [TODO] examples
+//! assert!(q.is_empty());
+//! assert_eq!(q.dequeue(), None);
+//! assert_eq!(q.enqueue(0), None);
+//! assert_eq!(q.enqueue(1), None);
+//! assert_eq!(q.dequeue(), Some(0));
+//! assert_eq!(q.len(), 1);
+//! assert_eq!(q.enqueue(2), None);
+//! assert!(q.is_full());
+//! assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+//! assert_eq!(q.dequeue(), Some(1));
+//! assert_eq!(q.dequeue(), Some(2));
+//! assert_eq!(q.dequeue(), None);
+//! ```
 
 #[cfg(feature = "alloc")]
 use alloc::{boxed::Box, vec::Vec};
@@ -142,7 +159,30 @@ impl<Q> QueueExt for Q where Q: Queue {}
 ///
 /// You probably want `S` to implement `AsRef<[T]>` and `AsMut<[T]>`, otherwise the returned [`Contiguous`] does not implement [`Queue`].
 ///
-/// See [`new_contiguous_with`] for queue creation for item types which do not implement [`Default`].[TODO] example
+/// See [`new_contiguous_with`] for queue creation for item types which do not implement [`Default`].
+///
+/// # Example
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// use ufotofu::queues::{Queue, new_contiguous};
+/// let mut q = new_contiguous(vec![42; 2]);
+/// // The vec will never be resized, we only use its `AsRef<[u32]>` and `AsMut<[u32]>` impls.
+/// // In a real setting, use `new_fixed` instead if you want a simple heap-allocated queue.
+///
+/// assert!(q.is_empty());
+/// assert_eq!(q.dequeue(), None);
+/// assert_eq!(q.enqueue(0), None);
+/// assert_eq!(q.enqueue(1), None);
+/// assert_eq!(q.dequeue(), Some(0));
+/// assert_eq!(q.len(), 1);
+/// assert_eq!(q.enqueue(2), None);
+/// assert!(q.is_full());
+/// assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+/// assert_eq!(q.dequeue(), Some(1));
+/// assert_eq!(q.dequeue(), Some(2));
+/// assert_eq!(q.dequeue(), None);
+/// ```
 pub fn new_contiguous<S, T>(buffer: S) -> Contiguous<S, T>
 where
     T: Default,
@@ -156,14 +196,60 @@ where
 ///
 /// You probably want `S` to implement `AsRef<[T]>` and `AsMut<[T]>`, otherwise the returned [`Contiguous`] does not implement [`Queue`].
 ///
-/// See [`new_contiguous`] for more convenient queue creation for item types implementing [`Default`].[TODO] example
+/// See [`new_contiguous`] for more convenient queue creation for item types implementing [`Default`].
+///
+/// # Example
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// use ufotofu::queues::{Queue, new_contiguous_with};
+/// let mut q = new_contiguous_with(vec![42; 2], seventeen);
+/// // The vec will never be resized, we only use its `AsRef<[u32]>` and `AsMut<[u32]>` impls.
+/// // In a real setting, use `new_fixed_with` instead if you want a simple heap-allocated queue.
+///
+/// assert!(q.is_empty());
+/// assert_eq!(q.dequeue(), None);
+/// assert_eq!(q.enqueue(0), None);
+/// assert_eq!(q.enqueue(1), None);
+/// assert_eq!(q.dequeue(), Some(0));
+/// assert_eq!(q.len(), 1);
+/// assert_eq!(q.enqueue(2), None);
+/// assert!(q.is_full());
+/// assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+/// assert_eq!(q.dequeue(), Some(1));
+/// assert_eq!(q.dequeue(), Some(2));
+/// assert_eq!(q.dequeue(), None);
+///
+/// fn seventeen() -> u32 { 17 }
+/// ```
 pub fn new_contiguous_with<S, T>(buffer: S, initialise_memory: fn() -> T) -> Contiguous<S, T> {
     Contiguous::new(buffer, initialise_memory)
 }
 
 /// Creates a new queue, using a statically sized array as a buffer for items of type `T`, where `T: Default`.
 ///
-/// See [`new_static_with`] for array-backed queue creation for item types which do not implement [`Default`].[TODO] example
+/// See [`new_static_with`] for array-backed queue creation for item types which do not implement [`Default`].
+///
+/// # Example
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// use ufotofu::queues::{Queue, new_static};
+/// let mut q = new_static::<u32, 2>();
+///
+/// assert!(q.is_empty());
+/// assert_eq!(q.dequeue(), None);
+/// assert_eq!(q.enqueue(0), None);
+/// assert_eq!(q.enqueue(1), None);
+/// assert_eq!(q.dequeue(), Some(0));
+/// assert_eq!(q.len(), 1);
+/// assert_eq!(q.enqueue(2), None);
+/// assert!(q.is_full());
+/// assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+/// assert_eq!(q.dequeue(), Some(1));
+/// assert_eq!(q.dequeue(), Some(2));
+/// assert_eq!(q.dequeue(), None);
+/// ```
 pub fn new_static<T, const N: usize>() -> Contiguous<[T; N], T>
 where
     T: Default,
@@ -175,7 +261,30 @@ where
 ///
 /// The `initialise_memory` function is used internally to ensure that all queue slots contain valid memory at all times. The specific choice of `T` returned by that function does not affect the observable semantics of the queue at all.
 ///
-/// See [`new_static`] for more convenient static queue creation for item types implementing [`Default`].[TODO] example
+/// See [`new_static`] for more convenient static queue creation for item types implementing [`Default`].
+///
+/// # Example
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// use ufotofu::queues::{Queue, new_static_with};
+/// let mut q = new_static_with::<u32, 2>(seventeen);
+///
+/// assert!(q.is_empty());
+/// assert_eq!(q.dequeue(), None);
+/// assert_eq!(q.enqueue(0), None);
+/// assert_eq!(q.enqueue(1), None);
+/// assert_eq!(q.dequeue(), Some(0));
+/// assert_eq!(q.len(), 1);
+/// assert_eq!(q.enqueue(2), None);
+/// assert!(q.is_full());
+/// assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+/// assert_eq!(q.dequeue(), Some(1));
+/// assert_eq!(q.dequeue(), Some(2));
+/// assert_eq!(q.dequeue(), None);
+///
+/// fn seventeen() -> u32 { 17 }
+/// ```
 pub fn new_static_with<T, const N: usize>(initialise_memory: fn() -> T) -> Contiguous<[T; N], T> {
     Contiguous::new(
         core::array::from_fn(|_| initialise_memory()),
@@ -185,7 +294,30 @@ pub fn new_static_with<T, const N: usize>(initialise_memory: fn() -> T) -> Conti
 
 /// Creates a new queue, using a `Box<[T]>` as a buffer for items of type `T`, where `T: Default`. The buffer size is fixed at creation.
 ///
-/// See [`new_fixed_with`] for box-backed queue creation for item types which do not implement [`Default`].[TODO] example
+/// See [`new_fixed_with`] for box-backed queue creation for item types which do not implement [`Default`].
+///
+/// # Example
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// use ufotofu::queues::{Queue, new_fixed};
+/// # #[cfg(feature = "alloc")] {
+/// let mut q = new_fixed(2);
+///
+/// assert!(q.is_empty());
+/// assert_eq!(q.dequeue(), None);
+/// assert_eq!(q.enqueue(0), None);
+/// assert_eq!(q.enqueue(1), None);
+/// assert_eq!(q.dequeue(), Some(0));
+/// assert_eq!(q.len(), 1);
+/// assert_eq!(q.enqueue(2), None);
+/// assert!(q.is_full());
+/// assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+/// assert_eq!(q.dequeue(), Some(1));
+/// assert_eq!(q.dequeue(), Some(2));
+/// assert_eq!(q.dequeue(), None);
+/// # }
+/// ```
 #[cfg(feature = "alloc")]
 pub fn new_fixed<T>(capacity: usize) -> Contiguous<Box<[T]>, T>
 where
@@ -200,7 +332,32 @@ where
 ///
 /// The `initialise_memory` function is used internally to ensure that all queue slots contain valid memory at all times. The specific choice of `T` returned by that function does not affect the observable semantics of the queue at all.
 ///
-/// See [`new_fixed`] for more convenient box-backed queue creation for item types implementing [`Default`].[TODO] example
+/// See [`new_fixed`] for more convenient box-backed queue creation for item types implementing [`Default`].
+///
+/// # Example
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// use ufotofu::queues::{Queue, new_fixed_with};
+/// # #[cfg(feature = "alloc")] {
+/// let mut q = new_fixed_with(2, seventeen);
+///
+/// assert!(q.is_empty());
+/// assert_eq!(q.dequeue(), None);
+/// assert_eq!(q.enqueue(0), None);
+/// assert_eq!(q.enqueue(1), None);
+/// assert_eq!(q.dequeue(), Some(0));
+/// assert_eq!(q.len(), 1);
+/// assert_eq!(q.enqueue(2), None);
+/// assert!(q.is_full());
+/// assert_eq!(q.enqueue(3), Some(3)); // Not enqueued.
+/// assert_eq!(q.dequeue(), Some(1));
+/// assert_eq!(q.dequeue(), Some(2));
+/// assert_eq!(q.dequeue(), None);
+/// # }
+///
+/// fn seventeen() -> u32 { 17 }
+/// ```
 #[cfg(feature = "alloc")]
 pub fn new_fixed_with<T>(capacity: usize, initialise_memory: fn() -> T) -> Contiguous<Box<[T]>, T> {
     let mut v = Vec::with_capacity(capacity);
