@@ -7,7 +7,7 @@
 //!
 //! <br/>Counterpart: the [`producer::compat::array`] module.
 
-use core::{cmp::min, fmt::Debug};
+use core::fmt::Debug;
 
 use crate::prelude::*;
 
@@ -60,24 +60,25 @@ impl<T, const N: usize> Consumer for IntoConsumer<T, N> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
-impl<T: Clone, const N: usize> BulkConsumer for IntoConsumer<T, N> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<T, const N: usize> BulkConsumer for IntoConsumer<T, N> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = N - self.1;
 
-        let amount = min(buf.len(), N - self.1);
-
-        if amount == 0 {
+        if len == 0 {
             Err(())
         } else {
-            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
+            let (amount, ret) = f(&mut self.0[self.1..]).await;
             self.1 += amount;
-            Ok(amount)
+            Ok(ret)
         }
     }
 }
@@ -135,24 +136,25 @@ impl<'a, T, const N: usize> Consumer for IntoConsumerMut<'a, T, N> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
-impl<'a, T: Clone, const N: usize> BulkConsumer for IntoConsumerMut<'a, T, N> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<'a, T, const N: usize> BulkConsumer for IntoConsumerMut<'a, T, N> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = N - self.1;
 
-        let amount = min(buf.len(), N - self.1);
-
-        if amount == 0 {
+        if len == 0 {
             Err(())
         } else {
-            self.0[self.1..self.1 + amount].clone_from_slice(&buf[..amount]);
+            let (amount, ret) = f(&mut self.0[self.1..]).await;
             self.1 += amount;
-            Ok(amount)
+            Ok(ret)
         }
     }
 }

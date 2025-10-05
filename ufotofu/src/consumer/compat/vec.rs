@@ -35,7 +35,8 @@ use crate::prelude::*;
 /// <br/>Counterpart: the [producer::compat::vec::IntoProducer] type.
 #[derive(Debug)]
 
-pub struct IntoConsumer<T>(Vec<T>);
+pub struct IntoConsumer<T>(Vec<T>, usize);
+// The usize is the number of items consumed so far. For bulk consumption, we resize the Vec with default values to offer a slice, but those default values are then overwritten by further consumption.
 
 impl<T> From<IntoConsumer<T>> for Vec<T> {
     fn from(value: IntoConsumer<T>) -> Self {
@@ -51,25 +52,34 @@ impl<T> Consumer for IntoConsumer<T> {
     /// Appends the item to the vec.
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.0.push(item);
+        self.1 += 1;
         Ok(())
     }
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
-impl<T: Clone> BulkConsumer for IntoConsumer<T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<T: Default> BulkConsumer for IntoConsumer<T> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        self.0.extend_from_slice(buf);
+        if len == 0 {
+            let new_len = self.1 * 2 + 1;
+            self.0.resize_with(new_len, Default::default);
+        }
 
-        Ok(buf.len())
+        let (amount, ret) = f(&mut self.0[self.1..]).await;
+        self.1 += amount;
+        Ok(ret)
     }
 }
 
@@ -80,7 +90,7 @@ impl<T> crate::IntoConsumer for Vec<T> {
     type IntoConsumer = IntoConsumer<T>;
 
     fn into_consumer(self) -> Self::IntoConsumer {
-        IntoConsumer(self)
+        IntoConsumer(self, 0)
     }
 }
 
@@ -104,7 +114,7 @@ impl<T> crate::IntoConsumer for Vec<T> {
 /// <br/>Counterpart: the [producer::compat::vec::IntoProducerRef] type.
 #[derive(Debug)]
 
-pub struct IntoConsumerMut<'a, T>(&'a mut Vec<T>);
+pub struct IntoConsumerMut<'a, T>(&'a mut Vec<T>, usize);
 
 impl<'a, T> Consumer for IntoConsumerMut<'a, T> {
     type Item = T;
@@ -114,25 +124,34 @@ impl<'a, T> Consumer for IntoConsumerMut<'a, T> {
     /// Appends the item to the vec.
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
         self.0.push(item);
+        self.1 += 1;
         Ok(())
     }
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
-impl<'a, T: Clone> BulkConsumer for IntoConsumerMut<'a, T> {
-    async fn bulk_consume(&mut self, buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_consume with an empty buffer."
-        );
+impl<'a, T: Default> BulkConsumer for IntoConsumerMut<'a, T> {
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        self.0.extend_from_slice(buf);
+        if len == 0 {
+            let new_len = self.1 * 2 + 1;
+            self.0.resize_with(new_len, Default::default);
+        }
 
-        Ok(buf.len())
+        let (amount, ret) = f(&mut self.0[self.1..]).await;
+        self.1 += amount;
+        Ok(ret)
     }
 }
 
@@ -143,6 +162,6 @@ impl<'a, T> crate::IntoConsumer for &'a mut Vec<T> {
     type IntoConsumer = IntoConsumerMut<'a, T>;
 
     fn into_consumer(self) -> Self::IntoConsumer {
-        IntoConsumerMut(self)
+        IntoConsumerMut(self, 0)
     }
 }

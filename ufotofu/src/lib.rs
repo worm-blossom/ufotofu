@@ -3,12 +3,12 @@
 #![allow(clippy::type_complexity)]
 #![allow(async_fn_in_trait)]
 
-//! Abstractions for asynchronously working with series of data ("streams" and "sinks").
+//! Abstractions for asynchronously working with series of data (“streams” and “sinks”).
 //!
 //! This crate provides alternatives to some abstractions of the popular [`futures`](https://docs.rs/futures/latest/futures) crate:
 //!
 //! - [`Producer`] and [`Consumer`] replace [`Stream`](https://docs.rs/futures/latest/futures/prelude/trait.Stream.html) and [`Sink`](https://docs.rs/futures/latest/futures/prelude/trait.Sink.html), and
-//! - [`BulkProducer`] and [`BulkConsumer`] replace [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html) [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
+//! - [`BulkProducer`] and [`BulkConsumer`] replace [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html) and [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
 //!
 //! See the [`producer`] and [`consumer`] modules for thorough introductions to the designs.  
 //! Read on for the core design choices which distinguish `ufotofu` from the `futures` crate:
@@ -20,11 +20,13 @@
 //! - Fatal errors, no resumption of processing after an error was signalled.
 //! - Full generics for bulk operations, no restriction to `u8` and `io::Error`.
 //! - Bulk processing generalises item-by-item processing; the bulk traits extend the item-by-item traits.
-//! - Bulk operations work with non-empty slices and must process nonzero quantities of items.
+//! - Zero-copy bulk processing; the bulk traits *expose* slices instead of copying into or from passed slices.
 //! - Buffering is abstracted-over in traits, not provided by concrete structs.
 //! - Emphasis on producer-consumer duality, neither is more expressive than the other.
 //! - Producers emit a dedicated final value, consumers receive a dedicated value when closed.
 //! - British spelling.
+//!
+//! See the [ufotofu website](https://ufotofu.worm-blossom.org/) for a discussion of these design choices — the crate docs stay focussed on the *what*, not the *why*.
 //!
 //! ## Caveats
 //!
@@ -49,7 +51,8 @@ extern crate alloc;
 // We re-export Either here so we can reliably match against it in the macros we export. We hide it from our docs though.
 #[doc(hidden)]
 pub use either::Either;
-use Either::*;
+
+use prelude::*;
 
 /// Conveniently consume the output of a [`Producer`].
 ///
@@ -182,14 +185,12 @@ pub use errors::*;
 
 pub mod producer;
 pub use producer::{
-    BufferedProducer, BulkProducer, BulkProducerExt, IntoBufferedProducer, IntoBulkProducer,
-    IntoProducer, Producer, ProducerExt,
+    BulkProducer, BulkProducerExt, IntoBulkProducer, IntoProducer, Producer, ProducerExt,
 };
 
 pub mod consumer;
 pub use consumer::{
-    BufferedConsumer, BulkConsumer, BulkConsumerExt, Consumer, ConsumerExt, IntoBufferedConsumer,
-    IntoBulkConsumer, IntoConsumer,
+    BulkConsumer, BulkConsumerExt, Consumer, ConsumerExt, IntoBulkConsumer, IntoConsumer,
 };
 
 pub mod queues;
@@ -206,10 +207,9 @@ pub mod queues;
 /// The prelude may grow over time.
 pub mod prelude {
     pub use crate::{
-        consume, consumer, producer, BufferedConsumer, BufferedProducer, BulkConsumer,
-        BulkConsumerExt, BulkProducer, BulkProducerExt, Consumer, ConsumerExt,
-        IntoBufferedConsumer, IntoBufferedProducer, IntoBulkConsumer, IntoBulkProducer,
-        IntoConsumer, IntoProducer, Producer, ProducerExt,
+        consume, consumer, producer, BulkConsumer, BulkConsumerExt, BulkProducer, BulkProducerExt,
+        Consumer, ConsumerExt, IntoBulkConsumer, IntoBulkProducer, IntoConsumer, IntoProducer,
+        Producer, ProducerExt,
     };
 
     pub use either::Either::{self, Left, Right};
@@ -232,35 +232,36 @@ where
     }]
 }
 
-/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using a non-empty slice as an intermediate buffer.
+/// Efficiently pipes as many items as possible from a [`BulkProducer`] into a [`BulkConsumer`], using [`BulkConsumerExt::bulk_consume`].
 /// Then calls [`close`](Consumer::close) on the consumer with the final value
 /// emitted by the producer.
-pub async fn bulk_pipe<P, C>(
-    producer: P,
-    consumer: C,
-    buf: &mut [P::Item],
-) -> Result<(), PipeError<P::Error, C::Error>>
+pub async fn bulk_pipe<P, C>(producer: P, consumer: C) -> Result<(), PipeError<P::Error, C::Error>>
 where
     P: IntoBulkProducer<Item: Clone>,
     C: IntoBulkConsumer<Item = P::Item, Final = P::Final>,
 {
-    debug_assert!(!buf.is_empty());
-
-    let mut producer = producer.into_producer();
-    let mut consumer = consumer.into_consumer();
+    let mut p = producer.into_producer();
+    let mut c = consumer.into_consumer();
 
     loop {
-        match producer.bulk_produce(buf).await {
-            Err(err) => return Err(PipeError::Producer(err)),
+        match p
+            .expose_items(async |items| match c.bulk_consume(items).await {
+                Ok(amount) => (amount, Ok(())),
+                Err(consumer_error) => (0, Err(consumer_error)),
+            })
+            .await
+        {
+            Ok(Left(Ok(()))) => {
+                // No-op, continues with next loop iteration.
+            }
+            Ok(Left(Err(consumer_err))) => return Err(PipeError::Consumer(consumer_err)),
             Ok(Right(fin)) => {
-                return consumer.close(fin).await.map_err(PipeError::Consumer);
+                match c.close(fin).await {
+                    Ok(()) => return Ok(()),
+                    Err(consumer_error) => return Err(PipeError::Consumer(consumer_error)),
+                };
             }
-            Ok(Left(amount)) => {
-                consumer
-                    .bulk_consume_full_slice(&buf[..amount])
-                    .await
-                    .map_err(|err| PipeError::Consumer(err.reason))?;
-            }
+            Err(producer_err) => return Err(PipeError::Producer(producer_err)),
         }
     }
 }

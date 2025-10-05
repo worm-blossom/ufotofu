@@ -43,6 +43,10 @@ impl<K, V> Producer for IntoProducer<K, V> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<K, V> crate::IntoProducer for BTreeMap<K, V> {
@@ -88,6 +92,10 @@ impl<'s, K, V> Producer for IntoProducerRef<'s, K, V> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<'s, K, V> crate::IntoProducer for &'s BTreeMap<K, V> {
@@ -132,6 +140,10 @@ impl<'s, K, V> Producer for IntoProducerMut<'s, K, V> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

@@ -42,6 +42,10 @@ impl<T> Producer for IntoProducer<T> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T> crate::IntoProducer for BinaryHeap<T> {
@@ -86,6 +90,10 @@ impl<'s, T> Producer for IntoProducerRef<'s, T> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

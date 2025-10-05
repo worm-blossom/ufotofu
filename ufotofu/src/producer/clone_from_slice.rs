@@ -1,4 +1,3 @@
-use core::cmp::min;
 use core::convert::{AsRef, Infallible};
 use core::fmt::Debug;
 
@@ -154,27 +153,27 @@ impl<T: Clone> Producer for CloneFromSlice<'_, T> {
             Ok(Left(item))
         }
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T: Clone> BulkProducer for CloneFromSlice<'_, T> {
-    async fn bulk_produce(
-        &mut self,
-        buf: &mut [Self::Item],
-    ) -> Result<Either<usize, Self::Final>, Self::Error> {
-        debug_assert_ne!(
-            buf.len(),
-            0,
-            "Must not call bulk_produce with an empty buffer."
-        );
+    async fn expose_items<F, R>(&mut self, f: F) -> Result<Either<R, Self::Final>, Self::Error>
+    where
+        F: AsyncFnOnce(&[Self::Item]) -> (usize, R),
+    {
+        let len = self.0.len() - self.1;
 
-        let amount = min(buf.len(), self.0.len() - self.1);
-
-        if amount == 0 {
-            Ok(Right(()))
+        if len == 0 {
+            return Ok(Right(()));
         } else {
-            buf[..amount].clone_from_slice(&self.0[self.1..self.1 + amount]);
+            let (amount, ret) = f(&self.0[self.1..self.1 + len]).await;
+            assert!(amount <= len);
             self.1 += amount;
-            Ok(Left(amount))
+
+            Ok(Left(ret))
         }
     }
 }

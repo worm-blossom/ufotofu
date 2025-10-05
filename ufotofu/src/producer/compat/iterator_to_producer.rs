@@ -54,4 +54,8 @@ where
             None => Ok(Right(())),
         }
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }

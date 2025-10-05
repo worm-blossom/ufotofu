@@ -60,6 +60,10 @@ impl<K: Hash + Eq, V> Consumer for IntoConsumer<K, V> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<K: Hash + Eq, V> crate::IntoConsumer for HashMap<K, V> {
@@ -110,6 +114,10 @@ impl<'a, K: Hash + Eq, V> Consumer for IntoConsumerMut<'a, K, V> {
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

@@ -41,10 +41,8 @@ impl<T> Consumer for Full<T> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         Ok(())
     }
-}
 
-impl<T> BulkConsumer for Full<T> {
-    async fn bulk_consume(&mut self, _buf: &[Self::Item]) -> Result<usize, Self::Error> {
-        panic!("Must not call bulk_consume with an empty buffer") // impossible to create a non-empty buffer of Infallibles
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }

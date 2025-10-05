@@ -45,6 +45,10 @@ impl<'s, T> Producer for IntoProducerRef<'s, T> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<'s, T> crate::IntoProducer for &'s [T] {
@@ -86,6 +90,10 @@ impl<'s, T> Producer for IntoProducerMut<'s, T> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
@@ -130,6 +138,10 @@ impl<T> Producer for IntoProducerBoxed<T> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
@@ -179,6 +191,10 @@ impl<'s, T> Producer for IntoProducerBoxedRef<'s, T> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -225,6 +241,10 @@ impl<'s, T> Producer for IntoProducerBoxedMut<'s, T> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
