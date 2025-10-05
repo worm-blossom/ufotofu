@@ -164,6 +164,10 @@ impl<const N: usize, T> Producer for IntoProducer<N, T> {
             Ok(Left(unsafe { (item_ref as *const T).read() }))
         }
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<const N: usize, T> BulkProducer for IntoProducer<N, T> {
@@ -227,6 +231,10 @@ impl<'s, T, const N: usize> Producer for IntoProducerRef<'s, T, N> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<'s, T, const N: usize> crate::IntoProducer for &'s [T; N] {
@@ -270,6 +278,10 @@ impl<'s, T, const N: usize> Producer for IntoProducerMut<'s, T, N> {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.0.produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

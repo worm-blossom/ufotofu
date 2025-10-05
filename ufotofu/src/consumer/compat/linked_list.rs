@@ -58,6 +58,10 @@ impl<T> Consumer for IntoConsumer<T> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T> crate::IntoConsumer for LinkedList<T> {
@@ -107,6 +111,10 @@ impl<'a, T> Consumer for IntoConsumerMut<'a, T> {
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

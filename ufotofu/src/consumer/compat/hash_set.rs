@@ -59,6 +59,10 @@ impl<T: Hash + Eq> Consumer for IntoConsumer<T> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T: Hash + Eq> crate::IntoConsumer for HashSet<T> {
@@ -108,6 +112,10 @@ impl<'a, T: Hash + Eq> Consumer for IntoConsumerMut<'a, T> {
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

@@ -153,6 +153,10 @@ impl<T: Clone> Producer for CloneFromSlice<'_, T> {
             Ok(Left(item))
         }
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T: Clone> BulkProducer for CloneFromSlice<'_, T> {

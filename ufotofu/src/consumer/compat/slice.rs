@@ -52,6 +52,10 @@ impl<'s, T> Consumer for IntoConsumerMut<'s, T> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!()
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<'a, T> BulkConsumer for IntoConsumerMut<'a, T> {
@@ -132,6 +136,10 @@ impl<T> Consumer for IntoConsumerBoxed<T> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!()
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -204,6 +212,10 @@ impl<'s, T> Consumer for IntoConsumerBoxedMut<'s, T> {
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!()
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

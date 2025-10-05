@@ -3,12 +3,12 @@
 #![allow(clippy::type_complexity)]
 #![allow(async_fn_in_trait)]
 
-//! Abstractions for asynchronously working with series of data ("streams" and "sinks").
+//! Abstractions for asynchronously working with series of data (“streams” and “sinks”).
 //!
 //! This crate provides alternatives to some abstractions of the popular [`futures`](https://docs.rs/futures/latest/futures) crate:
 //!
 //! - [`Producer`] and [`Consumer`] replace [`Stream`](https://docs.rs/futures/latest/futures/prelude/trait.Stream.html) and [`Sink`](https://docs.rs/futures/latest/futures/prelude/trait.Sink.html), and
-//! - [`BulkProducer`] and [`BulkConsumer`] replace [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html) [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
+//! - [`BulkProducer`] and [`BulkConsumer`] replace [`AsyncRead`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncRead.html) and [`AsyncWrite`](https://docs.rs/futures/latest/futures/prelude/trait.AsyncWrite.html).
 //!
 //! See the [`producer`] and [`consumer`] modules for thorough introductions to the designs.  
 //! Read on for the core design choices which distinguish `ufotofu` from the `futures` crate:
@@ -25,6 +25,8 @@
 //! - Emphasis on producer-consumer duality, neither is more expressive than the other.
 //! - Producers emit a dedicated final value, consumers receive a dedicated value when closed.
 //! - British spelling.
+//!
+//! See the [ufotofu website](https://ufotofu.worm-blossom.org/) for a discussion of these design choices — the crate docs stay focussed on the *what*, not the *why*.
 //!
 //! ## Caveats
 //!
@@ -183,14 +185,12 @@ pub use errors::*;
 
 pub mod producer;
 pub use producer::{
-    BufferedProducer, BulkProducer, BulkProducerExt, IntoBufferedProducer, IntoBulkProducer,
-    IntoProducer, Producer, ProducerExt,
+    BulkProducer, BulkProducerExt, IntoBulkProducer, IntoProducer, Producer, ProducerExt,
 };
 
 pub mod consumer;
 pub use consumer::{
-    BufferedConsumer, BulkConsumer, BulkConsumerExt, Consumer, ConsumerExt, IntoBufferedConsumer,
-    IntoBulkConsumer, IntoConsumer,
+    BulkConsumer, BulkConsumerExt, Consumer, ConsumerExt, IntoBulkConsumer, IntoConsumer,
 };
 
 pub mod queues;
@@ -207,10 +207,9 @@ pub mod queues;
 /// The prelude may grow over time.
 pub mod prelude {
     pub use crate::{
-        consume, consumer, producer, BufferedConsumer, BufferedProducer, BulkConsumer,
-        BulkConsumerExt, BulkProducer, BulkProducerExt, Consumer, ConsumerExt,
-        IntoBufferedConsumer, IntoBufferedProducer, IntoBulkConsumer, IntoBulkProducer,
-        IntoConsumer, IntoProducer, Producer, ProducerExt,
+        consume, consumer, producer, BulkConsumer, BulkConsumerExt, BulkProducer, BulkProducerExt,
+        Consumer, ConsumerExt, IntoBulkConsumer, IntoBulkProducer, IntoConsumer, IntoProducer,
+        Producer, ProducerExt,
     };
 
     pub use either::Either::{self, Left, Right};

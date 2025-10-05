@@ -60,6 +60,10 @@ impl<T, const N: usize> Consumer for IntoConsumer<T, N> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T, const N: usize> BulkConsumer for IntoConsumer<T, N> {
@@ -131,6 +135,10 @@ impl<'a, T, const N: usize> Consumer for IntoConsumerMut<'a, T, N> {
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

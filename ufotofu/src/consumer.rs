@@ -40,6 +40,12 @@
 //!
 //! <br/>
 //!
+//! Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a [`BufferedConsumer`] is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.
+//!
+//! The [`flush`](Consumer::flush) method lets calling code instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
+//!
+//! <br/>
+//!
 //! Every consumer automatically implements the [`ConsumerExt`] trait, which provides useful methods for working with consumers.
 //!
 //! <br/>
@@ -99,12 +105,6 @@
 //! # });
 //! ```
 //!
-//! <br/>
-//!
-//! Finally, the [`BufferedConsumer`] trait describes consumers which can delay performing side-effects in order to make `consume` and `bulk_consume` calls run more efficiently. The classic example is a consumer of bytes which writes to a file on disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk. While any consumer can perform such an optimisation and flush during `consume` and `close` calls, the [`BufferedConsumer`] trait additionally provides the [`flush`](BufferedConsumer::flush) method, by which calling code can instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
-//!
-//! See [`ConsumerExt::buffered`] for a generic way of how ufotofu can add buffering to arbitrary consumers.
-//!
 //! <br/>The counterpart to the [`consumer`] module is the [`producer`] module.
 
 use crate::prelude::*;
@@ -119,6 +119,12 @@ mod full;
 pub use full::*;
 
 pub mod compat;
+
+mod buffered;
+pub use buffered::*;
+
+mod bulk_buffered;
+pub use bulk_buffered::*;
 
 /// A [`Consumer`] lazily processes a sequence of items.
 ///
@@ -138,6 +144,10 @@ pub mod compat;
 /// # Result::<(), Infallible>::Ok(())
 /// # });
 /// ```
+///
+/// Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a [`BufferedConsumer`] is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.
+///
+/// The [`flush`](Consumer::flush) method lets calling code instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
 ///
 /// Calling code must uphold the following invariants:
 ///
@@ -177,6 +187,19 @@ pub trait Consumer {
     ///
     /// <br/>Counterpart: the [`Producer::produce`] method (when returning a final value).
     async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error>;
+
+    /// Attempts to perform any effectful actions that were delayed to make preceding calls to `consume` more efficient.
+    ///
+    /// This function allows calling code to trigger side-effects which otherwise could only be triggered deliberately by calling [`close`](Consumer::close).
+    ///
+    /// After this function returns an error, no further methods of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after this consumer has been closed, or after any method of this trait has returned an error.
+    ///
+    /// <br/>Counterpart: the [`Producer::slurp`] method.
+    async fn flush(&mut self) -> Result<(), Self::Error>;
 }
 
 impl<C: Consumer> Consumer for &mut C {
@@ -190,6 +213,10 @@ impl<C: Consumer> Consumer for &mut C {
 
     async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
         (*self).close(fin).await
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        (*self).flush().await
     }
 }
 
@@ -206,6 +233,10 @@ impl<C: Consumer> Consumer for alloc::boxed::Box<C> {
     async fn close(&mut self, fin: Self::Final) -> Result<(), Self::Error> {
         self.as_mut().close(fin).await
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        self.as_mut().flush().await
+    }
 }
 
 impl Consumer for Infallible {
@@ -218,6 +249,10 @@ impl Consumer for Infallible {
     }
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
+        unreachable!()
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
         unreachable!()
     }
 }
@@ -312,9 +347,9 @@ impl IntoConsumer for () {
 ///
 /// <br/>Counterpart: the [`BulkProducer`] trait.
 pub trait BulkConsumer: Consumer {
-    /// Attempts to consume one or more regular items. This method may fail, returning an `Err` instead.
+    /// Exposes a non-empty number of item slots to a given async function, the function mutates those slots and then then reports to the consumer how many items should now be considered consumed.
     ///
-    /// When the consumer needs to return an error, it must return it immediately from this function. Otherwise, i.e., when it wants to consume regular items, it must call the passed function `f` with a non-empty slice of items as the argument, and then poll `f` to completion. When `f` has yielded `(amount, t)`, the consumer must adjust its state as if `consume` had been called `amount` many times with copies of the first `amount` many items in the slice it had passed to `f`, and then return `Ok(t)`. It must not return `Err(_)` when having called `f`.
+    /// When the consumer needs to return an error, it must return it immediately from this method. Otherwise, i.e., when it wants to consume regular items, it must call the passed function `f` with a non-empty slice of items as the argument, and then poll `f` to completion. When `f` has yielded `(amount, t)`, the consumer must adjust its state as if `consume` had been called `amount` many times with copies of the first `amount` many items in the slice it had passed to `f`, and then return `Ok(t)`. It must not return `Err(_)` when having called `f`.
     ///
     /// After this function returns the final value or after it returns an error, no further
     /// methods of this trait may be invoked.
@@ -404,51 +439,3 @@ impl BulkConsumer for Infallible {
 pub trait IntoBulkConsumer: IntoConsumer<IntoConsumer: BulkConsumer> {}
 
 impl<C> IntoBulkConsumer for C where C: IntoConsumer<IntoConsumer: BulkConsumer> {}
-
-/// A [`BufferedConsumer`] is a consumer that can delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient.
-///
-/// The classic example of a [`BufferedConsumer`] is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk. While any consumer can perform such an optimisation and flush during `consume` and `close` calls, the [`BufferedConsumer`] trait additionally provides the [`flush`](BufferedConsumer::flush) method, by which calling code can instruct the consumer to immediately perform the observable side-effects for all currently buffered data.
-///
-/// <br/>Counterpart: the [`BufferedProducer`] trait.
-pub trait BufferedConsumer: Consumer {
-    /// Attempts to perform any effectful actions that were delayed to make preceding calls to `consume` and `bulk_consume` more efficient.
-    ///
-    /// This function allows calling code to trigger side-effects which otherwise could only be triggered by calling [`close`](Consumer::close).
-    ///
-    /// After this function returns an error, no further methods of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after this consumer has been closed, or after any method of this trait has returned an error.
-    ///
-    /// <br/>Counterpart: the [`BufferedProducer::slurp`] method.
-    async fn flush(&mut self) -> Result<(), Self::Error>;
-}
-
-impl<C: BufferedConsumer> BufferedConsumer for &mut C {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        (*self).flush().await
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<C: BufferedConsumer> BufferedConsumer for alloc::boxed::Box<C> {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        self.as_mut().flush().await
-    }
-}
-
-impl BufferedConsumer for Infallible {
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        unreachable!()
-    }
-}
-
-/// Conversion into a [`BufferedConsumer`].
-///
-/// This trait is automatically implemented by implementing [`IntoConsumer`] with the associated consumer being a buffered consumer.
-///
-/// <br/>Counterpart: the [`IntoBufferedProducer`] trait.
-pub trait IntoBufferedConsumer: IntoConsumer<IntoConsumer: BufferedConsumer> {}
-
-impl<C> IntoBufferedConsumer for C where C: IntoConsumer<IntoConsumer: BufferedConsumer> {}

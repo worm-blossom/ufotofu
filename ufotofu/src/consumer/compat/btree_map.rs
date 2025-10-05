@@ -60,6 +60,10 @@ impl<K: Ord, V> Consumer for IntoConsumer<K, V> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<K: Ord, V> crate::IntoConsumer for BTreeMap<K, V> {
@@ -111,6 +115,10 @@ impl<'a, K: Ord, V> Consumer for IntoConsumerMut<'a, K, V> {
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         unreachable!();
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 

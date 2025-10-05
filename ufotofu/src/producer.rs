@@ -50,6 +50,12 @@
 //!
 //! <br/>
 //!
+//! Every producer may eagerly perform side-effects to make subsequent `produce` calls more efficient. The classic example of a [`BufferedProducer`] is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand.
+//!
+//! The [`slurp`](Producer::slurp) method lets calling code instruct the producer to perform preparatory side-effects, even without the need to actually produce any data yet.
+//!
+//! <br/>
+//!
 //! Every producer automatically implements the [`ProducerExt`] trait, which provides useful methods for working with producers.
 //!
 //! <br/>Producing a sequence one item at a time can be inefficient. The [`BulkProducer`] trait extends [`Producer`] with the ability to produce multiple items at a time. This is enabled by the [`BulkProducer::expose_items`] method. You pass to this method an async function as the sole argument. The bulk producer calls that function, passing it a non-empty slice of items. The function can process these items in any way, and then returns a pair of values: first, the number of items the producer should now consider as having been produced, and second, an arbitrary value, to be returned by the `expose_items` call.
@@ -97,12 +103,6 @@
 //! # });
 //! ```
 //!
-//! <br/>
-//!
-//! Finally, the [`BufferedProducer`] trait describes producers which can eagerly perform side-effects in order to make subsequent `produce` and `bulk_produce` calls run more efficiently. The classic example is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
-//!
-//! See [`ProducerExt::buffered`] for a generic way of how ufotofu can add buffering to arbitrary producers.
-//!
 //! <br/>The counterpart to the [`producer`] module is the [`consumer`] module.
 
 use crate::prelude::*;
@@ -135,6 +135,10 @@ pub mod compat;
 /// # });
 /// ```
 ///
+/// Every producer may eagerly perform side-effects to make subsequent `produce` calls more efficient. The classic example of a [`BufferedProducer`] is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand.
+///
+/// The [`slurp`](Producer::slurp) method lets calling code instruct the producer to perform preparatory side-effects, even without the need to actually produce any data yet.
+///
 /// Calling code must uphold the following invariants:
 ///
 /// - Do not call trait methods after any method has yielded a final value or an error.
@@ -163,6 +167,20 @@ pub trait Producer {
     ///
     /// <br/>Counterpart: the [`Consumer::consume`] method (when this returns a regular item), or the [`Consumer::close`] method (when this returns a final value).
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error>;
+
+    /// Attempts to perform any effectful actions that might make future calls to `produce` and `bulk_produce` more efficient.
+    ///
+    /// This function allows the [`Producer`] to perform side-effects that it would otherwise
+    /// have to do just-in-time when [`produce`](Producer::produce) or [`bulk_produce`](BulkProducer::bulk_produce) get called.
+    ///
+    /// After this function returns an error, no further methods of this trait may be invoked.
+    ///
+    /// #### Invariants
+    ///
+    /// Must not be called after any method of this trait has returned a final value or an error.
+    ///
+    /// <br/>Counterpart: the [`BufferedConsumer::flush`] method.
+    async fn slurp(&mut self) -> Result<(), Self::Error>;
 }
 
 impl<P: Producer> Producer for &mut P {
@@ -172,6 +190,10 @@ impl<P: Producer> Producer for &mut P {
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         (*self).produce().await
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        (*self).slurp().await
     }
 }
 
@@ -184,6 +206,10 @@ impl<P: Producer> Producer for alloc::boxed::Box<P> {
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
         self.as_mut().produce().await
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        self.as_mut().slurp().await
+    }
 }
 
 impl Producer for Infallible {
@@ -192,6 +218,10 @@ impl Producer for Infallible {
     type Error = Infallible;
 
     async fn produce(&mut self) -> Result<Either<Self::Item, Self::Final>, Self::Error> {
+        unreachable!()
+    }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
         unreachable!()
     }
 }
@@ -278,9 +308,9 @@ impl IntoProducer for () {
 ///
 /// <br/>Counterpart: the [`BulkConsumer`] trait.
 pub trait BulkProducer: Producer {
-    /// Attempts to produce one or more regular items, or the final value. This method may fail, returning an `Err` instead.
+    /// Exposes a non-empty number of items to a given async function, the function then reports to the producer how many items should now be considered produced.
     ///
-    /// When the producer needs to yield an error or its final value, it must return them immediately from this function. Otherwise, i.e., when it wants to produce regular items, it must call the passed function `f` with a non-empty slice of items as the argument, and then poll `f` to completion. When `f` has yielded `(amount, t)`, the producer must adjust its state as if `produce` had been called `amount` many times, and then return `Ok(Left(t))`. It must not return `Ok(Right(_))` or `Err(_)` when having called `f`.
+    /// When the producer needs to yield an error or its final value, it must return them immediately from this method. Otherwise, i.e., when it wants to produce regular items, it must call the passed function `f` with a non-empty slice of items as the argument, and then poll `f` to completion. When `f` has yielded `(amount, t)`, the producer must adjust its state as if `produce` had been called `amount` many times, and then return `Ok(Left(t))`. It must not return `Ok(Right(_))` or `Err(_)` when having called `f`.
     ///
     /// After this function returns the final value or after it returns an error, no further
     /// methods of this trait may be invoked.
@@ -357,52 +387,3 @@ impl BulkProducer for Infallible {
 pub trait IntoBulkProducer: IntoProducer<IntoProducer: BulkProducer> {}
 
 impl<P> IntoBulkProducer for P where P: IntoProducer<IntoProducer: BulkProducer> {}
-
-/// A [`BufferedProducer`] is a producer that can eagerly perform side-effects to make subsequent `produce` (and `bulk_produce`) calls more efficient.
-///
-/// The classic example of a [`BufferedProducer`] is a producer of bytes which reads a file from disk: it should most certainly prefetch many bytes at a time instead of reading them on demand. While any producer can perform such optimisations on-demand, the [`BufferedProducer`] trait additionally provides the [`slurp`](BufferedProducer::slurp) method, by which calling code can instruct the producer to perform preparatory side-effects even without the need to actually produce any data yet.
-///
-/// <br/>Counterpart: the [`BufferedConsumer`] trait.
-pub trait BufferedProducer: Producer {
-    /// Attempts to perform any effectful actions that might make future calls to `produce` and `bulk_produce` more efficient.
-    ///
-    /// This function allows the [`Producer`] to perform side-effects that it would otherwise
-    /// have to do just-in-time when [`produce`](Producer::produce) or [`bulk_produce`](BulkProducer::bulk_produce) get called.
-    ///
-    /// After this function returns an error, no further methods of this trait may be invoked.
-    ///
-    /// #### Invariants
-    ///
-    /// Must not be called after any method of this trait has returned a final value or an error.
-    ///
-    /// <br/>Counterpart: the [`BufferedConsumer::flush`] method.
-    async fn slurp(&mut self) -> Result<(), Self::Error>;
-}
-
-impl<P: BufferedProducer> BufferedProducer for &mut P {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        (*self).slurp().await
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<P: BufferedProducer> BufferedProducer for alloc::boxed::Box<P> {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        self.as_mut().slurp().await
-    }
-}
-
-impl BufferedProducer for Infallible {
-    async fn slurp(&mut self) -> Result<(), Self::Error> {
-        unreachable!()
-    }
-}
-
-/// Conversion into a [`BufferedProducer`].
-///
-/// This trait is automatically implemented by implementing [`IntoProducer`] with the associated producer being a buffered producer.
-///
-/// <br/>Counterpart: the [`IntoBufferedConsumer`] trait.
-pub trait IntoBufferedProducer: IntoProducer<IntoProducer: BufferedProducer> {}
-
-impl<P> IntoBufferedProducer for P where P: IntoProducer<IntoProducer: BufferedProducer> {}

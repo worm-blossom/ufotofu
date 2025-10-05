@@ -216,6 +216,10 @@ impl<T> Consumer for MoveIntoSlice<'_, T> {
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
         Ok(())
     }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl<T> BulkConsumer for MoveIntoSlice<'_, T> {

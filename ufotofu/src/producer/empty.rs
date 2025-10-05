@@ -40,4 +40,8 @@ impl<T> Producer for Empty<T> {
             "Must not call produce after having yielded the final value",
         )))
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }

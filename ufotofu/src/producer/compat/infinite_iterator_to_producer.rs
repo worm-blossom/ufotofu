@@ -54,4 +54,8 @@ where
             None => panic!("A supposedly infinite iterator yielded None."),
         }
     }
+
+    async fn slurp(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
