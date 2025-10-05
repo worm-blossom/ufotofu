@@ -4,6 +4,7 @@
 //!
 //! ```
 //! use ufotofu::prelude::*;
+//! # #[cfg(feature = "alloc")] {
 //! # pollster::block_on(async{
 //! let mut my_first_consumer = vec![].into_consumer();
 //!
@@ -15,6 +16,7 @@
 //! assert_eq!(vec, vec![1, 2, 4]);
 //! # Result::<(), Infallible>::Ok(())
 //! # });
+//! # }
 //! ```
 //!
 //! Consumers may emit errors of type [`Consumer::Error`] to indicate failure to process a regular item or the final value. It is forbidden to call `consume` or `close` after having called `close`, or after the consumer has emitted an error. Any such call may result in unspecified (but safe) behaviour.
@@ -25,6 +27,7 @@
 //!
 //! ```
 //! use ufotofu::prelude::*;
+//! # #[cfg(feature = "alloc")] {
 //! # pollster::block_on(async{
 //! let mut v = vec![];
 //! let mut c = (&mut v).into_consumer();
@@ -36,6 +39,7 @@
 //! assert_eq!(v, vec![1, 2, 4]);
 //! # Result::<(), Infallible>::Ok(())
 //! # });
+//! # }
 //! ```
 //!
 //! <br/>
@@ -132,6 +136,7 @@ pub use bulk_buffered::*;
 ///
 /// ```
 /// use ufotofu::prelude::*;
+/// # #[cfg(feature = "alloc")] {
 /// # pollster::block_on(async{
 /// let mut v = vec![];
 /// let mut c = (&mut v).into_consumer();
@@ -143,6 +148,7 @@ pub use bulk_buffered::*;
 /// assert_eq!(v, vec![1, 2, 4]);
 /// # Result::<(), Infallible>::Ok(())
 /// # });
+/// # }
 /// ```
 ///
 /// Every consumer may delay performing side-effects to make `consume` (and `bulk_consume`) calls more efficient. The classic example of a [`BufferedConsumer`] is a consumer of bytes which writes to a file from disk: it most certainly should not write every individual byte to disk, instead it should buffer bytes in memory and occasionally flush the buffer to disk.

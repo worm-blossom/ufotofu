@@ -1,8 +1,5 @@
-#[cfg(not(feature = "std"))]
 use core::error::Error;
-use core::fmt::{Debug, Display};
-#[cfg(feature = "std")]
-use std::error::Error;
+use core::fmt::{self, Debug, Display};
 
 /// Everything that can go wrong when [piping](crate::pipe) a producer into a consumer.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -14,7 +11,7 @@ pub enum PipeError<ProducerError, ConsumerError> {
 }
 
 impl<ProducerError, ConsumerError> Display for PipeError<ProducerError, ConsumerError> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PipeError::Producer(_) => {
                 write!(
@@ -32,7 +29,6 @@ impl<ProducerError, ConsumerError> Display for PipeError<ProducerError, Consumer
     }
 }
 
-#[cfg(feature = "std")]
 impl<ProducerError, ConsumerError> Error for PipeError<ProducerError, ConsumerError>
 where
     ProducerError: 'static + Error,
@@ -70,7 +66,7 @@ where
 }
 
 impl<E> Display for ConsumeAtLeastError<E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "The consumer failed to consume sufficiently many items, it only consumed {} items",
@@ -114,7 +110,7 @@ where
 }
 
 impl<F, E> Display for ProduceAtLeastError<F, E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.reason {
             Ok(_) => {
                 write!(f, "The producer was unable to produce sufficiently many items due to emitting its final value; it stopped after producing {} items", self.count)

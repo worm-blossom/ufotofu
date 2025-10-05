@@ -201,6 +201,7 @@ where
 /// The `initialise_memory` function is used internally to ensure that all queue slots contain valid memory at all times. The specific choice of `T` returned by that function does not affect the observable semantics of the queue at all.
 ///
 /// See [`new_fixed`] for more convenient box-backed queue creation for item types implementing [`Default`].[TODO] example
+#[cfg(feature = "alloc")]
 pub fn new_fixed_with<T>(capacity: usize, initialise_memory: fn() -> T) -> Contiguous<Box<[T]>, T> {
     let mut v = Vec::with_capacity(capacity);
     v.resize_with(capacity, initialise_memory);
