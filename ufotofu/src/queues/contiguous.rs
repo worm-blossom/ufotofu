@@ -90,6 +90,11 @@ where
     }
 
     fn enqueue(&mut self, item: T) -> Option<T> {
+        debug_assert!(
+            !self.buffer.as_ref().is_empty(),
+            "A Contiguous queue must have a non-empty buffer."
+        );
+
         if self.amount == self.bounded_capacity() {
             Some(item)
         } else {
@@ -105,12 +110,22 @@ where
     where
         F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
     {
+        debug_assert!(
+            !self.buffer.as_ref().is_empty(),
+            "A Contiguous queue must have a non-empty buffer."
+        );
+
         let (amount, ret) = f(self.writeable_slice()).await;
         self.amount += amount;
         ret
     }
 
     fn dequeue(&mut self) -> Option<T> {
+        debug_assert!(
+            !self.buffer.as_ref().is_empty(),
+            "A Contiguous queue must have a non-empty buffer."
+        );
+
         if self.amount == 0 {
             None
         } else {
@@ -130,6 +145,11 @@ where
     where
         F: AsyncFnOnce(&[Self::Item]) -> (usize, R),
     {
+        debug_assert!(
+            !self.buffer.as_ref().is_empty(),
+            "A Contiguous queue must have a non-empty buffer."
+        );
+
         let (amount, ret) = f(self.readable_slice()).await;
         self.read = (self.read + amount) % self.bounded_capacity();
         self.amount -= amount;
