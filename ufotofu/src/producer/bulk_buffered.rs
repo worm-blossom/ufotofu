@@ -116,11 +116,8 @@ where
                 return Ok(());
             }
             Some(Err(err)) => {
-                if self.buffer.is_empty() {
-                    return Err(err);
-                } else {
-                    return Ok(());
-                }
+                debug_assert!(self.buffer.is_empty());
+                return Err(err);
             }
             None => {
                 self.fill_buffer_from_inner().await;

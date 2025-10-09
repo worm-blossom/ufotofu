@@ -18,14 +18,14 @@ std = ["alloc"]
 # Provide functionality that relies on dynamic memory allocation.
 alloc = []
 
-# Provide implementations for development helpers.
-# dev = ["dep:arbitrary"]
+# Provide development helpers.
+dev = ["dep:arbitrary", "alloc"]
 
 # Provide adaptors for interoperability with other async reader and writer crates.
 # compat = ["dep:smol"]
 
 [dependencies]
-# arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
+arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 either = "1.10.0"
 smol = { version = "2.0.2", optional = true }
 ufotofu_macros = { path = "../ufotofu_macros", version = "0.1.0" }
