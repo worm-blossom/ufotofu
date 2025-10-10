@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// A producer created from an infinite [`Iterator`]. It exhibits unspecified behaviour if the wrapped iterator returns `None` from [`Iterator::next`].
 ///
 /// <br/>Counterpart: none, because the standard library has no counterpart to iterators.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InfiniteIteratorToProducer<I>(I);
 
 /// Creates a producer that produces items from a wrapped infinite iterator.
@@ -35,6 +35,18 @@ impl<I> InfiniteIteratorToProducer<I> {
     /// Retrieves the wrapped iterator.
     pub fn into_inner(self) -> I {
         self.0
+    }
+}
+
+impl<I> AsRef<I> for InfiniteIteratorToProducer<I> {
+    fn as_ref(&self) -> &I {
+        &self.0
+    }
+}
+
+impl<I> AsMut<I> for InfiniteIteratorToProducer<I> {
+    fn as_mut(&mut self) -> &mut I {
+        &mut self.0
     }
 }
 

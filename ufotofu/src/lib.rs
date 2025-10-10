@@ -195,8 +195,8 @@ pub use consumer::{
 
 pub mod queues;
 
-// #[cfg(all(feature = "dev", feature = "alloc"))]
-// mod test_yielder;
+#[cfg(all(feature = "dev", feature = "alloc"))]
+mod test_yielder;
 
 /// A “prelude” for crates using the `ufotofu` crate.
 ///

@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// A producer created from a finite [`Iterator`].
 ///
 /// <br/>Counterpart: none, because the standard library has no counterpart to iterators.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IteratorToProducer<I>(I);
 
 /// Creates a producer that produces items from a wrapped iterator.
@@ -35,6 +35,18 @@ impl<I> IteratorToProducer<I> {
     /// Retrieves the wrapped iterator.
     pub fn into_inner(self) -> I {
         self.0
+    }
+}
+
+impl<I> AsRef<I> for IteratorToProducer<I> {
+    fn as_ref(&self) -> &I {
+        &self.0
+    }
+}
+
+impl<I> AsMut<I> for IteratorToProducer<I> {
+    fn as_mut(&mut self) -> &mut I {
+        &mut self.0
     }
 }
 

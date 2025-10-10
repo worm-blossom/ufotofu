@@ -25,10 +25,11 @@ dev = ["dep:arbitrary", "alloc"]
 # compat = ["dep:smol"]
 
 [dependencies]
-arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
-either = "1.10.0"
-smol = { version = "2.0.2", optional = true }
 ufotofu_macros = { path = "../ufotofu_macros", version = "0.1.0" }
+either = "1.10.0"
+arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
+smol = { version = "2.0.2", optional = true }
+derive_builder = { version = "0.20.2", features = ["alloc"], optional = true }
 # futures = "0.3.31"
 
 [dev-dependencies]

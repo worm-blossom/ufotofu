@@ -129,6 +129,11 @@ mod bulk_scrambled;
 #[cfg(feature = "dev")]
 pub use bulk_scrambled::*;
 
+#[cfg(feature = "dev")]
+mod test_producer;
+#[cfg(feature = "dev")]
+pub use test_producer::*;
+
 /// A [`Producer`] lazily yields a sequence of items.
 ///
 /// The sequence consists of an arbitrary number of items of type [`Producer::Item`], optionally terminated by either a value of type [`Producer::Final`] or a value of type [`Producer::Error`].

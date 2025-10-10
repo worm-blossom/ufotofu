@@ -10,7 +10,7 @@ use std::{boxed::Box, vec::Vec};
 use arbitrary::Arbitrary;
 
 // Heavily inspired by https://docs.rs/async-std/latest/src/async_std/task/yield_now.rs.html
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
 pub struct TestYielder {
     pattern: Box<[bool]>, // nonzero length, at least one bool must be `false`
     index: usize,

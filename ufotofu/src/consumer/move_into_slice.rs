@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// See [`move_into_slice`].
 ///
 /// <br/>Counterpart: the [producer::CloneFromSlice] type.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 
 pub struct MoveIntoSlice<'a, T>(&'a mut [T], usize);
 

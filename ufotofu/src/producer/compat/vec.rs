@@ -39,7 +39,50 @@ use crate::{
 /// ```
 ///
 /// <br/>Counterpart: [`consumer::compat::vec::IntoConsumer`].
+#[derive(Debug, Clone)]
 pub struct IntoProducer<T>(IteratorToProducer<<Vec<T> as IntoIterator>::IntoIter>);
+
+impl<T> IntoProducer<T> {
+    /// Returns the remaining items of this producer as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let vec = vec!['a', 'b', 'c'];
+    /// let mut p = vec.into_producer();
+    ///
+    /// assert_eq!(p.as_slice(), &['a', 'b', 'c']);
+    /// assert_eq!(p.produce().await?, Left('a'));
+    /// assert_eq!(p.as_slice(), &['b', 'c']);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn as_slice(&self) -> &[T] {
+        &self.0.as_ref().as_slice()
+    }
+
+    /// Returns the remaining items of this producer as a mutable slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let vec = vec!['a', 'b', 'c'];
+    /// let mut p = vec.into_producer();
+    ///
+    /// assert_eq!(p.as_mut_slice(), &mut ['a', 'b', 'c']);
+    /// assert_eq!(p.produce().await?, Left('a'));
+    /// assert_eq!(p.as_mut_slice(), &mut ['b', 'c']);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn as_mut_slice(&self) -> &[T] {
+        &self.0.as_ref().as_slice()
+    }
+}
 
 impl<T> Producer for IntoProducer<T> {
     type Item = T;
@@ -68,6 +111,13 @@ impl<T> crate::IntoProducer for Vec<T> {
     }
 }
 
+/// The default producer produces the items in the empty vec (i.e., none).
+impl<T> Default for IntoProducer<T> {
+    fn default() -> Self {
+        crate::IntoProducer::into_producer(Vec::default())
+    }
+}
+
 /// The producer of the [`IntoProducer`] impl of `&Vec<T>`.
 ///
 /// ```
@@ -85,6 +135,7 @@ impl<T> crate::IntoProducer for Vec<T> {
 /// ```
 ///
 /// <br/>Counterpart: [`consumer::compat::vec::IntoConsumerMut`].
+#[derive(Debug, Clone)]
 pub struct IntoProducerRef<'s, T>(IteratorToProducer<<&'s Vec<T> as IntoIterator>::IntoIter>);
 
 impl<'s, T> Producer for IntoProducerRef<'s, T> {
