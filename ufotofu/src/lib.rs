@@ -212,6 +212,15 @@ pub mod prelude {
         Producer, ProducerExt,
     };
 
+    #[cfg(feature = "dev")]
+    pub use crate::{
+        consumer::{
+            build_test_consumer, TestConsumer, TestConsumerBuilder, TestConsumerBuilderError,
+        },
+        producer::{
+            build_test_producer, TestProducer, TestProducerBuilder, TestProducerBuilderError,
+        },
+    };
     pub use either::Either::{self, Left, Right};
 
     pub use core::convert::Infallible;

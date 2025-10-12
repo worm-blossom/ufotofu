@@ -19,7 +19,7 @@ std = ["alloc"]
 alloc = []
 
 # Provide development helpers.
-dev = ["dep:arbitrary", "alloc"]
+dev = ["std", "dep:arbitrary", "dep:derive_builder"]
 
 # Provide adaptors for interoperability with other async reader and writer crates.
 # compat = ["dep:smol"]

@@ -1,6 +1,7 @@
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
+use std::println;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{boxed::Box, vec::Vec};
@@ -10,7 +11,7 @@ use std::{boxed::Box, vec::Vec};
 use arbitrary::Arbitrary;
 
 // Heavily inspired by https://docs.rs/async-std/latest/src/async_std/task/yield_now.rs.html
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct TestYielder {
     pattern: Box<[bool]>, // nonzero length, at least one bool must be `false`
     index: usize,
@@ -18,24 +19,33 @@ pub struct TestYielder {
 
 impl TestYielder {
     pub fn new(pattern: Box<[bool]>) -> TestYielder {
-        if pattern.iter().all(|b| *b) {
+        if pattern.iter().any(|b| !*b) {
+            println!("jup {:?}", pattern);
+            TestYielder { pattern, index: 0 }
+        } else {
             // This also handles empty patterns.
             let mut pat = Vec::with_capacity(pattern.len() + 1);
             pat.extend_from_slice(&pattern);
             pat.push(false);
 
+            println!("nope {:?}", pat);
+
             TestYielder {
                 pattern: pat.into_boxed_slice(),
                 index: 0,
             }
-        } else {
-            TestYielder { pattern, index: 0 }
         }
     }
 
     #[inline]
     pub async fn maybe_yield(&mut self) {
         MaybeYield(self).await
+    }
+}
+
+impl Default for TestYielder {
+    fn default() -> Self {
+        Self::new(Vec::new().into_boxed_slice())
     }
 }
 

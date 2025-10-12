@@ -11,6 +11,24 @@ use crate::{
     test_yielder::TestYielder,
 };
 
+/// Returns a [`TestProducerBuilder`] for building a producer with fully configurable observable behaviour.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p = build_test_producer::<u32, char, Infallible>()
+///     .items(vec![1, 2, 4])
+///     .fin('z')
+///     .build().unwrap();
+///
+/// assert_eq!(p.produce().await?, Left(1));
+/// assert_eq!(p.produce().await?, Left(2));
+/// assert_eq!(p.produce().await?, Left(4));
+/// assert_eq!(p.produce().await?, Right('z'));
+///                 
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
 pub fn build_test_producer<Item, Final, Error>() -> TestProducerBuilder<Item, Final, Error>
 where
     Item: Clone,
@@ -21,25 +39,156 @@ where
 }
 
 impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
-    fn items<VALUE: Into<Vec<Item>>>(&mut self, value: VALUE) -> &mut Self {
+    /// Configures the built [`TestProducer`] to emit the given items before its last value.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1, 2, 4])
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.produce().await?, Left(2));
+    /// assert_eq!(p.produce().await?, Left(4));
+    /// assert_eq!(p.produce().await?, Right('z'));
+    ///
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// If you do not call this method, the built producer will emit zero items (i.e., it will immediately yield its final value or error).
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Right('z'));
+    ///
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn items<VALUE: Into<Vec<Item>>>(&mut self, value: VALUE) -> &mut Self {
         let new = self;
         new.inner = Some(clone_from_owned_slice(value.into()));
         new
     }
 
-    fn fin<VALUE: Into<Final>>(&mut self, value: VALUE) -> &mut Self {
+    /// Configures the built [`TestProducer`] to emit the given final value after its regular items.
+    ///
+    /// Calling `builder.fin(fin)` is equivalent to calling `builder.last(Ok(fin))`.
+    ///
+    /// Building will fail if you called neither [`TestProducerBuilder::last`] nor [`TestProducerBuilder::fin`] nor [`TestProducerBuilder::err`].
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1])
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.produce().await?, Right('z'));
+    ///
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn fin<VALUE: Into<Final>>(&mut self, value: VALUE) -> &mut Self {
         let new = self;
         new.last = Some(Some(Ok(value.into())));
         new
     }
 
-    fn err<VALUE: Into<Error>>(&mut self, value: VALUE) -> &mut Self {
+    /// Configures the built [`TestProducer`] to emit the given error after its regular items.
+    ///
+    /// Calling `builder.err(err)` is equivalent to calling `builder.last(Err(err))`.
+    ///
+    /// Building will fail if you called neither [`TestProducerBuilder::last`] nor [`TestProducerBuilder::fin`] nor [`TestProducerBuilder::err`].
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, Infallible, char>()
+    ///     .items(vec![1])
+    ///     .err('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.produce().await, Err('z'));
+    ///
+    /// # Result::<(), char>::Ok(())
+    /// # });
+    /// ```
+    pub fn err<VALUE: Into<Error>>(&mut self, value: VALUE) -> &mut Self {
         let new = self;
         new.last = Some(Some(Err(value.into())));
         new
     }
 
-    fn exposed_items_sizes<VALUE: Into<Vec<usize>>>(&mut self, value: VALUE) -> &mut Self {
+    /// Configures the number of items the built [`TestProducer`] will expose on each call to `expose_items`; the built producer will cycle through this vec of sizes. The exposed slices will be shorter when not enough items remain to be produced.
+    ///
+    /// Entries of `0` will be ignored. If all entries are zero, a single `usize::MAX` is used as the pattern.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1, 2, 4])
+    ///     .fin('z')
+    ///     . exposed_items_sizes(vec![1, 2])
+    ///     .build().unwrap();
+    ///
+    /// // Three items remain, the pattern starts with `1`, so one item is exposed.
+    /// p.expose_items(async |items| {
+    ///     assert_eq!(items.len(), 1);
+    ///     (0, ()) // Report back that zero items were produced.
+    /// }).await?;
+    ///
+    /// // Three items remain, the pattern continues with `2`, so two items are exposed.
+    /// p.expose_items(async |items| {
+    ///     assert_eq!(items.len(), 2);
+    ///     (0, ()) // Report back that zero items were produced.
+    /// }).await?;
+    ///
+    /// // Three items remain, the pattern loops back to its start, so one item is exposed.
+    /// p.expose_items(async |items| {
+    ///     assert_eq!(items.len(), 1);
+    ///     (1, ()) // Report back that one item was produced, but whatever, the example ends here.
+    /// }).await?;
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// If you do not call this method, the built producer will always expose all remaining items.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1, 2, 4])
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// // Three items remain, all are exposed.
+    /// p.expose_items(async |items| {
+    ///     assert_eq!(items.len(), 3);
+    ///     (1, ()) // Report back that one item was produced.
+    /// }).await?;
+    ///
+    /// // Two items remain, all are exposed.
+    /// p.expose_items(async |items| {
+    ///     assert_eq!(items.len(), 2);
+    ///     (1, ()) // Report back that one item was produced, but whatever, the example ends here.
+    /// }).await?;
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn exposed_items_sizes<VALUE: Into<Vec<usize>>>(&mut self, value: VALUE) -> &mut Self {
         let mut the_sizes: Vec<usize> = value.into().into_iter().filter(|size| *size > 0).collect();
 
         if the_sizes.is_empty() {
@@ -51,7 +200,12 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
         new
     }
 
-    fn yield_pattern<VALUE: Into<Vec<bool>>>(&mut self, value: VALUE) -> &mut Self {
+    /// Sets a pattern to control whether the built [`TestProducer`] will immediately complete asynchronous methods, or whether it will yield back to the task executor first.
+    ///
+    /// If you do not call this method, the built producer will complete all its methods immediately without unnecessary yielding.
+    ///
+    /// If all booleans are `true`, a single `false` is automatically appended (otherwise, the producer would always yield and never progress).
+    pub fn yield_pattern<VALUE: Into<Vec<bool>>>(&mut self, value: VALUE) -> &mut Self {
         let new = self;
         new.yielder = Some(TestYielder::new(value.into().into_boxed_slice()));
         new
@@ -64,27 +218,134 @@ pub struct TestProducer<Item, Final, Error> {
     #[builder(default = "clone_from_owned_slice(alloc::vec![])")]
     #[builder(setter(custom))]
     inner: CloneFromOwnedSlice<Vec<Item>, Item>,
+    /// Configures the built [`TestProducer`] to emit the given last value after its regular items, either as a final value (when called with an `Ok`) or as an error (when called with an `Err`).
+    ///
+    /// Building will fail if you called neither [`TestProducerBuilder::last`] nor [`TestProducerBuilder::fin`] nor [`TestProducerBuilder::err`].
+    ///
+    /// Example with an `Ok` value.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1])
+    ///     .last(Ok('z'))
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.produce().await?, Right('z'));
+    ///
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// Example with an `Err` value.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, Infallible, char>()
+    ///     .items(vec![1])
+    ///     .err('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.produce().await, Err('z'));
+    ///
+    /// # Result::<(), char>::Ok(())
+    /// # });
+    /// ```
     #[builder(setter(strip_option))]
     last: Option<Result<Final, Error>>,
     #[builder(default = "alloc::vec![usize::MAX].into_boxed_slice()")]
     #[builder(setter(custom))]
     exposed_items_sizes: Box<[usize]>,
     #[builder(setter(skip))]
-    exposed_item_sizes_index: usize,
+    exposed_items_sizes_index: usize,
     #[builder(default)]
     #[builder(setter(custom))]
     yielder: TestYielder,
 }
 
 impl<Item, Final, Error> TestProducer<Item, Final, Error> {
+    /// Returns the regular items the producer will still produce.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1, 2, 4])
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.as_slice(), &[1, 2, 4]);
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.as_slice(), &[2, 4]);
+    /// assert_eq!(p.produce().await?, Left(2));
+    /// assert_eq!(p.as_slice(), &[4]);
+    /// assert_eq!(p.produce().await?, Left(4));
+    /// assert_eq!(p.as_slice(), &[]);
+    /// assert_eq!(p.produce().await?, Right('z'));
+    /// assert_eq!(p.as_slice(), &[]);              
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
     pub fn as_slice(&self) -> &[Item] {
         self.inner.remaining()
     }
 
+    /// Returns a reference to the last value the producer will produce, or `None` if it has already been produced.
+    ///
+    /// An example returning a `Some(Ok(_))` (because the producer was configured to return a *final* value):
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.peek_last(), Some(&Ok('z')));
+    /// assert_eq!(p.produce().await?, Right('z'));
+    /// assert_eq!(p.peek_last(), None);           
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// An example returning a `Some(Err(_))` (because the producer was configured to return an *error*):
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, Infallible, char>()
+    ///     .err('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.peek_last(), Some(&Err('z')));
+    /// assert_eq!(p.produce().await, Err('z'));
+    /// assert_eq!(p.peek_last(), None);           
+    /// # Result::<(), char>::Ok(())
+    /// # });
+    /// ```
     pub fn peek_last(&self) -> Option<&Result<Final, Error>> {
         self.last.as_ref()
     }
 
+    /// Returns whether the producer has produced its last value already.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.did_already_emit_last(), false);
+    /// assert_eq!(p.produce().await?, Right('z'));
+    /// assert_eq!(p.did_already_emit_last(), true);          
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
     pub fn did_already_emit_last(&self) -> bool {
         self.last.is_none()
     }
@@ -141,9 +402,10 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
             .expose_items(async |inner_items| {
                 let inner_items_len = inner_items.len();
 
-                let max_len: usize = self.exposed_items_sizes[self.exposed_item_sizes_index].into();
-                self.exposed_item_sizes_index =
-                    (self.exposed_item_sizes_index + 1) % self.exposed_items_sizes.len();
+                let max_len: usize =
+                    self.exposed_items_sizes[self.exposed_items_sizes_index].into();
+                self.exposed_items_sizes_index =
+                    (self.exposed_items_sizes_index + 1) % self.exposed_items_sizes.len();
 
                 f(&inner_items[..min(inner_items_len, max_len)]).await
             })
@@ -189,9 +451,29 @@ where
     }
 }
 
-/// This implementation considers only the values that have been or will be emitted (regular, final, and error). That is, two `TestProducer`s are considered equal if they will produce equal sequences of values, irrespective of the details of how many item slots they will expose with each `expose_items` call, and irrespective of the pattern in which the async methods yield.
+/// This implementation considers only the values that have will still be emitted (regular, final, and error). That is, two `TestProducer`s are considered equal if they will produce equal sequences of values, irrespective of the details of how many items they will expose with future  `expose_items` calls, and irrespective of the pattern in which the async methods yield. In particular, it also does not matter which values they have produced prior to checking for equality.
 ///
-/// [TODO] doc test
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p1 = build_test_producer::<u32, char, Infallible>()
+///     .items(vec![1, 2, 4])
+///     .fin('z')
+///     .build().unwrap();
+///
+/// let mut p2 = build_test_producer::<u32, char, Infallible>()
+///     .items(vec![2, 4])
+///     .fin('z')
+///     .build().unwrap();
+///
+/// assert_eq!(p1 == p2, false);
+/// assert_eq!(p1.produce().await?, Left(1));
+/// assert_eq!(p1 == p2, true);
+/// assert_eq!(p1.produce().await?, Left(2));
+/// assert_eq!(p1 == p2, false);
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
 impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
     for TestProducer<Item, Final, Error>
 {

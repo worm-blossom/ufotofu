@@ -130,6 +130,11 @@ pub use buffered::*;
 mod bulk_buffered;
 pub use bulk_buffered::*;
 
+#[cfg(feature = "dev")]
+mod test_consumer;
+#[cfg(feature = "dev")]
+pub use test_consumer::*;
+
 /// A [`Consumer`] lazily processes a sequence of items.
 ///
 /// The sequence consists of an arbitrary number of items of type [`Consumer::Item`] — moved into the consumer via [`Consumer::consume`] — and is optionally terminated by a value of type [`Consumer::Final`] — moved into the consumer via [`Consumer::close`]. At any point, a consumer may report an error of type [`Consumer::Error`].

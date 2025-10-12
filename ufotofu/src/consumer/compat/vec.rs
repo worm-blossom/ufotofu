@@ -33,7 +33,7 @@ use crate::prelude::*;
 /// ```
 ///
 /// <br/>Counterpart: the [producer::compat::vec::IntoProducer] type.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 
 pub struct IntoConsumer<T>(Vec<T>, usize);
 // The usize is the number of items consumed so far. For bulk consumption, we resize the Vec with default values to offer a slice, but those default values are then overwritten by further consumption.
@@ -41,6 +41,69 @@ pub struct IntoConsumer<T>(Vec<T>, usize);
 impl<T> From<IntoConsumer<T>> for Vec<T> {
     fn from(value: IntoConsumer<T>) -> Self {
         value.0
+    }
+}
+
+impl<T> IntoConsumer<T> {
+    /// Exposes all items consumed so far as a slice.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut c = vec![].into_consumer();
+    ///
+    /// c.consume(1).await?;
+    /// c.consume(2).await?;
+    /// c.consume(4).await?;
+    ///
+    /// assert_eq!(c.as_slice(), [1, 2, 4].as_slice());
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn as_slice(&self) -> &[T] {
+        &self.0[..]
+    }
+
+    /// Exposes all items consumed so far as a mutable slice.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut c = vec![].into_consumer();
+    ///
+    /// c.consume(1).await?;
+    /// c.consume(2).await?;
+    /// c.consume(4).await?;
+    ///
+    /// assert_eq!(c.as_mut_slice(), [1, 2, 4].as_mut_slice());
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.0[..]
+    }
+
+    /// Ensures that the next call to `self.expose_slots` will expose at least the requested number of slots.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut c = Vec::<u32>::new().into_consumer();
+    ///
+    /// c.prepare_slots(17);
+    /// c.expose_slots(async |slots| {
+    ///     assert!(slots.len() >= 17);
+    ///     (0, ())
+    /// }).await?;
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    pub fn prepare_slots(&mut self, amount: usize)
+    where
+        T: Default,
+    {
+        let old_len = self.0.len();
+        self.0.resize_with(old_len + amount, Default::default);
     }
 }
 
