@@ -75,7 +75,7 @@ impl<Item, Final, Error> TestConsumer<Item, Final, Error> {
         self.err.as_ref()
     }
 
-    pub fn did_error(&self) -> bool {
+    pub fn did_already_error(&self) -> bool {
         self.err.is_none()
     }
 
@@ -196,3 +196,5 @@ impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
         self.as_slice() == other.as_slice() && self.peek_final() == other.peek_final()
     }
 }
+
+impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestConsumer<Item, Final, Error> {}

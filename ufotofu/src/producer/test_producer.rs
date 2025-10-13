@@ -29,6 +29,8 @@ use crate::{
 /// # Result::<(), Infallible>::Ok(())
 /// # });
 /// ```
+///
+/// <br/>Counterpart: the [`consumer::build_test_consumer`] function.
 pub fn build_test_producer<Item, Final, Error>() -> TestProducerBuilder<Item, Final, Error>
 where
     Item: Clone,
@@ -124,6 +126,8 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// # Result::<(), char>::Ok(())
     /// # });
     /// ```
+    ///
+    /// <br/>Counterpart: the [`TestConsumerBuilder::err`](consumer::TestConsumerBuilder::err) method.
     pub fn err<VALUE: Into<Error>>(&mut self, value: VALUE) -> &mut Self {
         let new = self;
         new.last = Some(Some(Err(value.into())));
@@ -188,6 +192,8 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// # Result::<(), Infallible>::Ok(())
     /// # });
     /// ```
+    ///
+    /// <br/>Counterpart: the [`TestConsumerBuilder::exposed_slots_sizes`](consumer::TestConsumerBuilder::exposed_slots_sizes) method.
     pub fn exposed_items_sizes<VALUE: Into<Vec<usize>>>(&mut self, value: VALUE) -> &mut Self {
         let mut the_sizes: Vec<usize> = value.into().into_iter().filter(|size| *size > 0).collect();
 
@@ -205,6 +211,8 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// If you do not call this method, the built producer will complete all its methods immediately without unnecessary yielding.
     ///
     /// If all booleans are `true`, a single `false` is automatically appended (otherwise, the producer would always yield and never progress).
+    ///
+    /// <br/>Counterpart: the [`TestConsumerBuilder::yield_pattern`](consumer::TestConsumerBuilder::yield_pattern) method.
     pub fn yield_pattern<VALUE: Into<Vec<bool>>>(&mut self, value: VALUE) -> &mut Self {
         let new = self;
         new.yielder = Some(TestYielder::new(value.into().into_boxed_slice()));
@@ -214,6 +222,26 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
 
 #[derive(Debug, Clone, Builder)]
 #[builder(no_std)]
+/// A producer with fully configurable observable behaviour, intended for testing other code.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut p = build_test_producer::<u32, char, Infallible>()
+///     .items(vec![1, 2, 4])
+///     .fin('z')
+///     .build().unwrap();
+///
+/// assert_eq!(p.produce().await?, Left(1));
+/// assert_eq!(p.produce().await?, Left(2));
+/// assert_eq!(p.produce().await?, Left(4));
+/// assert_eq!(p.produce().await?, Right('z'));
+///                 
+/// # Result::<(), Infallible>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: the [`TestConsumer`](consumer::TestConsumer) type.
 pub struct TestProducer<Item, Final, Error> {
     #[builder(default = "clone_from_owned_slice(alloc::vec![])")]
     #[builder(setter(custom))]
@@ -290,6 +318,8 @@ impl<Item, Final, Error> TestProducer<Item, Final, Error> {
     /// # Result::<(), Infallible>::Ok(())
     /// # });
     /// ```
+    ///
+    /// <br/>Counterpart: the [`TestConsumer::as_slice`](consumer::TestConsumer::as_slice) method.
     pub fn as_slice(&self) -> &[Item] {
         self.inner.remaining()
     }
@@ -327,6 +357,8 @@ impl<Item, Final, Error> TestProducer<Item, Final, Error> {
     /// # Result::<(), char>::Ok(())
     /// # });
     /// ```
+    ///
+    /// <br/>Counterparts: the [`TestConsumer::peek_final`](consumer::TestConsumer::peek_final) and [`TestConsumer::peek_error`](consumer::TestConsumer::peek_error) methods.
     pub fn peek_last(&self) -> Option<&Result<Final, Error>> {
         self.last.as_ref()
     }
@@ -346,6 +378,8 @@ impl<Item, Final, Error> TestProducer<Item, Final, Error> {
     /// # Result::<(), Infallible>::Ok(())
     /// # });
     /// ```
+    ///
+    /// <br/>Counterpart: the [`TestConsumer::did_already_error`](consumer::TestConsumer::did_already_error) method.
     pub fn did_already_emit_last(&self) -> bool {
         self.last.is_none()
     }
@@ -474,6 +508,8 @@ where
 /// # Result::<(), Infallible>::Ok(())
 /// # });
 /// ```
+///
+/// <br/>Counterpart: [`PartialEq`] impl of [`TestConsumer`](consumer::TestConsumer).
 impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
     for TestProducer<Item, Final, Error>
 {
@@ -481,3 +517,5 @@ impl<Item: PartialEq, Final: PartialEq, Error: PartialEq> PartialEq
         self.as_slice() == other.as_slice() && self.peek_last() == other.peek_last()
     }
 }
+
+impl<Item: Eq, Final: Eq, Error: Eq> Eq for TestProducer<Item, Final, Error> {}
