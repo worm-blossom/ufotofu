@@ -25,7 +25,6 @@ dev = ["std", "dep:arbitrary", "dep:derive_builder"]
 # compat = ["dep:smol"]
 
 [dependencies]
-ufotofu_macros = { path = "../ufotofu_macros", version = "0.1.0" }
 either = "1.10.0"
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 smol = { version = "2.0.2", optional = true }
