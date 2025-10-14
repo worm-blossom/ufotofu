@@ -10,12 +10,26 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
 pollster = "0.4.0"
-ufotofu = { path = "../ufotofu" }                                      #, features = ["dev", "compat"] }
+ufotofu = { path = "../ufotofu", features = ["dev"] }
 either = "1.10.0"
 
 [[bin]]
 name = "pipe"
 path = "fuzz_targets/pipe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bulk_pipe"
+path = "fuzz_targets/bulk_pipe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "example_bulk_count"
+path = "fuzz_targets/example_bulk_count.rs"
 test = false
 doc = false
 bench = false

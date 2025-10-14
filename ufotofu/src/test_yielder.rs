@@ -1,7 +1,6 @@
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
-use std::println;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{boxed::Box, vec::Vec};
@@ -20,15 +19,12 @@ pub struct TestYielder {
 impl TestYielder {
     pub fn new(pattern: Box<[bool]>) -> TestYielder {
         if pattern.iter().any(|b| !*b) {
-            println!("jup {:?}", pattern);
             TestYielder { pattern, index: 0 }
         } else {
             // This also handles empty patterns.
             let mut pat = Vec::with_capacity(pattern.len() + 1);
             pat.extend_from_slice(&pattern);
             pat.push(false);
-
-            println!("nope {:?}", pat);
 
             TestYielder {
                 pattern: pat.into_boxed_slice(),

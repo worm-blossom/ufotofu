@@ -41,6 +41,8 @@
 //! The two central modules are [`producer`] and [`consumer`], they define the core abstractions of the crate.
 //!
 //! The [`queues`] module provides the [`Queue`](queues::Queue) trait for infallible in-memory queues with bulk push and pop operations, and some types implementing it. These power the buffered producer and consumer implementations of ufotofu.
+//!
+//! The [`fuzz_testing_tutorial`] demonstrates the utility types for [fuzz testing](https://rust-fuzz.github.io/book/introduction.html) that ufotofu provides.
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -197,6 +199,9 @@ pub mod queues;
 
 #[cfg(all(feature = "dev", feature = "alloc"))]
 mod test_yielder;
+
+#[cfg(feature = "dev")]
+pub mod fuzz_testing_tutorial;
 
 /// A “prelude” for crates using the `ufotofu` crate.
 ///

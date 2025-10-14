@@ -144,7 +144,7 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
     /// let mut p = build_test_producer::<u32, char, Infallible>()
     ///     .items(vec![1, 2, 4])
     ///     .fin('z')
-    ///     . exposed_items_sizes(vec![1, 2])
+    ///     .exposed_items_sizes(vec![1, 2])
     ///     .build().unwrap();
     ///
     /// // Three items remain, the pattern starts with `1`, so one item is exposed.
@@ -324,6 +324,34 @@ impl<Item, Final, Error> TestProducer<Item, Final, Error> {
         self.inner.remaining()
     }
 
+    /// Returns the regular items the producer has already produced.
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1, 2, 4])
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.already_produced(), &[]);
+    /// assert_eq!(p.produce().await?, Left(1));
+    /// assert_eq!(p.already_produced(), &[1]);
+    /// assert_eq!(p.produce().await?, Left(2));
+    /// assert_eq!(p.already_produced(), &[1, 2]);
+    /// assert_eq!(p.produce().await?, Left(4));
+    /// assert_eq!(p.already_produced(), &[1, 2, 4]);
+    /// assert_eq!(p.produce().await?, Right('z'));
+    /// assert_eq!(p.already_produced(), &[1,2, 4]);              
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: none. The counterpart on [`TestConsumer`](consumer::TestConsumer) would be a method returning a slice of all items which have not yet been consumed but will be. Good luck implementing that.
+    pub fn already_produced(&self) -> &[Item] {
+        self.inner.produced()
+    }
+
     /// Returns a reference to the last value the producer will produce, or `None` if it has already been produced.
     ///
     /// An example returning a `Some(Ok(_))` (because the producer was configured to return a *final* value):
@@ -379,9 +407,37 @@ impl<Item, Final, Error> TestProducer<Item, Final, Error> {
     /// # });
     /// ```
     ///
-    /// <br/>Counterpart: the [`TestConsumer::did_already_error`](consumer::TestConsumer::did_already_error) method.
+    /// <br/>Counterpart: the [`TestConsumer::is_closed`](consumer::TestConsumer::is_closed) method if this emitted its final value, the [`TestConsumer::did_already_error`](consumer::TestConsumer::did_already_error) method if this emitted an error.
     pub fn did_already_emit_last(&self) -> bool {
         self.last.is_none()
+    }
+
+    /// Drops the producer and returns ownership of the items it has not yet produced, and its final value or error (if it has not yet been emitted).
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p = build_test_producer::<u32, char, Infallible>()
+    ///     .items(vec![1, 2, 4])
+    ///     .fin('z')
+    ///     .build().unwrap();
+    ///
+    /// assert_eq!(p.produce().await?, Left(1));
+    ///
+    /// let (items, last) = p.into_not_yet_produced();
+    ///
+    /// assert_eq!(items, vec![2, 4]);
+    /// assert_eq!(last, Some(Ok('z')));
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: the [`TestConsumer::into_consumed`](consumer::TestConsumer::into_consumed) method.
+    pub fn into_not_yet_produced(self) -> (Vec<Item>, Option<Result<Final, Error>>) {
+        let amount_produced = self.inner.produced().len();
+        let mut remaining_items = self.inner.into_inner();
+        remaining_items.drain(0..amount_produced);
+        (remaining_items, self.last)
     }
 
     async fn maybe_yield(&mut self) {
