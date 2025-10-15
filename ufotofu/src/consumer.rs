@@ -131,6 +131,11 @@ mod bulk_buffered;
 pub use bulk_buffered::*;
 
 #[cfg(feature = "dev")]
+mod bulk_scrambled;
+#[cfg(feature = "dev")]
+pub use bulk_scrambled::*;
+
+#[cfg(feature = "dev")]
 mod test_consumer;
 #[cfg(feature = "dev")]
 pub use test_consumer::*;

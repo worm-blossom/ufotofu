@@ -13,11 +13,11 @@ pub enum BulkProducerOperation {
     Produce,
     /// Call [`Producer::slurp`].
     Slurp,
-    /// Call [`BulkProducerExt::bulk_produce`] with a buffer whose size is at most the value given in this variant (capped by the number of exposed items and by the number of free slots in the buffer of the [`BulkScrambled`] at the time of executing this operation).
+    /// Call [`BulkProducerExt::bulk_produce`] with a buffer whose size is at most the value given in this variant (capped by the number of free slots in the buffer of the [`BulkScrambled`] at the time of executing this operation).
     BulkProduce(NonZeroUsize),
 }
 
-// Internal helper functions to determine whether a given lsice of operations contains at least one non-slurp operation.
+// Internal helper functions to determine whether a given slice of operations contains at least one non-slurp operation.
 fn do_operations_make_progress(ops: &[BulkProducerOperation]) -> bool {
     ops.iter()
         .any(|op| !matches!(op, BulkProducerOperation::Slurp))
@@ -25,13 +25,12 @@ fn do_operations_make_progress(ops: &[BulkProducerOperation]) -> bool {
 
 /// A bulk producer wrapper which produces the same sequence as the wrapped bulk producer, but which interacts with the wrapped producer by calling its methods according to a (usually randomly generated) predetermined pattern.
 ///
-/// This type is intended for use in property testing, to test that some producer type (the wrapped one) behaves well even under unusual access patterns.
+/// This type is intended for use in property testing, to test that some bulk producer type (the wrapped one) behaves well even under unusual access patterns. See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
 ///
-/// Created via [`ProducerExt::bulk_scrambled`].
+/// Created via [`BulkProducerExt::bulk_scrambled`].
 ///
 /// <br/>Counterpart: the [consumer::BulkScrambled] type.
 #[derive(Debug)]
-
 pub struct BulkScrambled<P, Q, Final, Error> {
     inner: P,
     buffer: Q,
@@ -40,7 +39,7 @@ pub struct BulkScrambled<P, Q, Final, Error> {
     op_index: usize,
 }
 
-// The `BulkScrambled` works as follows: while its `queue` contains items, it simply produces those items (basically the same way as a `producer::BulkBuffered`). When the queue is empty however and it needs to produce an item, it fills the queue by requesting items from the `inner` producer. It requests these items by looping through the `ops` (jumping back to the first op after reaching the final one).
+// The `BulkScrambled` works as follows: while its `buffer` contains items, it simply produces those items (basically the same way as a `producer::BulkBuffered` does). When the buffer is empty however and it needs to produce an item, it fills the buffer by requesting items from the `inner` producer. It requests these items by looping through the `ops` (jumping back to the first op after reaching the final one).
 
 impl<P, Q, Final, Error> BulkScrambled<P, Q, Final, Error> {
     pub(crate) fn new(inner: P, buffer: Q, mut ops: Vec<BulkProducerOperation>) -> Self {
@@ -57,7 +56,7 @@ impl<P, Q, Final, Error> BulkScrambled<P, Q, Final, Error> {
         }
     }
 
-    /// Consumes `self` and returns the wrapped producer.
+    /// Consumes `self` and returns the wrapped bulk producer.
     pub fn into_inner(self) -> P {
         self.inner
     }
@@ -74,7 +73,7 @@ where
     P: BulkProducer<Item: Clone, Final = Final, Error = Error>,
     Q: Queue<Item = P::Item>,
 {
-    // This is the fun part. Unlike for `BulkBuffered`, we do not try to be efficient here, but isntead we strictly follow our `ops`.
+    // This is the fun part. Unlike for `BulkBuffered`, we do not try to be efficient here, but instead we strictly follow our `ops`.
     async fn fill_buffer_from_inner(&mut self) {
         while self.last.is_none() && !self.buffer.is_full() {
             match self.ops[self.op_index] {

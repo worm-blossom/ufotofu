@@ -3,6 +3,8 @@
 use libfuzzer_sys::fuzz_target;
 use ufotofu::{bulk_pipe, prelude::*, PipeError};
 
+// Generate a TestProducer and a TestConsumer, bulk_pipe the producer into the consumer, and check that the correct number of items (and last values/errors) got copied to the correct place.
+
 fuzz_target!(
     |data: (TestProducer<u16, u16, u16>, TestConsumer<u16, u16, u16>)| {
         pollster::block_on(async {

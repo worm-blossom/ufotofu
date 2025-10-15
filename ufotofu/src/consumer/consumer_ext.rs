@@ -1,10 +1,16 @@
 use core::cmp::min;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 use crate::{
     consumer::{Buffered, BulkBuffered},
     prelude::*,
     ConsumeAtLeastError,
 };
+
+#[cfg(feature = "dev")]
+use crate::consumer::{BulkConsumerOperation, BulkScrambled};
 
 impl<C> ConsumerExt for C where C: Consumer {}
 
@@ -416,5 +422,20 @@ pub trait BulkConsumerExt: BulkConsumer {
         Self: Sized,
     {
         BulkBuffered::new(self, queue)
+    }
+
+    /// Turns `self` into a [scrambling](BulkScrambled) producer.
+    ///
+    /// The returned producer is semantically indistinguishable from `self`, but interacts with the original bulk producer according to a fixed (usually randomly generated) pattern of methods.
+    ///
+    /// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+    ///
+    /// <br/>Counterpart: the [BulkProducerExt::bulk_scrambled] method.
+    #[cfg(feature = "dev")]
+    fn bulk_scrambled<Q>(self, buffer: Q, ops: Vec<BulkConsumerOperation>) -> BulkScrambled<Self, Q>
+    where
+        Self: Sized,
+    {
+        BulkScrambled::new(self, buffer, ops)
     }
 }

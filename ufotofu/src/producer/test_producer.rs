@@ -13,6 +13,8 @@ use crate::{
 
 /// Returns a [`TestProducerBuilder`] for building a producer with fully configurable observable behaviour.
 ///
+/// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+///
 /// ```
 /// use ufotofu::prelude::*;
 /// # pollster::block_on(async{
@@ -223,6 +225,8 @@ impl<Item, Final, Error> TestProducerBuilder<Item, Final, Error> {
 #[derive(Debug, Clone, Builder)]
 #[builder(no_std)]
 /// A producer with fully configurable observable behaviour, intended for testing other code.
+///
+/// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
 ///
 /// ```
 /// use ufotofu::prelude::*;

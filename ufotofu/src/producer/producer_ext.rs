@@ -6,6 +6,12 @@ use crate::{
     ProduceAtLeastError,
 };
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[cfg(feature = "dev")]
+use crate::producer::{BulkProducerOperation, BulkScrambled};
+
 impl<P> ProducerExt for P where P: Producer {}
 
 /// An extension trait for [`Producer`] that provides a variety of convenient combinator functions.
@@ -199,6 +205,53 @@ pub trait ProducerExt: Producer {
         Self: Sized,
     {
         Buffered::new(self, queue)
+    }
+
+    /// Returns whether this producer and another producer emit equal sequences of items.
+    ///
+    /// This causes both producers actually emit all their values (and this method simply drops them).
+    ///
+    /// ```
+    /// use ufotofu::prelude::*;
+    /// # pollster::block_on(async{
+    /// let mut p1 = [1, 2, 4].into_producer();
+    /// let mut p2 = [2, 4].into_producer();
+    ///
+    /// assert_eq!(p1.equals(&mut p2).await, false);
+    ///
+    /// let mut p3 = [1, 2, 4].into_producer();
+    /// let mut p4 = [2, 4].into_producer();
+    ///
+    /// assert_eq!(p3.produce().await?, Left(1));
+    /// assert_eq!(p3.equals(&mut p4).await, true);
+    /// # Result::<(), Infallible>::Ok(())
+    /// # });
+    /// ```
+    ///
+    /// <br/>Counterpart: none, because you cannot retroactively check whether two consumers have consumed equal sequences.
+    async fn equals<P>(&mut self, other: &mut P) -> bool
+    where
+        P: Producer<Item = Self::Item, Final = Self::Final, Error = Self::Error>,
+        Self::Item: PartialEq,
+        Self::Final: PartialEq,
+        Self::Error: PartialEq,
+    {
+        loop {
+            match (self.produce().await, other.produce().await) {
+                (Ok(Left(it1)), Ok(Left(it2))) => {
+                    if it1 != it2 {
+                        return false;
+                    }
+                }
+                (Ok(Right(fin1)), Ok(Right(fin2))) => {
+                    return fin1 == fin2;
+                }
+                (Err(err1), Err(err2)) => {
+                    return err1 == err2;
+                }
+                _ => return false,
+            }
+        }
     }
 }
 
@@ -436,5 +489,24 @@ pub trait BulkProducerExt: BulkProducer {
         Self: Sized,
     {
         BulkBuffered::new(self, queue)
+    }
+
+    /// Turns `self` into a [scrambling](BulkScrambled) producer.
+    ///
+    /// The returned producer is semantically indistinguishable from `self`, but interacts with the original bulk producer according to a fixed (usually randomly generated) pattern of methods.
+    ///
+    /// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+    ///
+    /// <br/>Counterpart: the [BulkConsumerExt::bulk_scrambled] method.
+    #[cfg(feature = "dev")]
+    fn bulk_scrambled<Q>(
+        self,
+        buffer: Q,
+        ops: Vec<BulkProducerOperation>,
+    ) -> BulkScrambled<Self, Q, Self::Final, Self::Error>
+    where
+        Self: Sized,
+    {
+        BulkScrambled::new(self, buffer, ops)
     }
 }

@@ -33,7 +33,7 @@ use crate::prelude::*;
 /// ```
 ///
 /// <br/>Counterpart: the [producer::compat::vec::IntoProducer] type.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 
 pub struct IntoConsumer<T>(Vec<T>, usize);
 // The usize is the number of items consumed so far. For bulk consumption, we resize the Vec with default values to offer a slice, but those default values are then overwritten by further consumption.
@@ -41,6 +41,17 @@ pub struct IntoConsumer<T>(Vec<T>, usize);
 impl<T> From<IntoConsumer<T>> for Vec<T> {
     fn from(value: IntoConsumer<T>) -> Self {
         value.0
+    }
+}
+
+impl<T> Debug for IntoConsumer<T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("IntoConsumer")
+            .field(&&self.0[..self.1])
+            .finish()
     }
 }
 
@@ -114,7 +125,13 @@ impl<T> Consumer for IntoConsumer<T> {
 
     /// Appends the item to the vec.
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        self.0.push(item);
+        if self.0.len() == self.1 {
+            self.0.push(item);
+        } else {
+            debug_assert!(self.0.len() > self.1);
+            self.0[self.1] = item;
+        }
+
         self.1 += 1;
         Ok(())
     }
@@ -175,9 +192,19 @@ impl<T> crate::IntoConsumer for Vec<T> {
 /// ```
 ///
 /// <br/>Counterpart: the [producer::compat::vec::IntoProducerRef] type.
-#[derive(Debug)]
 
 pub struct IntoConsumerMut<'a, T>(&'a mut Vec<T>, usize);
+
+impl<'a, T> Debug for IntoConsumerMut<'a, T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("IntoConsumerMut")
+            .field(&&self.0[..self.1])
+            .finish()
+    }
+}
 
 impl<'a, T> Consumer for IntoConsumerMut<'a, T> {
     type Item = T;
@@ -186,7 +213,13 @@ impl<'a, T> Consumer for IntoConsumerMut<'a, T> {
 
     /// Appends the item to the vec.
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
-        self.0.push(item);
+        if self.0.len() == self.1 {
+            self.0.push(item);
+        } else {
+            debug_assert!(self.0.len() > self.1);
+            self.0[self.1] = item;
+        }
+
         self.1 += 1;
         Ok(())
     }

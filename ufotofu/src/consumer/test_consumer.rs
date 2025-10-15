@@ -9,6 +9,8 @@ use crate::{consumer::compat, prelude::*, test_yielder::TestYielder};
 
 /// Returns a [`TestConsumerBuilder`] for building a consumer with fully configurable observable behaviour.
 ///
+/// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+///
 /// ```
 /// use ufotofu::prelude::*;
 /// # pollster::block_on(async{
@@ -101,6 +103,29 @@ impl<Item, Final, Error> TestConsumerBuilder<Item, Final, Error> {
     }
 }
 
+/// A consumer with fully configurable observable behaviour, intended for testing other code.
+///
+/// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+///
+/// ```
+/// use ufotofu::prelude::*;
+/// # pollster::block_on(async{
+/// let mut c = build_test_consumer::<u32, (), char>()
+///     .err('z')
+///     .consumptions_until_error(2)
+///     .build().unwrap();
+///
+/// c.consume(1).await?;
+/// c.consume(2).await?;
+/// assert_eq!(c.consume(4).await, Err('z'));
+///
+/// assert_eq!(c.as_slice(), &[1, 2]);
+/// assert_eq!(c.peek_final(), None);
+/// # Result::<(), char>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: the [`TestProducer`](producer::TestProducer) type.
 #[derive(Debug, Clone, Builder)]
 #[builder(no_std)]
 pub struct TestConsumer<Item, Final, Error> {
@@ -375,7 +400,10 @@ where
         self.maybe_yield().await;
         self.check_error()?;
 
-        let max_len: usize = self.exposed_slots_sizes[self.exposed_slots_sizes_index].into();
+        let max_len: usize = min(
+            self.consumptions_until_error,
+            self.exposed_slots_sizes[self.exposed_slots_sizes_index].into(),
+        );
         self.exposed_slots_sizes_index =
             (self.exposed_slots_sizes_index + 1) % self.exposed_slots_sizes.len();
 
@@ -384,7 +412,10 @@ where
         self.inner
             .expose_slots(async |inner_slots| {
                 let inner_len = inner_slots.len();
-                f(&mut inner_slots[..min(inner_len, max_len)]).await
+
+                let (amount, ret) = f(&mut inner_slots[..min(inner_len, max_len)]).await;
+                self.consumptions_until_error -= amount;
+                (amount, ret)
             })
             .await
             .map_err(|_| unreachable!("Inner consumer is infallible"))
