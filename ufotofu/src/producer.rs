@@ -25,7 +25,28 @@
 //!
 //! <br/>
 //!
-//! The [`IntoProducer`] trait describes types which can be converted into producers. The standard library counterpart to `IntoProducer` is [`IntoIterator`].
+//! The [`consume`] macro provides a handy generalisation of `for` loop syntax. It can handle not only repeated items but optionally also final values and errors. The following example handles repeated items and the final value, and transparently propagates errors.
+//!
+//! ```
+//! use ufotofu::prelude::*;
+//! # fn main() {
+//! # pollster::block_on(async{
+//!
+//! // The macro converts `[1, 2, 4]` into a producer.
+//! consume![[1, 2, 4] {
+//!     item it => print!("{it}, "),
+//!     // We could remove the next line to simply ignore the final value.
+//!     final () => println!("and done!"),
+//!     // The following line would “catch” and print any producer error.
+//!     // error err => println!({err}),
+//! }];
+//! // Prints `1, 2, 4, and done!`.
+//! # Result::<(), Infallible>::Ok(())
+//! # });
+//! # }
+//! ```
+//!
+//! The [`IntoProducer`] trait describes types which can be converted into producers. In the preceding example, this trait allowed the `consume!` macro to convert the array `[1, 2, 4]` into a producer of these three items. The standard library counterpart to `IntoProducer` is [`IntoIterator`].
 //!
 //! <br/>
 //!
@@ -226,6 +247,9 @@ impl Producer for Infallible {
 /// By implementing `IntoProducer` for a type, you define how it will be
 /// converted to a producer. This is common for types which describe a
 /// collection of some kind.
+///
+/// One benefit of implementing `IntoIterator` is that your type will [work
+/// with the `consume!` macro](consume).
 ///
 /// <br/>Counterpart: the [`IntoConsumer`] trait.
 pub trait IntoProducer {
