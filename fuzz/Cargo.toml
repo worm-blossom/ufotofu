@@ -77,8 +77,64 @@ doc = false
 bench = false
 
 [[bin]]
+name = "producer_bulk_overwrite_full_slice"
+path = "fuzz_targets/producer/bulk_overwrite_full_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_bulk_produce"
+path = "fuzz_targets/producer/bulk_produce.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "producer_bulk_scrambled"
 path = "fuzz_targets/producer/bulk_scrambled.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_clone_from_owned_slice"
+path = "fuzz_targets/producer/clone_from_owned_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_clone_from_slice"
+path = "fuzz_targets/producer/clone_from_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_equals"
+path = "fuzz_targets/producer/equals.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_equals_dbg"
+path = "fuzz_targets/producer/equals_dbg.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_overwrite_full_slice"
+path = "fuzz_targets/producer/overwrite_full_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_produce_item"
+path = "fuzz_targets/producer/produce_item.rs"
 test = false
 doc = false
 bench = false

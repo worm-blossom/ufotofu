@@ -3,7 +3,7 @@
 use libfuzzer_sys::fuzz_target;
 use ufotofu::{prelude::*, queues::new_fixed};
 
-// Generate a TestConsumer, buffer it with the bulk_buffered method, turn *that* into a bulk scrambled, feed a sequence of values into it, and test that the wrapped buffered TestConsumer forwarded the same items to the underlying TestConsumer as a control TestConsumer.
+// Generate a TestConsumer, buffer it with the buffered method, turn *that* into a bulk scrambled, feed a sequence of values into it, and test that the wrapped buffered TestConsumer forwarded the same items to the underlying TestConsumer as a control TestConsumer.
 
 fuzz_target!(|data: (
     TestConsumer<u16, u16, u16>,

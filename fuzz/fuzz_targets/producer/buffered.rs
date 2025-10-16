@@ -3,7 +3,7 @@
 use libfuzzer_sys::fuzz_target;
 use ufotofu::{prelude::*, queues::new_fixed};
 
-// Generate a TestProducer, turn it into a bulk scrambler, and test that the resulting producer produces the same sequence as the original producer
+// Generate a TestProducer, buffer it, then turn it into a bulk scrambler, and test that the resulting producer produces the same sequence as the original producer.
 
 fuzz_target!(|data: (
     TestProducer<u16, u16, u16>,
