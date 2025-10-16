@@ -46,7 +46,7 @@ where
     Q: Queue<Item = P::Item>,
 {
     async fn fill_buffer_from_inner(&mut self) {
-        loop {
+        while self.last.is_none() && !self.buffer.is_full() {
             match self
                 .buffer
                 .expose_slots(
@@ -123,7 +123,17 @@ where
                 self.fill_buffer_from_inner().await;
 
                 if self.last.is_none() {
-                    self.inner.slurp().await
+                    match self.inner.slurp().await {
+                        Ok(()) => return Ok(()),
+                        Err(err) => {
+                            if self.buffer.is_empty() {
+                                return Err(err);
+                            } else {
+                                self.last = Some(Err(err));
+                                return Ok(());
+                            }
+                        }
+                    }
                 } else {
                     Ok(())
                 }

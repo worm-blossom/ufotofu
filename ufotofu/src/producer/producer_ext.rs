@@ -253,6 +253,39 @@ pub trait ProducerExt: Producer {
             }
         }
     }
+
+    /// Exactly the same as [`ProducerExt::equals`] but also logs the return values of all `produce` calls to the terminal. Requires the `dev` feature.
+    #[cfg(feature = "dev")]
+    async fn equals_dbg<P>(&mut self, other: &mut P) -> bool
+    where
+        P: Producer<Item = Self::Item, Final = Self::Final, Error = Self::Error>,
+        Self::Item: PartialEq + alloc::fmt::Debug,
+        Self::Final: PartialEq + alloc::fmt::Debug,
+        Self::Error: PartialEq + alloc::fmt::Debug,
+    {
+        loop {
+            match (self.produce().await, other.produce().await) {
+                (Ok(Left(it1)), Ok(Left(it2))) => {
+                    std::println!("First items:\n{:?}\n{:?}", it1, it2);
+                    if it1 != it2 {
+                        return false;
+                    }
+                }
+                (Ok(Right(fin1)), Ok(Right(fin2))) => {
+                    std::println!("Final values:\n{:?}\n{:?}", fin1, fin2);
+                    return fin1 == fin2;
+                }
+                (Err(err1), Err(err2)) => {
+                    std::println!("Errors:\n{:?}\n{:?}", err1, err2);
+                    return err1 == err2;
+                }
+                (ret1, ret2) => {
+                    std::println!("Mismatching returns:\n{:?}\n{:?}", ret1, ret2);
+                    return false;
+                }
+            }
+        }
+    }
 }
 
 impl<P> BulkProducerExt for P where P: BulkProducer {}

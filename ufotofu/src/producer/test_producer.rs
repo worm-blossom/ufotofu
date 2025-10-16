@@ -506,7 +506,7 @@ impl<Item: Clone, Final, Error> BulkProducer for TestProducer<Item, Final, Error
             .await
         {
             Ok(Left(yay)) => Ok(Left(yay)),
-            Ok(Right(())) => Ok(Right(self.last.take().unwrap()?)),
+            Ok(Right(())) => Ok(Right(self.last.take().expect("Must not call `expose_items` after the TestProducer already emitted its last value.")?)),
             Err(_err) => unreachable!(),
         }
     }

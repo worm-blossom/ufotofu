@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use ufotofu::{consumer::BulkConsumerOperation, prelude::*, queues::new_fixed};
+use ufotofu::{prelude::*, queues::new_fixed};
 
 // Generate a TestConsumer, turn it into a bulk scrambled, feed a sequence of values into it, and test that the wrapped TestConsumer then stores the same items as a non-scrambled control TestConsumer.
 
@@ -45,15 +45,5 @@ fuzz_target!(|data: (
         assert_eq!(res_close, scrambled.close(fin).await);
         // Finally assert that control and scrambled consumed equal sequences.
         assert_eq!(control, scrambled.into_inner());
-
-        // let res_control = pipe(input, &mut control).await;
-        // let res_scrambled = pipe(input_clone, &mut scrambled).await;
-
-        // if matches!(res_control, Err(PipeError::Producer(_))) {
-        //     assert_eq!(scrambled.flush().await, control.flush().await);
-        // }
-
-        // // assert_eq!(res_scrambled, res_control);
-        // assert_eq!(scrambled.into_inner(), control);
     });
 });

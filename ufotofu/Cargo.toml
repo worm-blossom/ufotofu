@@ -19,7 +19,7 @@ std = ["alloc"]
 alloc = []
 
 # Provide development helpers.
-dev = ["std", "dep:arbitrary", "dep:derive_builder"]
+dev = ["std", "dep:arbitrary", "dep:derive_builder", "dep:libfuzzer-sys"]
 
 # Provide adaptors for interoperability with other async reader and writer crates.
 # compat = ["dep:smol"]
@@ -31,6 +31,9 @@ arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 smol = { version = "2.0.2", optional = true }
 derive_builder = { version = "0.20.2", features = ["alloc"], optional = true }
 # futures = "0.3.31"
+
+# We only depend on this so that our doc examples build.
+libfuzzer-sys = { version = "0.4.0", optional = true }
 
 [dev-dependencies]
 pollster = "0.4.0"

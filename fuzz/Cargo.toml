@@ -14,6 +14,20 @@ ufotofu = { path = "../ufotofu", features = ["dev"] }
 either = "1.10.0"
 
 [[bin]]
+name = "example_bulk_count"
+path = "fuzz_targets/example_bulk_count.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "example_seventeen_times"
+path = "fuzz_targets/example_seventeen_times.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "pipe"
 path = "fuzz_targets/pipe.rs"
 test = false
@@ -28,15 +42,15 @@ doc = false
 bench = false
 
 [[bin]]
-name = "example_bulk_count"
-path = "fuzz_targets/example_bulk_count.rs"
+name = "consumer_buffered"
+path = "fuzz_targets/consumer/buffered.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "producer_bulk_scrambled"
-path = "fuzz_targets/producer/bulk_scrambled.rs"
+name = "consumer_bulk_buffered"
+path = "fuzz_targets/consumer/bulk_buffered.rs"
 test = false
 doc = false
 bench = false
@@ -44,6 +58,27 @@ bench = false
 [[bin]]
 name = "consumer_bulk_scrambled"
 path = "fuzz_targets/consumer/bulk_scrambled.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_buffered"
+path = "fuzz_targets/producer/buffered.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_bulk_buffered"
+path = "fuzz_targets/producer/bulk_buffered.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_bulk_scrambled"
+path = "fuzz_targets/producer/bulk_scrambled.rs"
 test = false
 doc = false
 bench = false

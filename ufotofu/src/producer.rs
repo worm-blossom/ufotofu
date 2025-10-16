@@ -19,7 +19,7 @@
 //! # });
 //! ```
 //!
-//! Whereas an *iterator* yields a sequence of arbitrarily many values of type [`Iterator::Item`] followed by up to one value of type `()`, a producer yields a sequence of arbitrarily many values of type [`Producer::Item`] followed by either up to one value of type [`Producer::Final`] or by up to one value of type [`Producer::Error`]. Producers with `Final = ()` and `Error = Infallible` are effectively asynchronous iterators.
+//! Whereas an *iterator* yields a sequence of arbitrarily many values of type [`Iterator::Item`] followed by up to one value of type `()`, a *producer* yields a sequence of arbitrarily many values of type [`Producer::Item`] followed by either up to one value of type [`Producer::Final`] or by up to one value of type [`Producer::Error`]. Producers with `Final = ()` and `Error = Infallible` are effectively asynchronous iterators.
 //!
 //! It is forbidden to call `produce` after a producer has emitted an error or its final value. Any such call may result in unspecified (but safe) behaviour.
 //!

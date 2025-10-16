@@ -632,6 +632,7 @@ dependencies = [
  "arbitrary",
  "derive_builder",
  "either",
+ "libfuzzer-sys",
  "pollster",
  "smol",
  "ufotofu_macros",

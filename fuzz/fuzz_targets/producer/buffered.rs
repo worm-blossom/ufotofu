@@ -8,14 +8,18 @@ use ufotofu::{prelude::*, queues::new_fixed};
 fuzz_target!(|data: (
     TestProducer<u16, u16, u16>,
     usize,
+    usize,
     Vec<BulkProducerOperation>
 )| {
     pollster::block_on(async {
-        let (pro, mut buffer_size, ops) = data;
-        buffer_size = buffer_size.clamp(1, 4096);
+        let (pro, mut buffered_buffer_size, mut scrambler_buffer_size, ops) = data;
+        buffered_buffer_size = buffered_buffer_size.clamp(1, 4096);
+        scrambler_buffer_size = scrambler_buffer_size.clamp(1, 4096);
 
         let mut original = pro.clone();
-        let mut scrambled = pro.bulk_scrambled(new_fixed(buffer_size), ops);
+        let mut scrambled = pro
+            .buffered(new_fixed(buffered_buffer_size))
+            .bulk_scrambled(new_fixed(scrambler_buffer_size), ops);
 
         assert!(scrambled.equals(&mut original).await);
     });
