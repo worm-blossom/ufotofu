@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[cfg(feature = "dev")]
-use crate::consumer::{BulkConsumerOperation, BulkScrambled};
+use crate::consumer::{BulkConsumerOperation, BulkScrambled, ConsumerOperation, Scrambled};
 
 impl<C> ConsumerExt for C where C: Consumer {}
 
@@ -175,6 +175,23 @@ pub trait ConsumerExt: Consumer {
         Self: Sized,
     {
         Buffered::new(self, queue)
+    }
+
+    /// Turns `self` into a [scrambling](Scrambled) consumer.
+    ///
+    /// The returned consumer is semantically indistinguishable from `self`, but interacts with the original consumer according to a fixed (usually randomly generated) pattern of methods.
+    ///
+    /// See also [`BulkConsumerExt::bulk_scrambled`] for exercising *bulk* consumers; use this method only for testing producers which are *not* also bulk producers.
+    ///
+    /// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+    ///
+    /// <br/>Counterpart: the [ProducerExt::scrambled] method.
+    #[cfg(feature = "dev")]
+    fn scrambled<Q>(self, buffer: Q, ops: Vec<ConsumerOperation>) -> Scrambled<Self, Q>
+    where
+        Self: Sized,
+    {
+        Scrambled::new(self, buffer, ops)
     }
 }
 
@@ -424,9 +441,9 @@ pub trait BulkConsumerExt: BulkConsumer {
         BulkBuffered::new(self, queue)
     }
 
-    /// Turns `self` into a [scrambling](BulkScrambled) producer.
+    /// Turns `self` into a [scrambling](BulkScrambled) consumer.
     ///
-    /// The returned producer is semantically indistinguishable from `self`, but interacts with the original bulk producer according to a fixed (usually randomly generated) pattern of methods.
+    /// The returned consumer is semantically indistinguishable from `self`, but interacts with the original bulk consumer according to a fixed (usually randomly generated) pattern of methods.
     ///
     /// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
     ///

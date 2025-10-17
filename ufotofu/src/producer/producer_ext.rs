@@ -10,7 +10,7 @@ use crate::{
 use alloc::vec::Vec;
 
 #[cfg(feature = "dev")]
-use crate::producer::{BulkProducerOperation, BulkScrambled};
+use crate::producer::{BulkProducerOperation, BulkScrambled, ProducerOperation, Scrambled};
 
 impl<P> ProducerExt for P where P: Producer {}
 
@@ -205,6 +205,27 @@ pub trait ProducerExt: Producer {
         Self: Sized,
     {
         Buffered::new(self, queue)
+    }
+
+    /// Turns `self` into a [scrambling](Scrambled) producer.
+    ///
+    /// The returned (bulk) producer is semantically indistinguishable from `self`, but interacts with the original producer according to a fixed (usually randomly generated) pattern of methods.
+    ///
+    /// See also [`BulkProducerExt::bulk_scrambled`] for exercising *bulk* producers; use this method only for testing producers which are *not* also bulk producers.
+    ///
+    /// See the [fuzz-testing tutorial](crate::fuzz_testing_tutorial) for typical usage.
+    ///
+    /// <br/>Counterpart: the [ConsumerExt::scrambled] method.
+    #[cfg(feature = "dev")]
+    fn scrambled<Q>(
+        self,
+        buffer: Q,
+        ops: Vec<ProducerOperation>,
+    ) -> Scrambled<Self, Q, Self::Final, Self::Error>
+    where
+        Self: Sized,
+    {
+        Scrambled::new(self, buffer, ops)
     }
 
     /// Returns whether this producer and another producer emit equal sequences of items.

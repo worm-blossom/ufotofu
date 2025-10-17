@@ -125,6 +125,11 @@ mod bulk_buffered;
 pub use bulk_buffered::*;
 
 #[cfg(feature = "dev")]
+mod scrambled;
+#[cfg(feature = "dev")]
+pub use scrambled::*;
+
+#[cfg(feature = "dev")]
 mod bulk_scrambled;
 #[cfg(feature = "dev")]
 pub use bulk_scrambled::*;

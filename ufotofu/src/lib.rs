@@ -220,12 +220,12 @@ pub mod prelude {
     #[cfg(feature = "dev")]
     pub use crate::{
         consumer::{
-            build_test_consumer, BulkConsumerOperation, TestConsumer, TestConsumerBuilder,
-            TestConsumerBuilderError,
+            build_test_consumer, BulkConsumerOperation, ConsumerOperation, TestConsumer,
+            TestConsumerBuilder, TestConsumerBuilderError,
         },
         producer::{
-            build_test_producer, BulkProducerOperation, TestProducer, TestProducerBuilder,
-            TestProducerBuilderError,
+            build_test_producer, BulkProducerOperation, ProducerOperation, TestProducer,
+            TestProducerBuilder, TestProducerBuilderError,
         },
     };
     pub use either::Either::{self, Left, Right};

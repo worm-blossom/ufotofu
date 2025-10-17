@@ -63,6 +63,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "consumer_scrambled"
+path = "fuzz_targets/consumer/scrambled.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "producer_buffered"
 path = "fuzz_targets/producer/buffered.rs"
 test = false
@@ -135,6 +142,13 @@ bench = false
 [[bin]]
 name = "producer_produce_item"
 path = "fuzz_targets/producer/produce_item.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "producer_scrambled"
+path = "fuzz_targets/producer/scrambled.rs"
 test = false
 doc = false
 bench = false
