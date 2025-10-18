@@ -110,7 +110,7 @@ impl<'s, T> crate::IntoProducer for &'s mut [T] {
 
 /// The producer of the [`IntoProducer`] impl of `Box<[T]>`.
 ///
-/// When [`vec_into_raw_parts`](https://github.com/rust-lang/rust/issues/65816), this type will provide a [`BulkProducer`] implementation.
+/// When [`vec_into_raw_parts`](https://github.com/rust-lang/rust/issues/65816) is stabilised, this type will provide a [`BulkProducer`] implementation.
 ///
 /// ```
 /// use ufotofu::prelude::*;

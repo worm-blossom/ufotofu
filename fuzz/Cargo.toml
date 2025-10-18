@@ -14,34 +14,6 @@ ufotofu = { path = "../ufotofu", features = ["dev"] }
 either = "1.10.0"
 
 [[bin]]
-name = "example_bulk_count"
-path = "fuzz_targets/example_bulk_count.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "example_seventeen_times"
-path = "fuzz_targets/example_seventeen_times.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "pipe"
-path = "fuzz_targets/pipe.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "bulk_pipe"
-path = "fuzz_targets/bulk_pipe.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "consumer_buffered"
 path = "fuzz_targets/consumer/buffered.rs"
 test = false
@@ -58,6 +30,20 @@ bench = false
 [[bin]]
 name = "consumer_bulk_scrambled"
 path = "fuzz_targets/consumer/bulk_scrambled.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "consumer_move_into_slice"
+path = "fuzz_targets/consumer/move_into_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "consumer_move_into_owned_slice"
+path = "fuzz_targets/consumer/move_into_owned_slice.rs"
 test = false
 doc = false
 bench = false
@@ -149,6 +135,104 @@ bench = false
 [[bin]]
 name = "producer_scrambled"
 path = "fuzz_targets/producer/scrambled.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_array"
+path = "fuzz_targets/roundtrip/array.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_binary_heap"
+path = "fuzz_targets/roundtrip/binary_heap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_boxed_slice"
+path = "fuzz_targets/roundtrip/boxed_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_btree_map"
+path = "fuzz_targets/roundtrip/btree_map.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_btree_set"
+path = "fuzz_targets/roundtrip/btree_set.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_bulk_pipe"
+path = "fuzz_targets/roundtrip/bulk_pipe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_hash_map"
+path = "fuzz_targets/roundtrip/hash_map.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_hash_set"
+path = "fuzz_targets/roundtrip/hash_set.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_linked_list"
+path = "fuzz_targets/roundtrip/linked_list.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_pipe"
+path = "fuzz_targets/roundtrip/pipe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_vec"
+path = "fuzz_targets/roundtrip/vec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_vec_deque"
+path = "fuzz_targets/roundtrip/vec_deque.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "example_bulk_count"
+path = "fuzz_targets/example_bulk_count.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "example_seventeen_times"
+path = "fuzz_targets/example_seventeen_times.rs"
 test = false
 doc = false
 bench = false

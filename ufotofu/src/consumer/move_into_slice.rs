@@ -1,5 +1,6 @@
 use core::convert::AsRef;
 use core::fmt::Debug;
+use core::marker::PhantomData;
 
 use crate::prelude::*;
 
@@ -200,7 +201,7 @@ impl<T> AsMut<[T]> for MoveIntoSlice<'_, T> {
 
 impl<T> Consumer for MoveIntoSlice<'_, T> {
     type Item = T;
-    type Final = ();
+    type Final = Infallible;
     type Error = ();
 
     async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
@@ -214,7 +215,7 @@ impl<T> Consumer for MoveIntoSlice<'_, T> {
     }
 
     async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
-        Ok(())
+        unreachable!()
     }
 
     async fn flush(&mut self) -> Result<(), Self::Error> {
@@ -233,6 +234,263 @@ impl<T> BulkConsumer for MoveIntoSlice<'_, T> {
             Err(())
         } else {
             let (amount, ret) = f(&mut self.0[self.1..]).await;
+            self.1 += amount;
+            Ok(ret)
+        }
+    }
+}
+
+/// A (bulk) consumer that fills (i.e., overwrites) an owned slice (i.e., some type `S` implementing `AsMut<[T]>`) with consumed data.
+///
+/// See [`move_into_owned_slice`].
+///
+/// <br/>Counterpart: the [producer::CloneFromOwnedSlice] type.
+#[derive(Debug)]
+
+pub struct MoveIntoOwnedSlice<S, T>(S, usize, PhantomData<T>);
+
+/// Creates a (bulk) consumer that sequentially overwrites the data in the given owned slice (i.e., in some type `S` implementing `AsMut<[T]>`).
+///
+/// ```
+/// # use ufotofu::prelude::*;
+/// use consumer::move_into_owned_slice;
+/// # pollster::block_on(async {
+///
+/// let buf = [0, 0, 0];
+/// let mut into_slice = move_into_owned_slice(buf);
+///
+/// into_slice.consume(1).await?;
+/// into_slice.consume(2).await?;
+/// into_slice.consume(4).await?;
+/// assert_eq!(into_slice.consume(8).await, Err(()));
+///
+/// assert_eq!(into_slice.into_inner(), [1, 2, 4]);
+/// # Result::<(), ()>::Ok(())
+/// # });
+/// ```
+///
+/// <br/>Counterpart: the [producer::clone_from_owned_slice] function.
+pub fn move_into_owned_slice<S, T>(slice: S) -> MoveIntoOwnedSlice<S, T> {
+    MoveIntoOwnedSlice(slice, 0, PhantomData)
+}
+
+impl<S, T> MoveIntoOwnedSlice<S, T> {
+    /// Consumes `self` and returns the original slice.
+    ///
+    /// ```
+    /// # use ufotofu::prelude::*;
+    /// use consumer::move_into_owned_slice;
+    /// # pollster::block_on(async {
+    ///
+    /// let mut buf = [0, 0, 0];
+    /// let mut into_slice = move_into_owned_slice(buf);
+    ///
+    /// into_slice.consume(1).await?;
+    /// into_slice.consume(2).await?;
+    /// assert_eq!(into_slice.into_inner(), [1, 2, 0]);
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    pub fn into_inner(self) -> S {
+        self.0
+    }
+
+    /// Returns the offset into the slice at which the next item will be written.
+    ///
+    /// ```
+    /// # use ufotofu::prelude::*;
+    /// use consumer::move_into_owned_slice;
+    /// # pollster::block_on(async {
+    ///
+    /// let buf = [0, 0, 0];
+    /// let mut into_slice = move_into_owned_slice(buf);
+    ///
+    /// assert_eq!(into_slice.offset(), 0);
+    /// into_slice.consume(1).await?;
+    /// assert_eq!(into_slice.offset(), 1);
+    /// into_slice.consume(2).await?;
+    /// assert_eq!(into_slice.offset(), 2);
+    /// into_slice.consume(4).await?;
+    /// assert_eq!(into_slice.offset(), 3);
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    pub fn offset(&self) -> usize {
+        self.1
+    }
+}
+
+impl<S, T> MoveIntoOwnedSlice<S, T>
+where
+    S: AsRef<[T]>,
+{
+    /// Returns the subslice of items that have been consumed so far.
+    ///
+    /// ```
+    /// # use ufotofu::prelude::*;
+    /// use consumer::move_into_owned_slice;
+    /// # pollster::block_on(async {
+    ///
+    /// let buf = [0, 0, 0];
+    /// let mut into_slice = move_into_owned_slice(buf);
+    ///
+    /// assert!(into_slice.consumed().is_empty());
+    /// into_slice.consume(1).await?;
+    /// assert_eq!(into_slice.consumed(), &[1][..]);
+    /// into_slice.consume(2).await?;
+    /// assert_eq!(into_slice.consumed(), &[1, 2][..]);
+    /// into_slice.consume(4).await?;
+    /// assert_eq!(into_slice.consumed(), &[1, 2, 4][..]);
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    pub fn consumed(&self) -> &[T] {
+        &self.0.as_ref()[..self.offset()]
+    }
+    /// Returns the subslice of items that have not been overwritten yet.
+    ///
+    /// ```
+    /// # use ufotofu::prelude::*;
+    /// use consumer::move_into_owned_slice;
+    /// # pollster::block_on(async {
+    ///
+    /// let buf = [0, 0, 0];
+    /// let mut into_slice = move_into_owned_slice(buf);
+    ///
+    /// assert_eq!(into_slice.remaining(), &[0, 0, 0][..]);
+    /// into_slice.consume(1).await?;
+    /// assert_eq!(into_slice.remaining(), &[0, 0][..]);
+    /// into_slice.consume(2).await?;
+    /// assert_eq!(into_slice.remaining(), &[0][..]);
+    /// into_slice.consume(4).await?;
+    /// assert!(into_slice.remaining().is_empty());
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    pub fn remaining(&self) -> &[T] {
+        &self.0.as_ref()[self.offset()..]
+    }
+}
+
+impl<S, T> MoveIntoOwnedSlice<S, T>
+where
+    S: AsMut<[T]>,
+{
+    /// Returns the mutable subslice of items that have been consumed so far.
+    ///
+    /// ```
+    /// # use ufotofu::prelude::*;
+    /// use consumer::move_into_owned_slice;
+    /// # pollster::block_on(async {
+    ///
+    /// let buf = [0, 0, 0];
+    /// let mut into_slice = move_into_owned_slice(buf);
+    ///
+    /// assert!(into_slice.consumed_mut().is_empty());
+    /// into_slice.consume(1).await?;
+    /// assert_eq!(into_slice.consumed_mut(), &mut [1][..]);
+    /// into_slice.consume(2).await?;
+    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2][..]);
+    /// into_slice.consume(4).await?;
+    /// assert_eq!(into_slice.consumed_mut(), &mut [1, 2, 4][..]);
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    pub fn consumed_mut(&mut self) -> &mut [T] {
+        let offset = self.offset();
+        &mut self.0.as_mut()[..offset]
+    }
+
+    /// Returns the mutable subslice of items that have not been overwritten yet.
+    ///
+    /// ```
+    /// # use ufotofu::prelude::*;
+    /// use consumer::move_into_owned_slice;
+    /// # pollster::block_on(async {
+    ///
+    /// let buf = [0, 0, 0];
+    /// let mut into_slice = move_into_owned_slice(buf);
+    ///
+    /// assert_eq!(into_slice.remaining_mut(), &mut [0, 0, 0][..]);
+    /// into_slice.consume(1).await?;
+    /// assert_eq!(into_slice.remaining_mut(), &mut [0, 0][..]);
+    /// into_slice.consume(2).await?;
+    /// assert_eq!(into_slice.remaining_mut(), &mut [0][..]);
+    /// into_slice.consume(4).await?;
+    /// assert!(into_slice.remaining_mut().is_empty());
+    /// assert_eq!(into_slice.consume(8).await, Err(()));
+    /// # Result::<(), ()>::Ok(())
+    /// # });
+    /// ```
+    pub fn remaining_mut(&mut self) -> &mut [T] {
+        let offset = self.offset();
+        &mut self.0.as_mut()[offset..]
+    }
+}
+
+impl<S, T> AsRef<[T]> for MoveIntoOwnedSlice<S, T>
+where
+    S: AsRef<[T]>,
+{
+    fn as_ref(&self) -> &[T] {
+        self.0.as_ref()
+    }
+}
+
+impl<S, T> AsMut<[T]> for MoveIntoOwnedSlice<S, T>
+where
+    S: AsMut<[T]>,
+{
+    fn as_mut(&mut self) -> &mut [T] {
+        self.0.as_mut()
+    }
+}
+
+impl<S, T> Consumer for MoveIntoOwnedSlice<S, T>
+where
+    S: AsMut<[T]>,
+{
+    type Item = T;
+    type Final = Infallible;
+    type Error = ();
+
+    async fn consume(&mut self, item: Self::Item) -> Result<(), Self::Error> {
+        if self.0.as_mut().len() == self.1 {
+            Err(())
+        } else {
+            self.0.as_mut()[self.1] = item;
+            self.1 += 1;
+            Ok(())
+        }
+    }
+
+    async fn close(&mut self, _fin: Self::Final) -> Result<(), Self::Error> {
+        unreachable!()
+    }
+
+    async fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+impl<S, T> BulkConsumer for MoveIntoOwnedSlice<S, T>
+where
+    S: AsMut<[T]>,
+{
+    async fn expose_slots<F, R>(&mut self, f: F) -> Result<R, Self::Error>
+    where
+        F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
+    {
+        let len = self.0.as_mut().len() - self.1;
+
+        if len == 0 {
+            Err(())
+        } else {
+            let (amount, ret) = f(&mut self.0.as_mut()[self.1..]).await;
             self.1 += amount;
             Ok(ret)
         }

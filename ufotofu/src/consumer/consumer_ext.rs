@@ -1,6 +1,6 @@
 use core::cmp::min;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "dev")]
 use alloc::vec::Vec;
 
 use crate::{

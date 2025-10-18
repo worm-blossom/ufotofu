@@ -71,9 +71,7 @@ impl<T, const N: usize> BulkConsumer for IntoConsumer<T, N> {
     where
         F: AsyncFnOnce(&mut [Self::Item]) -> (usize, R),
     {
-        let len = N - self.1;
-
-        if len == 0 {
+        if self.1 == N {
             Err(())
         } else {
             let (amount, ret) = f(&mut self.0[self.1..]).await;

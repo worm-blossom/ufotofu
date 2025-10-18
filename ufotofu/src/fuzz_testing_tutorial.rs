@@ -355,6 +355,61 @@
 //! # }
 //! ```
 //!
+//! ## Scrambling Non-Bulk Processors
+//!
+//! Analogously to [`BulkProducerExt::bulk_scrambled`](crate::producer::BulkProducerExt::bulk_scrambled) and [`BulkConsumerExt::bulk_scrambled`](crate::consumer::BulkConsumerExt::bulk_scrambled), there are also scramblers for non-bulk processors: [`ProducerExt::scrambled`](crate::producer::ProducerExt::scrambled) and [`ConsumerExt::scrambled`](crate::consumer::ConsumerExt::scrambled). These do fairly little beyond injecting the occasional call to `flush` or `slurp`, but it cannot hurt to be thorough in testing.
+//!
+//! The following example tests that the [`IntoConsumer`](crate::IntoConsumer) and [`IntoProducer`](crate::IntoProducer) impls for [`BTreeSet`](std::collections::BTreeSet) commute irrespective of any flushing or slurping:
+//!
+//! ```no_run
+//! #![no_main]
+//!
+//! use std::collections::BTreeSet;
+//!
+//! use libfuzzer_sys::fuzz_target;
+//! use ufotofu::{prelude::*, queues::new_fixed};
+//!
+//! # #[cfg(feature = "dev")] {
+//! // Generate a random btree set, call into_producer, scramble that producer.
+//! // Then use IntoConsumer on the empty btree set, scramble the consumer, and
+//! // check that the original set is being reconstructed.
+//!
+//! fuzz_target!(|data: (
+//!     BTreeSet<u16>,
+//!     usize,
+//!     Vec<ConsumerOperation>,
+//!     usize,
+//!     Vec<ProducerOperation>,
+//! )| {
+//!     pollster::block_on(async {
+//!         let (input, mut con_buffer_size, con_ops, mut pro_buffer_size, pro_ops) = data;
+//!         con_buffer_size = con_buffer_size.clamp(1, 4096);
+//!         pro_buffer_size = pro_buffer_size.clamp(1, 4096);
+//!
+//!         let input_copy = input.clone();
+//!
+//!         let mut pro = input
+//!             .into_producer()
+//!             .scrambled(new_fixed(pro_buffer_size), pro_ops);
+//!
+//!         let mut produced = vec![0; input_copy.len()];
+//!         assert_eq!(pro.overwrite_full_slice(&mut produced[..]).await, Ok(()));
+//!
+//!         let mut con = BTreeSet::default()
+//!             .into_consumer()
+//!             .scrambled(new_fixed(con_buffer_size), con_ops);
+//!
+//!         assert_eq!(con.consume_full_slice(&produced[..]).await, Ok(()));
+//!         con.flush().await.unwrap();
+//!
+//!         let consumed: BTreeSet<u16> = con.into_inner().into();
+//!
+//!         assert_eq!(consumed, input_copy);
+//!     });
+//! });
+//! # }
+//! ```
+//!
 //! ## Other
 //!
 //! The [`ProducerExt::equals`](crate::producer::ProducerExt::equals) method is convenient for asserting that some tested producer emits the same sequence as a control producer. Its boolean output is rather useless for debugging, however. The [`ProducerExt::equals_dbg`](crate::producer::ProducerExt::equals_dbg) does the same as [`ProducerExt::equals`](crate::producer::ProducerExt::equals), but additionally logs the values `produced` by both producers.

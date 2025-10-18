@@ -6,7 +6,7 @@ use crate::{
     ProduceAtLeastError,
 };
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "dev")]
 use alloc::vec::Vec;
 
 #[cfg(feature = "dev")]

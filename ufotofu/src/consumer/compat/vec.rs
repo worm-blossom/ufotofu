@@ -40,7 +40,9 @@ pub struct IntoConsumer<T>(Vec<T>, usize);
 
 impl<T> From<IntoConsumer<T>> for Vec<T> {
     fn from(value: IntoConsumer<T>) -> Self {
-        value.0
+        let (mut v, len) = (value.0, value.1);
+        v.truncate(len);
+        v
     }
 }
 
@@ -170,7 +172,8 @@ impl<T> crate::IntoConsumer for Vec<T> {
     type IntoConsumer = IntoConsumer<T>;
 
     fn into_consumer(self) -> Self::IntoConsumer {
-        IntoConsumer(self, 0)
+        let len = self.len();
+        IntoConsumer(self, len)
     }
 }
 
