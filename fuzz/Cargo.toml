@@ -28,8 +28,29 @@ doc = false
 bench = false
 
 [[bin]]
+name = "consumer_bulk_consume_full_slice"
+path = "fuzz_targets/consumer/bulk_consume_full_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "consumer_bulk_consume"
+path = "fuzz_targets/consumer/bulk_consume.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "consumer_bulk_scrambled"
 path = "fuzz_targets/consumer/bulk_scrambled.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "consumer_consume_full_slice"
+path = "fuzz_targets/consumer/consume_full_slice.rs"
 test = false
 doc = false
 bench = false

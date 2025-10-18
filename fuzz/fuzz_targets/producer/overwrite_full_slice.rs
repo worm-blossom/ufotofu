@@ -3,7 +3,7 @@
 use libfuzzer_sys::fuzz_target;
 use ufotofu::{prelude::*, ProduceAtLeastError};
 
-// Generate a TestProducer, and check that overwrite_full_slice returns the correct value and performs the right side-effects compared "normal" production on a clone of the TestConsumer.
+// Generate a TestProducer, and check that overwrite_full_slice returns the correct value and performs the right side-effects compared "normal" production on a clone of the TestProducer.
 
 fuzz_target!(|data: (TestProducer<u16, u16, u16>, usize)| {
     pollster::block_on(async {
