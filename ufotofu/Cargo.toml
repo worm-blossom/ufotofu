@@ -21,8 +21,8 @@ alloc = []
 # Provide development helpers.
 dev = ["std", "dep:arbitrary", "dep:derive_builder", "dep:libfuzzer-sys"]
 
-# Provide adaptors for interoperability with other async reader and writer crates.
-# compat = ["dep:smol"]
+# Provide adaptors for interoperability with the AsyncRead, AsyncBufRead, and AsyncWrite traits of the futures-io crate.
+compat_futures_io = ["dep:futures-lite", "std"]
 
 [dependencies]
 ufotofu_macros = { path = "../ufotofu_macros", version = "0.1.0" }
@@ -30,7 +30,7 @@ either = "1.10.0"
 arbitrary = { version = "1.0.2", features = ["derive"], optional = true }
 smol = { version = "2.0.2", optional = true }
 derive_builder = { version = "0.20.2", features = ["alloc"], optional = true }
-# futures = "0.3.31"
+futures-lite = { version = "2.6.1", optional = true }
 
 # We only depend on this so that our doc examples build.
 libfuzzer-sys = { version = "0.4.0", optional = true }

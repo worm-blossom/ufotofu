@@ -1,4 +1,4 @@
-//! Various types for providing compatibility with core Rust types, standard library types, and — eventually — selected crates.
+//! Various types for providing compatibility with core Rust types, standard library types, and [`futures_lite`] consumer-like abstractions.
 //!
 //! ## [Core](core)
 //!
@@ -6,11 +6,15 @@
 //!
 //! ## [Alloc](alloc)
 //!
-//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for [boxed](alloc::boxed::Box) slices and for [`Vec`](alloc::vec::Vec).
+//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for [boxed](alloc::boxed::Box) slices and for [`Vec`](alloc::vec::Vec). Requires the `alloc` feature to be enabled.
 //!
 //! # [Std](std)
 //!
-//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for various [collections](std::collections).
+//! Provides [`IntoConsumer`](crate::IntoConsumer) impls for various [collections](std::collections). Requires the `std` feature to be enabled.
+//!
+//! # [`futures_lite`]
+//!
+//! Provides an adaptor for using any [`futures_lite::AsyncWrite`] as a [`BulkConsumer`](crate::BulkConsumer). Requires the `compat_futures_io` feature to be enabled.
 //!
 //! <br/>Counterpart: the [`producer::compat`](crate::producer::compat) module.
 
@@ -34,3 +38,6 @@ pub mod hash_set;
 pub mod linked_list;
 #[cfg(feature = "std")]
 pub mod vec_deque;
+
+#[cfg(feature = "compat_futures_io")]
+pub mod writer;

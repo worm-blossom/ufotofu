@@ -26,7 +26,7 @@
 //! - Producers emit a dedicated final value, consumers receive a dedicated value when closed.
 //! - British spelling.
 //!
-//! See the [ufotofu website](https://ufotofu.worm-blossom.org/) for a discussion of these design choices — the crate docs stay focussed on the *what*, not the *why*.
+//! See the [ufotofu website](https://worm-blossom.org/ufotofu/) for a discussion of these design choices — the crate docs stay focussed on the *what*, not the *why*.
 //!
 //! ## Caveats
 //!
@@ -43,6 +43,10 @@
 //! The [`queues`] module provides the [`Queue`](queues::Queue) trait for infallible in-memory queues with bulk push and pop operations, and some types implementing it. These power the buffered producer and consumer implementations of ufotofu.
 //!
 //! The [`fuzz_testing_tutorial`] demonstrates the utility types for [fuzz testing](https://rust-fuzz.github.io/book/introduction.html) that ufotofu provides.
+//!
+//! ## Actual I/O
+//!
+//! The ufotofu abstractions are nice and all, but how do you actually do any I/O with ufotofu? The [`producer::compat::reader::reader_to_bulk_producer`] function turns any [`AsyncRead`](futures_lite::AsyncRead) into a [`BulkProducer`], and the [`consumer::compat::writer::writer_to_bulk_consumer`] function turns any [`AsyncWrite`](futures_lite::AsyncWrite) into a [`BulkConsumer`] (both functions require the `compat_futures_io` feature to be activated). This way, you can use established crates such as [`smol`](https://crates.io/crates/smol) or [`tokio`](https://crates.io/crates/tokio) with ufotofu abstractions.
 
 #[cfg(feature = "std")]
 extern crate std;

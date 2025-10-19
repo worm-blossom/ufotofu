@@ -10,8 +10,10 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
 pollster = "0.4.0"
-ufotofu = { path = "../ufotofu", features = ["dev"] }
+ufotofu = { path = "../ufotofu", features = ["dev", "compat_futures_io"] }
 either = "1.10.0"
+smol = "2.0.2"
+futures = "0.3.31"
 
 [[bin]]
 name = "consumer_buffered"
@@ -163,6 +165,20 @@ bench = false
 [[bin]]
 name = "roundtrip_array"
 path = "fuzz_targets/roundtrip/array.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_async_buf_read_async_write"
+path = "fuzz_targets/roundtrip/async_buf_read_async_write.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_async_read_async_write"
+path = "fuzz_targets/roundtrip/async_read_async_write.rs"
 test = false
 doc = false
 bench = false

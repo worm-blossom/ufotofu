@@ -38,7 +38,7 @@ This crate provides alternatives to some abstractions of the popular
 
 Read the [docs](https://docs.rs/ufotofu/latest/ufotofu/) for a thorough
 introduction to the API, see the
-[ufotofu website](https://ufotofu.worm-blossom.org/) for a discussion of the
+[ufotofu website](https://worm-blossom.org/ufotofu/) for a discussion of the
 design choices.
 
 ## License
